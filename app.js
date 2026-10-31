@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", more: "More" };
 
-  var APP_VERSION = "1.3.0";
+  var APP_VERSION = "1.4.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -133,12 +133,61 @@
     return chain("settings", function () { return Store.putSettings(snap); }, function () { S.settings = prev; });
   }
 
+  /* ---------- What's new (the bell) ----------
+     Add one entry at the TOP of RELEASES for every release, and bump APP_VERSION to the same number.
+     The bell shows how many releases are newer than the last one opened on this device. */
+  var NEWS_BASELINE = "1.1.1";
+  var RELEASES = [
+    { v: "1.4.0", date: "2026-10-31", title: "What's new bell", items: ["The bell at the top shows a number when there is a release you have not read.", "Tap it to see what changed in every release."] },
+    { v: "1.3.0", date: "2026-10-31", title: "Buyers and Sellers boards", items: [
+      "Pipeline now has two boards. Buyers: Cold, Engaged, Searching, Under contract, Closed. Sellers: Cold, Consult set, Listed, Under contract, Closed.",
+      "Move a card with its arrows, or drag it on a computer.",
+      "Needs a type: tap Buyer or Seller on a lead to put it on a board.",
+      "+ Add: search your contacts and add them to the board you are on.",
+      "Moving a card to Closed records the deal toward your yearly goal.",
+      "New lead form has Looking to: buy, sell or invest.",
+      "Old stages (Contacted, Meeting set, Active) show up in the matching new column."] },
+    { v: "1.2.0", date: "2026-10-31", title: "Family", items: [
+      "New Family section on every contact: name, relationship and birthday.",
+      "Family birthdays show in Moments with a WhatsApp message ready to send to that contact.",
+      "Search finds a contact by a family member's name."] },
+    { v: "1.1.1", date: "2026-10-31", title: "Update files", items: [
+      "More, Restore a backup also takes an update file that changes only some fields (birthdays, closing dates, family) and leaves everything else alone."] },
+    { v: "1.1.0", date: "2026-10-31", title: "Quick wins", items: [
+      "Moments this week: birthdays and home anniversaries.",
+      "Last 7 days strip on Today.",
+      "Buyer profile on each contact, and Lists, Match buyers to find who fits a home.",
+      "Scorecard in More: leads, meetings, deals and ad spend by source.",
+      "New WhatsApp templates: flyer, anniversary, birthday, listing match and check-in."] },
+    { v: "1.0.0", title: "Closing Desk", items: ["Your private, synced CRM: Today list, Pipeline, Lists, WhatsApp click-to-chat, backups."] }
+  ];
+  function seenVer() { try { return localStorage.getItem("cd.seen") || NEWS_BASELINE; } catch (e) { return NEWS_BASELINE; } }
+  function unseenCount() { for (var i = 0; i < RELEASES.length; i++) if (RELEASES[i].v === seenVer()) return i; return 0; }
+  function updateBell() {
+    var n = unseenCount(), dot = $("#bellDot"), b = $("#bellBtn"); if (!dot || !b) return;
+    dot.hidden = !n; dot.textContent = n > 9 ? "9+" : n;
+    b.setAttribute("aria-label", n ? "What's new, " + n + " unread" : "What's new");
+  }
+  function openNews() {
+    var n = unseenCount();
+    $("#sheetHost").innerHTML = '<div class="veil" id="veil"><div class="sheet" role="dialog" aria-modal="true" aria-label="What\'s new"><div class="sheet-top"><h2>What\'s new</h2><button class="btn" type="button" data-act="closesheet">Close</button></div><div class="stack">' +
+      '<p class="note" style="margin:0">App version <span class="num">' + APP_VERSION + "</span></p>" +
+      RELEASES.map(function (r, i) {
+        return '<div class="card news"><div class="sec" style="margin:0 0 6px"><h2>' + esc(r.title) + (i < n ? ' <span class="pill new">New</span>' : "") + '</h2><span class="meta num">v' + esc(r.v) + (r.date ? " · " + esc(fdate(r.date)) : "") + "</span></div><ul>" + r.items.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul></div>";
+      }).join("") + "</div></div></div>";
+    $("#veil").addEventListener("click", function (e) { if (e.target.id === "veil") closeSheet(); });
+    S.sheetId = "__news";
+    try { localStorage.setItem("cd.seen", RELEASES[0].v); } catch (e) {}
+    updateBell();
+  }
+
   /* ---------- render scheduling ---------- */
   var raf = 0;
   function scheduleRender() { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; render(); }); }
 
   function render() {
     document.body.dataset.view = S.tab;
+    updateBell();
     $("#title").textContent = TITLES[S.tab];
     var due = dueList().length;
     $("#subtitle").textContent = new Date().toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric" }) + "";
@@ -646,7 +695,7 @@
     h += '<div class="card stack" style="margin-top:12px"><h2>Closed deals</h2>' + (deals.length ? deals.map(function (d) { return '<div class="row" style="justify-content:space-between"><span>' + esc(d.name) + ' <span class="muted">' + (d.type === "listing" ? "listing" : "buyer") + ", " + esc(fdate(d.date)) + '</span></span><button class="btn small danger" type="button" data-act="deldeal" data-id="' + esc(d.id) + '">Remove</button></div>'; }).join("") : '<p class="note" style="margin:0">No deals yet. Open a contact and tap Mark closed.</p>') + "</div>";
     h += '<div class="card stack" style="margin-top:12px"><h2>Backup</h2><button class="btn primary" type="button" data-act="backup">Download backup (.json)</button><button class="btn" type="button" data-act="exportall">Export contact list (.csv)</button><p class="note" style="margin:0">The backup has everything, including your private notes, so keep that file somewhere safe. The CSV leaves notes out. Download a backup after any big session.</p></div>';
     h += '<div class="card stack" style="margin-top:12px"><h2>Restore a backup</h2>' + restoreCard() + "</div>";
-    h += '<div class="card stack" style="margin-top:12px"><h2>Account</h2><div class="row" style="justify-content:space-between"><span class="muted">Signed in as</span><span style="overflow-wrap:anywhere">' + esc((S.user && S.user.email) || "") + '</span></div><div class="row" style="justify-content:space-between"><span class="muted">Connection</span><span>' + (S.offline ? "Offline, showing saved copy" : (S.live ? "Live sync on" : "Connected, sync starting")) + '</span></div><div class="row" style="justify-content:space-between"><span class="muted">Version</span><span class="num">' + APP_VERSION + '</span></div><button class="btn" type="button" data-act="refresh">Refresh from server</button><button class="btn danger" type="button" data-act="signout">Sign out</button></div>';
+    h += '<div class="card stack" style="margin-top:12px"><h2>Account</h2><div class="row" style="justify-content:space-between"><span class="muted">Signed in as</span><span style="overflow-wrap:anywhere">' + esc((S.user && S.user.email) || "") + '</span></div><div class="row" style="justify-content:space-between"><span class="muted">Connection</span><span>' + (S.offline ? "Offline, showing saved copy" : (S.live ? "Live sync on" : "Connected, sync starting")) + '</span></div><div class="row" style="justify-content:space-between"><span class="muted">Version</span><span class="num">' + APP_VERSION + '</span></div><button class="btn" type="button" data-act="bell">What\'s new</button><button class="btn" type="button" data-act="refresh">Refresh from server</button><button class="btn danger" type="button" data-act="signout">Sign out</button></div>';
     $("#view").innerHTML = h;
   }
   function spread() {
@@ -819,6 +868,7 @@
     else if (a === "move") moveCard(id2, el.dataset.to);
     else if (a === "pipe") { S.pipe = el.dataset.v === "seller" ? "seller" : "buyer"; try { localStorage.setItem("cd.pipe", S.pipe); } catch (e) {} render(); }
     else if (a === "pickopen") openPick();
+    else if (a === "bell") openNews();
     else if (a === "pkadd") { var pc0 = S.contacts.get(id2); addToPipe(id2, S.pipe); toast("Added to " + PIPES[S.pipe].label + (pc0 ? ": " + nm(pc0) : "")); }
     else if (a === "settype") { var sc = S.contacts.get(id2); if (sc) save(id2, kindFields(sc, el.dataset.v)); }
     else if (a === "dead") { save(S.sheetId, { stage: "Dead" }); toast("Moved to Dead"); closeSheet(); }

@@ -217,3 +217,14 @@ label.btn { color: var(--ink); font-size: 14px; }
   body[data-view="pipeline"] .board { margin-right: 0; padding-right: 0; }
   body[data-view="pipeline"] .col { flex: 1 1 0; min-width: 220px; }
 }
+.top .acts { display: flex; align-items: center; gap: 8px; flex: none; }
+.bell { position: relative; width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 12px; }
+.bell svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bell .bdot { position: absolute; top: -6px; right: -6px; background: var(--hot); color: #fff; border-radius: 99px; font-size: 11px; font-weight: 700; padding: 0 5px; min-width: 18px; line-height: 18px; text-align: center; }
+.pill.new { color: var(--accent); background: var(--accent-soft); font-size: 11px; vertical-align: middle; }
+.pill.new::before { display: none; }
+.news ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+.news li { font-size: 14px; line-height: 1.4; }
+.news h2 { font-size: 17px; }
+.news .meta { white-space: nowrap; flex: none; }
+.news .sec { align-items: flex-start; }

@@ -46,12 +46,18 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `vendor/supabase.js` | supabase-js 2.117.3 (MIT), saved locally so the app does not depend on a third-party host |
 | `supabase/schema.sql` | Database setup, run once |
 
-## What's inside (v1.3)
+## What's inside (v1.4)
 - **Today:** goals, last-7-days strip, Moments this week (birthdays and home anniversaries), and the daily follow-up list.
 - **Buyer profiles:** open a contact > Add buyer profile (budget, areas, home type, pre-approval, timeline). Lists > **Match buyers** finds who fits a home.
+- **Bell (v1.4):** top right. Shows what changed in every release; the red number counts releases you have not opened.
 - **Pipeline (v1.3):** two boards with a Buyers / Sellers toggle. Buyers: Cold, Engaged, Searching, Under contract, Closed. Sellers: Cold, Consult set, Listed, Under contract, Closed. A contact's **Type** (buyer, investor, seller) decides the board. Arrows move a card, or drag it on a computer. Moving to Closed records the deal for your yearly goal. "Needs a type" lists new or untyped leads with one-tap Buyer / Seller buttons. **+ Add** picks people from your contacts.
 - **Family (v1.2):** open a contact > Family. Add relatives with a relationship and birthday; their birthdays show in Moments.
 - **Scorecard (More):** leads, meetings, deals and ad spend by source, with cost per lead.
+
+## Releasing a change
+1. Add an entry at the **top** of `RELEASES` in `app.js` (version, date, title, short plain-language bullets).
+2. Set `APP_VERSION` to the same number.
+3. Commit and push. The bell shows a red number on every device that has not opened that release yet.
 
 ## Not built yet
 WhatsApp Business API, bulk email and mass messaging. The WhatsApp button uses click-to-chat with a prefilled message for now.

@@ -134,7 +134,7 @@ textarea.field { min-height: 90px; resize: vertical; }
 
 /* tab bar */
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--surface); border-top: 1px solid var(--line); padding: 0 max(8px, env(safe-area-inset-left, 0px)) env(safe-area-inset-bottom, 0px); }
-.tabs .in { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+.tabs .in { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
 .tabs button { background: none; border: 0; min-height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--muted); position: relative; }
 .tabs button svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tabs button[aria-current="page"] { color: var(--accent); }
@@ -228,3 +228,13 @@ label.btn { color: var(--ink); font-size: 14px; }
 .news h2 { font-size: 17px; }
 .news .meta { white-space: nowrap; flex: none; }
 .news .sec { align-items: flex-start; }
+.blk { background: var(--hot-bg); color: var(--hot); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.chk b { flex: none; width: 18px; text-align: center; }
+.chk.ok b { color: var(--accent); }
+.chk.no b { color: var(--hot); }
+.mrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.mrow:last-child { border-bottom: 0; }
+.mrow > span:first-child { min-width: 0; }
+.live { font-size: 13px; color: var(--muted); min-height: 18px; }
+.sheet pre.note { overflow-wrap: anywhere; }

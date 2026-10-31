@@ -20,10 +20,10 @@
   var BTIMES = ["Now", "1-3 months", "3-6 months", "6-12 months", "12+ months"];
   var BPRE = ["Not started", "In progress", "Approved"];
   var FAMRELS = ["Spouse", "Partner", "Son", "Daughter", "Parent", "Sibling", "Uncle", "Aunt", "Grandparent", "Friend", "Family", "Other"];
-  var TABS = ["today", "pipeline", "lists", "more"];
-  var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", more: "More" };
+  var TABS = ["today", "pipeline", "lists", "email", "more"];
+  var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.4.0";
+  var APP_VERSION = "1.5.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -32,7 +32,7 @@
     user: null, offline: false, live: false, lastLoad: 0, pend: {}, setup: false,
     pendingRestore: null, restoring: null, restoreError: "",
     tab: "today", sheetId: null, loaded: false, connectNote: false,
-    f: { q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, limit: 60 },
+    f: { q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, consent: "", limit: 60 },
     selecting: false, selected: new Set(), showAllDue: false, confirmSpread: false,
     pipeMore: {}, pipe: "buyer"
   };
@@ -125,9 +125,24 @@
       if (data && !S.pend["c:" + id] && S.contacts.has(id)) { S.contacts.set(id, data); scheduleRender(); }
     });
   }
+  /* Like save(), but resolves true only when the database confirmed the change. Email sending uses this so it never
+     sends a message unless the "about to send" note was safely stored first. */
+  function patchNow(id, fields) {
+    var c = S.contacts.get(id); if (!c || !S.user) return Promise.resolve(false);
+    var prev = {}; Object.keys(fields).forEach(function (k) { prev[k] = c[k]; });
+    S.contacts.set(id, Object.assign({}, c, fields)); scheduleRender();
+    return chain("c:" + id, function () { return Store.patch(id, fields); }, function () {
+      var cur = S.contacts.get(id); if (cur) S.contacts.set(id, Object.assign({}, cur, prev));
+    }).then(function (data) {
+      if (!data) return false;
+      if (!S.pend["c:" + id] && S.contacts.has(id)) { S.contacts.set(id, data); scheduleRender(); }
+      return true;
+    });
+  }
   function saveSettings(fields) {
     var prev = S.settings;
-    S.settings = Object.assign({}, S.settings, fields); scheduleRender();
+    /* rev goes up with every save, so a slow echo of an older save can never replace newer settings on this screen. */
+    S.settings = Object.assign({}, S.settings, fields, { rev: Math.max(Date.now(), (S.settings.rev || 0) + 1) }); scheduleRender();
     if (!S.user) return Promise.resolve();
     var snap = S.settings;
     return chain("settings", function () { return Store.putSettings(snap); }, function () { S.settings = prev; });
@@ -138,6 +153,13 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.5.0", date: "2026-10-31", title: "Email from Gmail", items: [
+      "New Email tab: write one email, pick who gets it, and it goes out through your own Gmail, one person at a time.",
+      "Built so Gmail does not block you: a daily cap well under Gmail's limit, a warm-up that starts small, random pauses, sending hours, and an automatic stop if Gmail says slow down.",
+      "Only people with consent recorded are emailed. Set it on a contact, or on many at once from Lists, Select, Email consent.",
+      "Every email ends with your name, brokerage, mailing address and an unsubscribe link. Unsubscribes are saved to the contact and skipped from then on.",
+      "Nobody is emailed twice by accident, and anyone emailed in the last 30 days is skipped.",
+      "Needs a one-time setup: see the README (Supabase SQL and a Google Client ID)."] },
     { v: "1.4.0", date: "2026-10-31", title: "What's new bell", items: ["The bell at the top shows a number when there is a release you have not read.", "Tap it to see what changed in every release."] },
     { v: "1.3.0", date: "2026-10-31", title: "Buyers and Sellers boards", items: [
       "Pipeline now has two boards. Buyers: Cold, Engaged, Searching, Under contract, Closed. Sellers: Cold, Consult set, Listed, Under contract, Closed.",
@@ -202,6 +224,7 @@
     else if (S.contacts.size === 0) renderEmpty();
     else if (S.tab === "today") renderToday();
     else if (S.tab === "pipeline") renderPipeline();
+    else if (S.tab === "email") { if (window.CDMailUI) window.CDMailUI.render(); }
     else renderMore();
     if (S.sheetId === "__match") renderMatchResults(); else if (S.sheetId === "__pick") renderPickResults(); else if (S.sheetId && S.sheetId.slice(0, 2) !== "__") refreshSheetParts();
   }
@@ -578,6 +601,8 @@
       if (f.source && c.source !== f.source) return false;
       if (f.email && !c.email) return false;
       if (f.phone && !c.phone) return false;
+      if (f.consent === "none" && c.consent) return false;
+      if (f.consent === "yes" && !c.consent) return false;
       if (f.tag && !(c.tags || []).some(function (t) { return t.indexOf(f.tag.toLowerCase().trim()) >= 0; })) return false;
       if (q) {
         var hay = (nm(c) + " " + (c.email || "") + " " + (c.city || "") + " " + (c.tags || []).join(" ") + " " + (c.family || []).map(function (f) { return f.name; }).join(" ")).toLowerCase();
@@ -599,7 +624,7 @@
       $("#view").innerHTML = '<div class="filters"><input class="field wide" id="fq" type="search" placeholder="Search name, phone, email, tag" value="' + esc(S.f.q) + '" aria-label="Search">' +
         '<select class="field" id="fprov" aria-label="Province">' + opt(provs, S.f.prov, "All provinces") + '</select><select class="field" id="ftemp" aria-label="Temperature">' + opt(TEMPS, S.f.temp, "Any temperature") + "</select>" +
         '<select class="field" id="fstage" aria-label="Stage">' + opt(ALL_STAGES, S.f.stage, "Any stage") + '</select><select class="field" id="fkind" aria-label="Type">' + opt(KINDS, S.f.kind, "Any type") + "</select>" +
-        '<select class="field" id="fsource" aria-label="Source">' + opt(srcs, S.f.source, "Any source") + '</select><input class="field" id="ftag" type="text" placeholder="Tag contains" value="' + esc(S.f.tag) + '" aria-label="Tag contains">' +
+        '<select class="field" id="fsource" aria-label="Source">' + opt(srcs, S.f.source, "Any source") + '</select><select class="field" id="fconsent" aria-label="Email consent"><option value="">Any email consent</option><option value="none"' + (S.f.consent === "none" ? " selected" : "") + '>No consent recorded</option><option value="yes"' + (S.f.consent === "yes" ? " selected" : "") + '>Has consent</option></select><input class="field" id="ftag" type="text" placeholder="Tag contains" value="' + esc(S.f.tag) + '" aria-label="Tag contains">' +
         '<div class="row wide"><label class="chip" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="femail"' + (S.f.email ? " checked" : "") + '> Has email</label><label class="chip" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="fphone"' + (S.f.phone ? " checked" : "") + '> Has phone</label><button class="btn small" type="button" data-act="clearf">Clear</button></div></div><div id="listResults"></div>';
       listsShellFor = "on";
     }
@@ -618,7 +643,7 @@
     var n = S.selected.size;
     if (host.firstChild && host.dataset.n === String(n)) return;
     host.dataset.n = String(n);
-    host.innerHTML = '<div class="bulk"><div class="in"><strong class="num">' + n + ' selected</strong><select id="bTemp" aria-label="Set temperature"><option value="">Set temp</option>' + TEMPS.map(function (t) { return "<option>" + t + "</option>"; }).join("") + '</select><select id="bStage" aria-label="Set stage"><option value="">Set stage</option>' + ALL_STAGES.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + '</select><select id="bKind" aria-label="Set type"><option value="">Set type</option>' + KINDS.map(function (t) { return "<option>" + t + "</option>"; }).join("") + '</select><input id="bTag" type="text" placeholder="Add tag" size="10" aria-label="Add tag"><button class="btn small primary" type="button" data-act="bulkgo"' + (n ? "" : " disabled") + ">Apply</button></div></div>";
+    host.innerHTML = '<div class="bulk"><div class="in"><strong class="num">' + n + ' selected</strong><select id="bTemp" aria-label="Set temperature"><option value="">Set temp</option>' + TEMPS.map(function (t) { return "<option>" + t + "</option>"; }).join("") + '</select><select id="bStage" aria-label="Set stage"><option value="">Set stage</option>' + ALL_STAGES.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + '</select><select id="bKind" aria-label="Set type"><option value="">Set type</option>' + KINDS.map(function (t) { return "<option>" + t + "</option>"; }).join("") + '</select><input id="bTag" type="text" placeholder="Add tag" size="10" aria-label="Add tag"><button class="btn small primary" type="button" data-act="bulkgo"' + (n ? "" : " disabled") + ">Apply</button>" + '<button class="btn small" type="button" data-act="mail-consent"' + (n ? "" : " disabled") + ">Email consent</button></div></div>";
   }
   function bulkApply() {
     var ids = Array.from(S.selected); if (!ids.length) return;
@@ -737,6 +762,7 @@
       '<div class="sec-lbl">Buyer profile</div><div id="shBuy"></div>' +
       '<div class="sec-lbl">Moments</div><div class="two"><label>Birthday<input class="field" id="shBday" type="date"></label><label>Closed with me<input class="field" id="shClose" type="date"></label></div><div class="note">Birthday year does not matter. These show on Today the week they happen.</div>' +
       '<div class="sec-lbl">Family</div><div id="shFamily"></div><div class="card stack" style="margin-top:8px"><div class="two"><label>Name<input class="field" id="famName" placeholder="Shveta"></label><label>Relationship<select class="field" id="famRel">' + FAMRELS.map(function (r) { return "<option>" + esc(r) + "</option>"; }).join("") + '</select></label></div><div class="row" style="align-items:flex-end"><label style="flex:1;min-width:0">Birthday<input class="field" id="famBday" type="date"></label><button class="btn" type="button" data-act="addfam">Add</button></div><div class="note">Year does not matter. Their birthdays show on Today the week they happen, with a message to this contact.</div></div>' +
+      '<div class="sec-lbl">Email</div><div id="shMail"></div>' +
       '<div class="sec-lbl">Tags</div><div id="shTags" class="chips"></div><div class="row" style="margin-top:8px"><input class="field" style="flex:1" id="shTagIn" placeholder="Add a tag, like type:buyer"><button class="btn small" type="button" data-act="addtag">Add</button></div>' +
       '<div class="sec-lbl">Notes (private)</div><textarea class="field" id="shNotes">' + esc(c.notes) + "</textarea>" +
       '<div class="sec-lbl">History</div><div class="row"><select class="field" style="width:auto" id="shLogType" aria-label="Type of touch"><option>Call</option><option>Text</option><option>WhatsApp</option><option>Email</option><option>Meeting</option><option>Note</option></select><input class="field" style="flex:1" id="shLogIn" placeholder="What happened?"><button class="btn small" type="button" data-act="addlog">Log</button></div><div id="shLog" style="margin-top:6px"></div>' +
@@ -771,6 +797,7 @@
       : '<button class="btn" type="button" data-act="dealmode">Mark closed</button>';
     $("#shOther").innerHTML = "Source: " + esc(c.source || "none") + (c.added ? " | Added " + esc(fdate(c.added)) : "") + (c.other ? "<br>Other numbers and emails: " + esc(c.other) : "") + (c.flags ? "<br>Flags: " + esc(c.flags) : "");
     updateWa();
+    if (window.CDMailUI && $("#shMail")) window.CDMailUI.contactPart(c);
     $("#shDanger").innerHTML = S.confirmDelete ? '<button class="btn danger" type="button" data-act="delnow">Delete forever</button><button class="btn" type="button" data-act="delcancel">Keep</button>' : '<button class="btn" type="button" data-act="dead">Move to Dead</button><button class="btn danger" type="button" data-act="delask">Delete</button>';
   }
   function sheetChange(e) {
@@ -812,6 +839,11 @@
     closeSheet(); S.tab = "today"; location.hash = "today"; scheduleRender();
   }
 
+  /* What email.js (the Gmail sending part) is allowed to use. */
+  window.CDApp = { S: S, $: $, esc: esc, toast: toast, today: today, addDays: addDays, fdate: fdate, nm: nm, greetName: greetName, all: all, opt: opt, chips: chips,
+    TEMPS: TEMPS, KINDS: KINDS, PROVS: PROVS, ALL_STAGES: ALL_STAGES, stageLabel: stageLabel, save: save, saveMany: saveMany, saveSettings: saveSettings, patchNow: patchNow,
+    render: scheduleRender, closeSheet: closeSheet, openLists: function (f) { S.f = Object.assign({ q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, consent: "", limit: 60 }, f || {}); setTab("lists"); } };
+
   /* ---------- events ---------- */
   document.addEventListener("click", function (e) {
     var el = e.target.closest("[data-open],[data-act],[data-set],[data-tab]"); if (!el) return;
@@ -847,7 +879,7 @@
     else if (a === "later") { save(id2, { next: addDays(today(), 7) }); toast("Moved to next week"); }
     else if (a === "showall") { S.showAllDue = true; render(); }
     else if (a === "pipemore") { S.pipeMore[el.dataset.stage] = (S.pipeMore[el.dataset.stage] || 25) + 25; render(); }
-    else if (a === "clearf") { S.f = { q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, limit: 60 }; listsShellFor = ""; render(); }
+    else if (a === "clearf") { S.f = { q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, consent: "", limit: 60 }; listsShellFor = ""; render(); }
     else if (a === "selmode") { S.selecting = !S.selecting; if (!S.selecting) S.selected.clear(); $("#bulkHost").dataset.n = ""; render(); }
     else if (a === "selall") { filtered().forEach(function (c) { S.selected.add(c.id); }); $("#bulkHost").dataset.n = ""; render(); }
     else if (a === "selnone") { S.selected.clear(); $("#bulkHost").dataset.n = ""; render(); }
@@ -883,7 +915,7 @@
     if (t.id === "restoreFile") { var rf = t.files && t.files[0]; t.value = ""; readRestore(rf); return; }
     if (t.closest && t.closest(".sheet")) { sheetChange(e); return; }
     if (t.dataset && t.dataset.sel) { if (t.checked) S.selected.add(t.dataset.sel); else S.selected.delete(t.dataset.sel); $("#bulkHost").dataset.n = ""; renderBulk(); return; }
-    var map = { fprov: "prov", ftemp: "temp", fstage: "stage", fkind: "kind", fsource: "source" };
+    var map = { fprov: "prov", ftemp: "temp", fstage: "stage", fkind: "kind", fsource: "source", fconsent: "consent" };
     if (map[t.id]) { S.f[map[t.id]] = t.value; S.f.limit = 60; renderLists(); }
     else if (t.id === "femail") { S.f.email = t.checked; S.f.limit = 60; renderLists(); }
     else if (t.id === "fphone") { S.f.phone = t.checked; S.f.limit = 60; renderLists(); }
@@ -971,7 +1003,7 @@
     render();
     Store.subscribe({
       contact: applyRemote,
-      settings: function (d) { if (!S.pend.settings) { S.settings = Object.assign({}, DEFAULT_SETTINGS, d); writeCache(); scheduleRender(); } },
+      settings: function (d) { if (!S.pend.settings && (d.rev || 0) >= (S.settings.rev || 0)) { S.settings = Object.assign({}, DEFAULT_SETTINGS, d); writeCache(); scheduleRender(); } },
       status: function (st) {
         if (st === "SUBSCRIBED") { var again = S.wasDown; S.live = true; S.wasDown = false; if (again) reload(); }
         else if (st === "CLOSED" || st === "CHANNEL_ERROR" || st === "TIMED_OUT") { S.live = false; S.wasDown = true; }
@@ -992,7 +1024,7 @@
         if (S.contacts.has(id)) m.set(id, S.contacts.get(id)); else m.delete(id);
       });
       S.contacts = m;
-      if (res.settings && !S.pend.settings) S.settings = Object.assign({}, DEFAULT_SETTINGS, res.settings);
+      if (res.settings && !S.pend.settings && (res.settings.rev || 0) >= (S.settings.rev || 0)) S.settings = Object.assign({}, DEFAULT_SETTINGS, res.settings);
       S.loaded = true; S.offline = false; S.loadError = ""; S.lastLoad = Date.now(); clearTimeout(S.noteTimer); S.connectNote = false;
       writeCache(); scheduleRender();
     }, function (e) {

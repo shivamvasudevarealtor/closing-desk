@@ -33,6 +33,52 @@ More > **Restore a backup** > choose your `closing-desk-backup-....json`. Goals 
 - If the connection drops, you see your last saved copy. Changes don't save until it's back, and the app tells you.
 - More > **Download backup** after any big session. Keep that file somewhere private. It includes your notes.
 
+## Email setup (v1.5, about 20 minutes, once)
+
+**What it does.** You write one email, pick who gets it, and Closing Desk sends it from your own Gmail, one person at a time, at a safe speed. It never uses a BCC list. It stops by itself if Gmail says to slow down.
+
+### The limits it follows
+| Rule | Free Gmail | Google Workspace (paid) |
+|---|---|---|
+| Gmail's own limit (everything you send, 24 hours rolling) | about 500 | about 2,000 |
+| Most this app will ever send in 24 hours | 200 | 500 |
+| Your daily cap (you choose, default) | 100 | 100 |
+| Warm-up (emails allowed on sending day 1, 2, 3, 4, 5, 6, 7) | 20, 30, 40, 60, 80, 100, 120 | same |
+| Pause between emails | 20 to 45 seconds (Normal) or 45 to 90 (Gentle), random | same |
+| Sending hours | 8 am to 8 pm (you can change) | same |
+| Skip anyone emailed in the last | 30 days | same |
+
+Your normal Gmail use counts toward Gmail's limit too, which is why the app stays far under it. If Gmail answers "rate limit", sending pauses for an hour, the cap is cut in half, and nothing is retried right away. Five rejected addresses in a row also pause everything. To use the paid limits later: Email settings > Gmail account type > Google Workspace.
+
+### 1. Database (once)
+Supabase > SQL Editor > New query > paste all of `supabase/email.sql` > Run. This lets the unsubscribe page mark a contact as unsubscribed, and nothing else. (A fresh database set up with the current `schema.sql` already has it.)
+
+### 2. Google Cloud (once)
+1. console.cloud.google.com > create a project (name it Closing Desk).
+2. APIs & Services > Library > **Gmail API** > Enable.
+3. APIs & Services > OAuth consent screen (Google Auth Platform) > User type **External** > fill in the app name and your email. Publishing status stays **Testing**. Add your own Gmail address under **Test users**.
+4. Data access / Scopes: add `.../auth/gmail.send` and `.../auth/userinfo.email`. Nothing else.
+5. Clients > Create client > **Web application**. Under **Authorized JavaScript origins** add `https://<your-github-name>.github.io` (no path, no slash at the end). Create. Copy the **Client ID** (not a secret).
+
+### 3. In the app
+1. Email tab > Set up email. Paste the Client ID. Fill in your name, brokerage line and **mailing address** (required by Canadian anti-spam law in every email).
+2. Tap **Test unsubscribe link**. It must say Working.
+3. Tap **Connect Gmail**. Google will say the app is not verified. That is expected for your own private app: Advanced > Go to Closing Desk (unsafe) > Continue, and tick the box that allows sending email.
+4. Lists > Select > pick people > **Email consent** to record who agreed (see below).
+5. Email > New campaign. Pick a starter or write your own, choose who, **Send a test to me**, then Start sending.
+
+### Good to know
+- **Keep the page open** while it sends (a laptop is best; a phone sleeps). The Google sign-in lasts about an hour, so tap Connect Gmail again when it asks.
+- It waits by itself for the daily cap, your sending hours and Gmail's pause, as long as the page stays open. A big list simply takes several days.
+- If the app is closed mid-campaign it stays put until you open it, tap Connect Gmail and Resume. Nothing is sent twice.
+- If an email might or might not have gone out (network trouble), the app stops and lists it under "Not sure if these went out". Check your Gmail Sent folder and tell it which.
+- Unsubscribes are saved on the contact. People can also use the Unsubscribe button Gmail shows; that one sends you an email, so mark them unsubscribed on their contact.
+
+### Consent and the law (CASL), plain language, not legal advice
+- Every person must be marked **Said yes** (express, does not expire), **Client** (about 2 years from the closing date) or **Asked me** (about 6 months from the day they contacted you). People without a mark are skipped. You are the one who has to prove it, so only mark people who truly fit.
+- Every email carries your name, brokerage, mailing address and an unsubscribe link automatically. Unsubscribes must be honoured within 10 business days; here it is immediate.
+- Check the brokerage line wording and your email content with your brokerage's compliance contact (RECA advertising rules). The app warns about words like "best", "#1" and "guaranteed".
+
 ## Updating the app
 Change files in the repo, commit to `main`. Open the app twice (it updates in the background). If a phone seems stuck on an old version, close the app fully and reopen it.
 
@@ -41,12 +87,17 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 |---|---|
 | `index.html`, `app.css`, `app.js` | The app screens and logic |
 | `supa.js` | Everything that talks to the database (login, saving, live sync) |
+| `gmail.js` | Google sign-in and sending through the Gmail API (builds the message, nothing else) |
+| `email.js` | The Email tab: who may be emailed, daily cap, warm-up, pacing, pause/stop rules |
+| `unsub.html`, `unsub.js` | The page a recipient opens from the unsubscribe link |
 | `config.js` | Your Supabase URL and public key |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Makes it installable and able to open with a weak signal |
 | `vendor/supabase.js` | supabase-js 2.117.3 (MIT), saved locally so the app does not depend on a third-party host |
-| `supabase/schema.sql` | Database setup, run once |
+| `supabase/schema.sql` | Database setup, run once (already includes `email.sql`) |
+| `supabase/email.sql` | Only the email part of the setup. Run this one if your database was set up before v1.5 |
 
-## What's inside (v1.4)
+## What's inside (v1.5)
+- **Email (v1.5):** a tab for emailing many people through your own Gmail without getting blocked. See "Email setup" below.
 - **Today:** goals, last-7-days strip, Moments this week (birthdays and home anniversaries), and the daily follow-up list.
 - **Buyer profiles:** open a contact > Add buyer profile (budget, areas, home type, pre-approval, timeline). Lists > **Match buyers** finds who fits a home.
 - **Bell (v1.4):** top right. Shows what changed in every release; the red number counts releases you have not opened.
@@ -60,4 +111,4 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 3. Commit and push. The bell shows a red number on every device that has not opened that release yet.
 
 ## Not built yet
-WhatsApp Business API, bulk email and mass messaging. The WhatsApp button uses click-to-chat with a prefilled message for now.
+WhatsApp Business API and mass WhatsApp. The WhatsApp button uses click-to-chat with a prefilled message for now.

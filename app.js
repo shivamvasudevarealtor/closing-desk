@@ -1,8 +1,14 @@
 (function () {
   "use strict";
-  var STAGES = ["New", "Contacted", "Meeting set", "Active", "Under contract", "Closed", "Past client"];
-  var SIDE = ["Nurture", "Dead"];
-  var ALL_STAGES = STAGES.concat(SIDE);
+  /* Two boards. Which board a contact is on comes from its Type: buyer or investor = Buyers, seller = Sellers.
+     Stages that are not on a board: New (fresh lead), Nurture (long-term), Past client, Dead. */
+  var PIPES = {
+    buyer: { label: "Buyers", noun: "buyers", stages: ["Cold", "Engaged", "Searching", "Under contract", "Closed"], hints: ["Not talking yet", "Talking, needs known", "Pre-approved, touring", "Offer accepted", "Deal done"] },
+    seller: { label: "Sellers", noun: "sellers", stages: ["Cold", "Consult set", "Listed", "Under contract", "Closed"], hints: ["Might sell one day", "Listing meeting booked", "Signed and on the market", "Offer accepted", "Sold, deal done"] }
+  };
+  var OFFBOARD = ["Past client", "Dead"];
+  var LEGACY = { buyer: { "Contacted": "Engaged", "Meeting set": "Engaged", "Active": "Searching" }, seller: { "Contacted": "Cold", "Meeting set": "Consult set", "Active": "Listed" } };
+  var ALL_STAGES = ["New", "Cold", "Engaged", "Searching", "Consult set", "Listed", "Under contract", "Closed", "Past client", "Nurture", "Dead"];
   var TEMPS = ["hot", "warm", "cold", "stale"];
   var RHYTHM = { hot: 2, warm: 7, cold: 30, stale: 90 };
   var RHYTHM_LABEL = { hot: "every 2 days", warm: "every week", cold: "every month", stale: "every 3 months" };
@@ -13,10 +19,11 @@
   var BTYPES = ["Detached", "Townhome", "Duplex", "Condo", "Acreage", "Pre-con", "Investment"];
   var BTIMES = ["Now", "1-3 months", "3-6 months", "6-12 months", "12+ months"];
   var BPRE = ["Not started", "In progress", "Approved"];
+  var FAMRELS = ["Spouse", "Partner", "Son", "Daughter", "Parent", "Sibling", "Uncle", "Aunt", "Grandparent", "Friend", "Family", "Other"];
   var TABS = ["today", "pipeline", "lists", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", more: "More" };
 
-  var APP_VERSION = "1.1.1";
+  var APP_VERSION = "1.3.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -27,8 +34,9 @@
     tab: "today", sheetId: null, loaded: false, connectNote: false,
     f: { q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, limit: 60 },
     selecting: false, selected: new Set(), showAllDue: false, confirmSpread: false,
-    pipeMore: {}
+    pipeMore: {}, pipe: "buyer"
   };
+  try { if (localStorage.getItem("cd.pipe") === "seller") S.pipe = "seller"; } catch (e) {}
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
 
@@ -63,6 +71,24 @@
   function defaultMsg(c) { var t = tplById(defaultTpl(c)); return t ? fillMsg(t.body, c) : ""; }
   function waUrl(c, text) { return "https://wa.me/" + String(c.phone || "").replace(/\D/g, "") + (text ? "?text=" + encodeURIComponent(text) : ""); }
   function updateWa() { var c = S.contacts.get(S.sheetId), a = $("#shWaOpen"), m = $("#shMsg"); if (!c || !a || !m) return; a.hidden = !c.phone; a.href = waUrl(c, m.value.trim()); }
+  function pipeOf(c) { return c.kind === "seller" ? "seller" : (c.kind === "buyer" || c.kind === "investor") ? "buyer" : ""; }
+  /* The board column a contact sits in, or "" when it is not on a board (no type, parked, past client, dead). */
+  function colOf(c) {
+    var p = pipeOf(c); if (!p) return "";
+    var st = c.stage || "New";
+    if (st === "Nurture" || OFFBOARD.indexOf(st) >= 0) return "";
+    if (st === "New") return "Cold";
+    if (PIPES[p].stages.indexOf(st) >= 0) return st;
+    return LEGACY[p][st] || "Cold";
+  }
+  function stageLabel(c) { return (c.stage === "New" || !c.stage) ? "New" : (colOf(c) || c.stage); }
+  /* Fields to save when a contact's Type changes, so the board and the stage stay in step. */
+  function kindFields(c, k) {
+    var f = { kind: k }, p = k === "seller" ? "seller" : (k ? "buyer" : ""), st = c.stage || "New";
+    if (p) { if (PIPES[p].stages.indexOf(st) < 0 && st !== "New" && OFFBOARD.indexOf(st) < 0) f.stage = LEGACY[p][st] || "Cold"; }
+    else if (["Cold", "Engaged", "Searching", "Consult set", "Listed", "Contacted", "Meeting set", "Active"].indexOf(st) >= 0) f.stage = "Nurture";
+    return f;
+  }
   function rhythm(c) { if (c.stage === "Past client") return 90; if (c.stage === "Closed") return 14; return RHYTHM[c.temp] || 30; }
   function cleanTag(v) { v = String(v || "").toLowerCase().trim(); var i = v.indexOf(":"); return i > 0 ? slug(v.slice(0, i)) + ":" + slug(v.slice(i + 1)) : slug(v); }
   function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
@@ -112,6 +138,7 @@
   function scheduleRender() { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; render(); }); }
 
   function render() {
+    document.body.dataset.view = S.tab;
     $("#title").textContent = TITLES[S.tab];
     var due = dueList().length;
     $("#subtitle").textContent = new Date().toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric" }) + "";
@@ -127,7 +154,7 @@
     else if (S.tab === "today") renderToday();
     else if (S.tab === "pipeline") renderPipeline();
     else renderMore();
-    if (S.sheetId === "__match") renderMatchResults(); else if (S.sheetId) refreshSheetParts();
+    if (S.sheetId === "__match") renderMatchResults(); else if (S.sheetId === "__pick") renderPickResults(); else if (S.sheetId && S.sheetId.slice(0, 2) !== "__") refreshSheetParts();
   }
 
   /* ---------- empty / restore ---------- */
@@ -200,6 +227,10 @@
       var done = c.moments || [], b = mmdd(c.birthday), cd = closeDateOf(c), cm = mmdd(cd), cy = Number(String(cd).slice(0, 4));
       [y - 1, y, y + 1].forEach(function (yy) {
         if (b) { var d = occ(b, yy); if (d >= lo && d <= hi && done.indexOf("b" + yy) < 0) out.push({ c: c, kind: "birthday", date: d, key: "b" + yy, years: 0 }); }
+        (c.family || []).forEach(function (f) {
+          var fb = mmdd(f.birthday); if (!fb) return;
+          var d3 = occ(fb, yy); if (d3 >= lo && d3 <= hi && done.indexOf("f" + f.id + yy) < 0) out.push({ c: c, kind: "familybday", date: d3, key: "f" + f.id + yy, years: 0, fam: f });
+        });
         if (cm && yy - cy >= 1) { var d2 = occ(cm, yy); if (d2 >= lo && d2 <= hi && done.indexOf("a" + yy) < 0) out.push({ c: c, kind: "anniversary", date: d2, key: "a" + yy, years: yy - cy }); }
       });
     });
@@ -207,20 +238,23 @@
   }
   function momentLabel(m) {
     var when = m.date === today() ? "today" : (m.date < today() ? "missed " + fdate(m.date) : fdate(m.date));
+    if (m.kind === "familybday") return m.fam.name + "'s birthday" + (m.fam.rel ? " (" + m.fam.rel.toLowerCase() + ")" : "") + ", " + when;
     return m.kind === "birthday" ? "Birthday, " + when : m.years + "-year home anniversary, " + when;
   }
   function momentRow(m) {
-    var c = m.c, msg = fillMsg(tplById(m.kind).body, c, { years: m.years });
+    var c = m.c, msg = m.kind === "familybday"
+      ? "Hi " + greetName(c) + ", it's Shivam. I remembered " + m.fam.name + "'s birthday " + (m.date === today() ? "is today" : (m.date < today() ? "was on " : "is on ") + fdate(m.date)) + ". Please pass along my warmest wishes!"
+      : fillMsg(tplById(m.kind).body, c, { years: m.years });
     return '<div class="mrow"><button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln"><span>' + esc(momentLabel(m)) + "</span></span></button>" +
       (c.phone ? '<a class="lnk" href="' + esc(waUrl(c, msg)) + '" target="_blank" rel="noopener">WhatsApp</a>' : "") +
-      '<button class="lnk ghost" type="button" data-act="momentdone" data-id="' + esc(c.id) + '" data-key="' + esc(m.key) + '" data-kind="' + esc(m.kind) + '">Done</button></div>';
+      '<button class="lnk ghost" type="button" data-act="momentdone" data-id="' + esc(c.id) + '" data-key="' + esc(m.key) + '" data-kind="' + esc(m.kind) + '" data-name="' + esc(m.fam ? m.fam.name : "") + '">Done</button></div>';
   }
   function momentsCard() {
     var ms = moments(); if (!ms.length) return "";
     var shown = ms.slice(0, 8);
     return '<div class="card" style="margin-bottom:12px"><div class="sec" style="margin:0 0 4px"><h2>Moments this week</h2><span class="meta num">' + ms.length + '</span></div>' + shown.map(momentRow).join("") + (ms.length > shown.length ? '<p class="note" style="margin:8px 0 0">' + (ms.length - shown.length) + " more coming up</p>" : "") + '<p class="note" style="margin:8px 0 0">Tap Done after you send. Add birthdays and closing dates inside a contact.</p></div>';
   }
-  var TOUCH_RE = /^(Talked|Sent a message|No answer|Call:|Text:|WhatsApp:|Email:|Meeting:|Note:|Birthday wishes|Home anniversary)/;
+  var TOUCH_RE = /^(Talked|Sent a message|No answer|Call:|Text:|WhatsApp:|Email:|Meeting:|Note:|Birthday wishes|Family birthday|Home anniversary)/;
   function weekStats() {
     var since = addDays(today(), -6), touches = 0, leads = 0;
     all().forEach(function (c) {
@@ -313,6 +347,15 @@
     $("#buyTypes").innerHTML = '<div class="chips" role="group" aria-label="Home type">' + BTYPES.map(function (v) { return '<button class="chip" type="button" data-set="btype" data-v="' + esc(v) + '" aria-pressed="' + ((b.types || []).indexOf(v) >= 0 ? "true" : "false") + '">' + esc(v) + "</button>"; }).join("") + "</div>";
     $("#buyPre").innerHTML = chips("bpre", BPRE, b.pre || "");
   }
+  function refreshFamily(c) {
+    var host = $("#shFamily"); if (!host) return;
+    var fam = c.family || [], sig = JSON.stringify(fam);
+    if (host.dataset.sig === sig && host.firstChild !== null) return;
+    host.dataset.sig = sig;
+    host.innerHTML = fam.length ? fam.map(function (f) {
+      return '<div class="famrow" data-fid="' + esc(f.id) + '"><input class="field" data-fam="name" aria-label="Name" value="' + esc(f.name) + '"><select class="field" data-fam="rel" aria-label="Relationship">' + FAMRELS.map(function (r) { return "<option" + (r === f.rel ? " selected" : "") + ">" + esc(r) + "</option>"; }).join("") + '</select><input class="field" data-fam="bday" type="date" aria-label="Birthday" value="' + (mmdd(f.birthday) ? "2000-" + mmdd(f.birthday) : "") + '"><button class="btn small danger" type="button" data-act="delfam" data-fid="' + esc(f.id) + '">Remove</button></div>';
+    }).join("") : '<span class="note">No family added yet.</span>';
+  }
   function readBuy(c) {
     var b = Object.assign({}, c.buy || {}); b.types = (b.types || []).slice();
     b.min = money($("#buyMin").value); b.max = money($("#buyMax").value); b.areas = $("#buyAreas").value.trim(); b.beds = $("#buyBeds").value; b.time = $("#buyTime").value; b.must = $("#buyMust").value.trim();
@@ -321,7 +364,7 @@
   }
 
   /* ---------- Scorecard ---------- */
-  var FUNNEL_MTG = ["Meeting set", "Active", "Under contract", "Closed", "Past client"];
+  var FUNNEL_MTG = ["Consult set", "Searching", "Listed", "Under contract", "Closed", "Past client", "Meeting set", "Active"];
   function periodStart() { var p = S.period || "90"; return p === "all" ? "0000-00-00" : addDays(today(), -Number(p)); }
   function scoreRows() {
     var start = periodStart(), rows = {}, byId = {};
@@ -362,7 +405,7 @@
     return out;
   }
   function dueCard(c) {
-    return '<article class="card due"><button class="due-head" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(c.stage) + "</span><span>" + dueText(c) + "</span>" + (c.kind ? "<span>" + esc(c.kind) + "</span>" : "") + "</span></button>" +
+    return '<article class="card due"><button class="due-head" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + "</span><span>" + dueText(c) + "</span>" + (c.kind ? "<span>" + esc(c.kind) + "</span>" : "") + "</span></button>" +
       '<div class="reach">' + reachRow(c) + '</div><div class="outcomes"><button type="button" data-act="talked" data-id="' + esc(c.id) + '">Talked</button><button type="button" data-act="messaged" data-id="' + esc(c.id) + '">Messaged</button><button type="button" data-act="noanswer" data-id="' + esc(c.id) + '">No answer</button><button type="button" data-act="later" data-id="' + esc(c.id) + '">Later</button></div></article>';
   }
   function renderToday() {
@@ -381,22 +424,98 @@
   }
 
   /* ---------- Pipeline ---------- */
-  function pipeCard(c, i) {
-    var nextStage = STAGES.indexOf(c.stage) >= 0 && STAGES.indexOf(c.stage) < STAGES.length - 1 ? STAGES[STAGES.indexOf(c.stage) + 1] : (c.stage === "Nurture" ? "Contacted" : "");
-    return '<div class="pc"><button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(c.next ? fdate(c.next) : "no date") + "</span></span></button>" + (nextStage ? '<button class="adv" type="button" data-act="advance" data-id="' + esc(c.id) + '" aria-label="Move ' + esc(nm(c)) + " to " + esc(nextStage) + '" title="Move to ' + esc(nextStage) + '">&rarr;</button>' : "") + "</div>";
+  function pipeCard(c) {
+    var p = pipeOf(c), st = PIPES[p].stages, col = colOf(c), i = st.indexOf(col);
+    var prev = i > 0 ? st[i - 1] : "", next = i < st.length - 1 ? st[i + 1] : "Past client";
+    var b = c.buy || {}, extra = c.kind === "investor" ? "investor" : (p === "buyer" && (b.min || b.max) ? budgetText(b) : (p === "seller" && c.city ? c.city : ""));
+    return '<div class="pc" data-id="' + esc(c.id) + '">' +
+      (prev ? '<button class="adv back" type="button" data-act="move" data-id="' + esc(c.id) + '" data-to="' + esc(prev) + '" aria-label="Move ' + esc(nm(c)) + " back to " + esc(prev) + '" title="Back to ' + esc(prev) + '">&larr;</button>' : "") +
+      '<button class="main" type="button" draggable="true" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(c.next ? fdate(c.next) : "no date") + "</span>" + (extra ? "<span>" + esc(extra) + "</span>" : "") + "</span></button>" +
+      '<button class="adv" type="button" data-act="move" data-id="' + esc(c.id) + '" data-to="' + esc(next) + '" aria-label="Move ' + esc(nm(c)) + " to " + esc(next) + '" title="' + (next === "Past client" ? "Move to Past client (leaves the board)" : "Move to " + esc(next)) + '">&rarr;</button></div>';
+  }
+  function unsortedList() {
+    return all().filter(function (c) { return !pipeOf(c) && ["New", "Contacted", "Meeting set", "Active", "Under contract", "Closed"].indexOf(c.stage || "New") >= 0; }).sort(byPriority);
+  }
+  function unsortedCard() {
+    var l = unsortedList(); if (!l.length) return "";
+    var lim = S.pipeMore.__uns || 3, shown = l.slice(0, lim);
+    return '<div class="card" style="margin-bottom:12px"><div class="sec" style="margin:0 0 2px"><h2>Needs a type</h2><span class="meta num">' + l.length + '</span></div><p class="note" style="margin:0 0 4px">Tap Buyer or Seller to put them on a board.</p>' +
+      shown.map(function (c) {
+        return '<div class="mrow"><button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + "</span>" + (c.source ? "<span>" + esc(c.source) + "</span>" : "") + '</span></button><button class="lnk" type="button" data-act="settype" data-id="' + esc(c.id) + '" data-v="buyer">Buyer</button><button class="lnk ghost" type="button" data-act="settype" data-id="' + esc(c.id) + '" data-v="seller">Seller</button></div>';
+      }).join("") +
+      (l.length > shown.length ? '<div class="more"><button type="button" data-act="pipemore" data-stage="__uns">Show more</button> <span class="num">(' + (l.length - shown.length) + " hidden)</span></div>" : "") + "</div>";
   }
   function renderPipeline() {
-    var by = {}; ALL_STAGES.forEach(function (s) { by[s] = []; });
-    all().forEach(function (c) { (by[c.stage] || (by[c.stage] = [])).push(c); });
-    var h = '<p class="note">Tap a card to open it. The arrow moves it to the next stage. Nurture holds long-term contacts; use Lists to work through them.</p><div class="board">';
-    ALL_STAGES.forEach(function (s) {
-      var lst = by[s].sort(byPriority), lim = S.pipeMore[s] || 25, shown = lst.slice(0, lim);
-      h += '<section class="col" aria-label="' + esc(s) + '"><h3>' + esc(s) + "<span class=\"num\">" + lst.length + "</span></h3>";
+    var p = S.pipe === "seller" ? "seller" : "buyer", def = PIPES[p], by = {}, counts = { buyer: 0, seller: 0 };
+    def.stages.forEach(function (s) { by[s] = []; });
+    all().forEach(function (c) { var q = pipeOf(c), col = colOf(c); if (col) { counts[q]++; if (q === p) by[col].push(c); } });
+    var h = '<div class="seg" role="group" aria-label="Pipeline">' + ["buyer", "seller"].map(function (k) {
+      return '<button type="button" class="segb" data-act="pipe" data-v="' + k + '" aria-pressed="' + (k === p) + '">' + PIPES[k].label + ' <span class="num">' + counts[k] + "</span></button>";
+    }).join("") + '<button class="btn small primary" type="button" data-act="pickopen">+ Add</button></div>';
+    h += unsortedCard();
+    h += counts[p] ? '<p class="note">Tap a card to open it. Arrows move it one stage; on a computer you can drag it. The last arrow files it under Past client.</p>' : '<p class="note"><strong>No ' + def.noun + ' on this board yet.</strong> Tap + Add and pick people from your contacts. They start in Cold.</p>';
+    h += '<div class="board" data-pipe="' + p + '">';
+    def.stages.forEach(function (s, i) {
+      var lst = by[s].sort(byPriority), lim = S.pipeMore[p + s] || 25, shown = lst.slice(0, lim);
+      h += '<section class="col" data-stage="' + esc(s) + '" aria-label="' + esc(s) + '"><h3>' + esc(s) + "<span class=\"num\">" + lst.length + '</span></h3><div class="hint">' + esc(def.hints[i]) + "</div>";
       h += shown.length ? shown.map(pipeCard).join("") : '<div class="note" style="padding:6px 4px">Empty</div>';
-      if (lst.length > shown.length) h += '<div class="more"><button type="button" data-act="pipemore" data-stage="' + esc(s) + '">Show 25 more</button> <span class="num">(' + (lst.length - shown.length) + " hidden)</span></div>";
+      if (lst.length > shown.length) h += '<div class="more"><button type="button" data-act="pipemore" data-stage="' + esc(p + s) + '">Show 25 more</button> <span class="num">(' + (lst.length - shown.length) + " hidden)</span></div>";
       h += "</section>";
     });
     $("#view").innerHTML = h + "</div>";
+  }
+  function moveCard(id, stage) {
+    var c = S.contacts.get(id), p = c && pipeOf(c); if (!p || !colOf(c)) return;
+    if (stage === colOf(c)) return;
+    if (stage !== "Past client" && PIPES[p].stages.indexOf(stage) < 0) return;
+    if (stage === "Closed") { openClose(id); return; }
+    setStage(id, stage);
+  }
+  function recordDeal(id, type, date) {
+    var c = S.contacts.get(id); if (!c) return;
+    var d = date || today(), deals = (S.settings.deals || []).concat([{ id: "d" + Date.now().toString(36), contact: c.id, name: nm(c), type: type, date: d }]);
+    saveSettings({ deals: deals });
+    var f = { stage: "Closed", next: addDays(today(), 14), log: [{ d: today(), t: "Closed: " + (type === "listing" ? "sold a listing" : "helped a buyer") }].concat(c.log || []).slice(0, 60) };
+    if (!c.kind) f.kind = type === "listing" ? "seller" : "buyer";
+    save(c.id, f);
+  }
+  function openClose(id) {
+    var c = S.contacts.get(id); if (!c) return; var p = pipeOf(c);
+    $("#sheetHost").innerHTML = '<div class="veil" id="veil"><div class="sheet" role="dialog" aria-modal="true" aria-label="Mark closed"><div class="sheet-top"><h2>' + esc(nm(c)) + '</h2><button class="btn" type="button" data-act="closesheet">Cancel</button></div><div class="stack">' +
+      '<p class="note" style="margin:0">Record the deal so it counts toward your ' + esc(S.settings.goalYear) + ' goal. Pick one to finish.</p>' +
+      '<label>Closing date<input class="field" style="width:auto" id="clDate" type="date" value="' + today() + '"></label>' +
+      '<div class="chips"><button class="chip" type="button" data-act="closedeal" data-id="' + esc(id) + '" data-type="listing" aria-pressed="' + (p === "seller") + '">Sold a listing</button><button class="chip" type="button" data-act="closedeal" data-id="' + esc(id) + '" data-type="buyer" aria-pressed="' + (p !== "seller") + '">Helped a buyer</button></div>' +
+      '<p class="note" style="margin:0">Counts toward ' + esc(S.settings.goalYear) + " only if the date is in that year.</p></div></div></div>";
+    $("#veil").addEventListener("click", function (e) { if (e.target.id === "veil") closeSheet(); });
+    S.sheetId = "__close";
+  }
+  function addToPipe(id, p) {
+    var c = S.contacts.get(id); if (!c) return;
+    var f = kindFields(c, p === "seller" ? "seller" : (c.kind === "investor" ? "investor" : "buyer")), st = f.stage || c.stage || "New";
+    if (OFFBOARD.indexOf(st) >= 0) f.stage = "Cold";
+    save(id, f);
+  }
+  function openPick() {
+    var p = S.pipe === "seller" ? "seller" : "buyer";
+    $("#sheetHost").innerHTML = '<div class="veil" id="veil"><div class="sheet" role="dialog" aria-modal="true" aria-label="Add to ' + esc(PIPES[p].label) + '"><div class="sheet-top"><h2>Add to ' + esc(PIPES[p].label) + '</h2><button class="btn" type="button" data-act="closesheet">Done</button></div><div class="stack">' +
+      '<input class="field" id="pkQ" type="search" placeholder="Search name, phone or email" autocomplete="off"><div id="pkRes"></div></div></div></div>';
+    $("#veil").addEventListener("click", function (e) { if (e.target.id === "veil") closeSheet(); });
+    S.sheetId = "__pick"; renderPickResults();
+  }
+  function renderPickResults() {
+    var host = $("#pkRes"); if (!host) return;
+    var p = S.pipe === "seller" ? "seller" : "buyer", q = ($("#pkQ").value || "").trim().toLowerCase(), digits = q.replace(/\D/g, "");
+    var l = all().filter(function (c) {
+      if (c.stage === "Dead" || (pipeOf(c) === p && colOf(c))) return false;
+      if (!q) return true;
+      var hay = (nm(c) + " " + (c.email || "")).toLowerCase();
+      return hay.indexOf(q) >= 0 || (digits.length >= 3 && String(c.phone || "").replace(/\D/g, "").indexOf(digits) >= 0);
+    }).sort(byPriority);
+    var shown = l.slice(0, 30);
+    host.innerHTML = '<div class="sec" style="margin:4px 0"><span class="meta num">' + l.length + (l.length === 1 ? " contact" : " contacts") + "</span></div>" + (shown.map(function (c) {
+      var other = colOf(c) ? " (on " + PIPES[pipeOf(c)].label + ")" : "";
+      return '<div class="mrow"><button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + esc(other) + "</span>" + (c.city ? "<span>" + esc(c.city) + "</span>" : "") + '</span></button><button class="lnk" type="button" data-act="pkadd" data-id="' + esc(c.id) + '">Add</button></div>';
+    }).join("") || '<div class="note">No match.</div>') + (l.length > shown.length ? '<p class="note">Showing the first 30. Search to narrow it down.</p>' : "");
   }
 
   /* ---------- Lists ---------- */
@@ -405,14 +524,14 @@
     return all().filter(function (c) {
       if (f.prov && c.province !== f.prov) return false;
       if (f.temp && c.temp !== f.temp) return false;
-      if (f.stage && c.stage !== f.stage) return false;
+      if (f.stage && stageLabel(c) !== f.stage) return false;
       if (f.kind && c.kind !== f.kind) return false;
       if (f.source && c.source !== f.source) return false;
       if (f.email && !c.email) return false;
       if (f.phone && !c.phone) return false;
       if (f.tag && !(c.tags || []).some(function (t) { return t.indexOf(f.tag.toLowerCase().trim()) >= 0; })) return false;
       if (q) {
-        var hay = (nm(c) + " " + (c.email || "") + " " + (c.city || "") + " " + (c.tags || []).join(" ")).toLowerCase();
+        var hay = (nm(c) + " " + (c.email || "") + " " + (c.city || "") + " " + (c.tags || []).join(" ") + " " + (c.family || []).map(function (f) { return f.name; }).join(" ")).toLowerCase();
         if (hay.indexOf(q) < 0 && !(qd.length >= 3 && (c.phone || "").replace(/\D/g, "").indexOf(qd) >= 0)) return false;
       }
       return true;
@@ -420,7 +539,7 @@
   }
   function opt(list, v, label) { return '<option value="">' + esc(label) + "</option>" + list.map(function (x) { return '<option' + (x === v ? " selected" : "") + ">" + esc(x) + "</option>"; }).join(""); }
   function listRow(c, withCheck) {
-    return '<div class="li">' + (withCheck ? '<input type="checkbox" data-sel="' + esc(c.id) + '"' + (S.selected.has(c.id) ? " checked" : "") + ' aria-label="Select ' + esc(nm(c)) + '">' : "") + '<button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(c.stage) + "</span><span>" + esc(c.province) + "</span>" + (c.phone ? '<span class="num">' + esc(fphone(c.phone)) + "</span>" : "") + (c.next ? "<span>next " + esc(fdate(c.next)) + "</span>" : "") + "</span></button></div>";
+    return '<div class="li">' + (withCheck ? '<input type="checkbox" data-sel="' + esc(c.id) + '"' + (S.selected.has(c.id) ? " checked" : "") + ' aria-label="Select ' + esc(nm(c)) + '">' : "") + '<button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + "</span><span>" + esc(c.province) + "</span>" + (c.phone ? '<span class="num">' + esc(fphone(c.phone)) + "</span>" : "") + (c.next ? "<span>next " + esc(fdate(c.next)) + "</span>" : "") + "</span></button></div>";
   }
   var listsShellFor = "";
   function renderLists() {
@@ -462,8 +581,8 @@
     ids.forEach(function (id) {
       var c = S.contacts.get(id); if (!c) return; var f = {};
       if (t) { f.temp = t; var cap = addDays(td, RHYTHM[t]); if (!c.next || c.next > cap) f.next = cap; }
+      if (k) Object.assign(f, kindFields(c, k === c.kind ? "" : k));
       if (st) f.stage = st;
-      if (k) f.kind = k === c.kind ? "" : k;
       if (tag && (c.tags || []).indexOf(tag) < 0) f.tags = (c.tags || []).concat([tag]);
       if (Object.keys(f).length) jobs.push([id, f]);
     });
@@ -546,7 +665,7 @@
     var label = { talked: "Talked", messaged: "Sent a message", noanswer: "No answer" }[kind];
     var days = kind === "noanswer" ? 3 : rhythm(c), nx = addDays(t, days);
     var f = { lastTouch: t, next: nx, log: [{ d: t, t: label }].concat(c.log || []).slice(0, 60) };
-    if (c.stage === "New" && kind !== "noanswer") f.stage = "Contacted";
+    if (c.stage === "New" && kind !== "noanswer") f.stage = pipeOf(c) ? "Cold" : "Nurture";
     save(id, f); toast(nm(c) + ": next " + fdate(nx));
   }
   function setStage(id, stage) { var c = S.contacts.get(id); if (!c) return; var f = { stage: stage }; if (stage === "Closed") f.next = addDays(today(), 14); save(id, f); }
@@ -564,10 +683,11 @@
       '<div class="two" style="margin-top:12px"><label>First name<input class="field" id="shFirst" value="' + esc(c.first) + '"></label><label>Last name<input class="field" id="shLast" value="' + esc(c.last) + '"></label></div>' +
       '<div class="two" style="margin-top:8px"><label>Phone<input class="field" id="shPhone" inputmode="tel" value="' + esc(c.phone) + '"></label><label>Email<input class="field" id="shEmail" inputmode="email" value="' + esc(c.email) + '"></label></div>' +
       '<div class="two" style="margin-top:8px"><label>City<input class="field" id="shCity" value="' + esc(c.city) + '"></label><label>Province<select class="field" id="shProv">' + PROVS.map(function (p) { return "<option" + (p === c.province ? " selected" : "") + ">" + esc(p) + "</option>"; }).join("") + "</select></label></div>" +
-      '<div class="sec-lbl">Stage</div><div id="shStage"></div><div class="sec-lbl">Temperature</div><div id="shTemp"></div><div class="sec-lbl">Type</div><div id="shKind"></div>' +
+      '<div class="sec-lbl">Stage</div><div id="shStage"></div><div class="sec-lbl">Temperature</div><div id="shTemp"></div><div class="sec-lbl">Type</div><div id="shKind"></div><div class="note" id="shPipe" style="margin-top:6px"></div>' +
       '<div class="sec-lbl">Next follow-up</div><div class="row"><input class="field" style="width:auto" id="shNext" type="date" value="' + esc(c.next) + '"><div id="shQuick" class="row"></div></div><div class="note" id="shLast2"></div>' +
       '<div class="sec-lbl">Buyer profile</div><div id="shBuy"></div>' +
       '<div class="sec-lbl">Moments</div><div class="two"><label>Birthday<input class="field" id="shBday" type="date"></label><label>Closed with me<input class="field" id="shClose" type="date"></label></div><div class="note">Birthday year does not matter. These show on Today the week they happen.</div>' +
+      '<div class="sec-lbl">Family</div><div id="shFamily"></div><div class="card stack" style="margin-top:8px"><div class="two"><label>Name<input class="field" id="famName" placeholder="Shveta"></label><label>Relationship<select class="field" id="famRel">' + FAMRELS.map(function (r) { return "<option>" + esc(r) + "</option>"; }).join("") + '</select></label></div><div class="row" style="align-items:flex-end"><label style="flex:1;min-width:0">Birthday<input class="field" id="famBday" type="date"></label><button class="btn" type="button" data-act="addfam">Add</button></div><div class="note">Year does not matter. Their birthdays show on Today the week they happen, with a message to this contact.</div></div>' +
       '<div class="sec-lbl">Tags</div><div id="shTags" class="chips"></div><div class="row" style="margin-top:8px"><input class="field" style="flex:1" id="shTagIn" placeholder="Add a tag, like type:buyer"><button class="btn small" type="button" data-act="addtag">Add</button></div>' +
       '<div class="sec-lbl">Notes (private)</div><textarea class="field" id="shNotes">' + esc(c.notes) + "</textarea>" +
       '<div class="sec-lbl">History</div><div class="row"><select class="field" style="width:auto" id="shLogType" aria-label="Type of touch"><option>Call</option><option>Text</option><option>WhatsApp</option><option>Email</option><option>Meeting</option><option>Note</option></select><input class="field" style="flex:1" id="shLogIn" placeholder="What happened?"><button class="btn small" type="button" data-act="addlog">Log</button></div><div id="shLog" style="margin-top:6px"></div>' +
@@ -584,11 +704,13 @@
     var cap = function (s) { return s[0].toUpperCase() + s.slice(1); };
     $("#shName").textContent = nm(c);
     $("#shReach").innerHTML = reachRow(c);
-    $("#shStage").innerHTML = chips("stage", ALL_STAGES, c.stage);
+    var pp = pipeOf(c), cl = colOf(c);
+    $("#shStage").innerHTML = chips("stage", pp ? PIPES[pp].stages.concat(["Nurture", "Past client", "Dead"]) : ["New", "Nurture", "Past client", "Dead"], cl || c.stage);
+    $("#shPipe").textContent = pp ? (cl ? "On the " + PIPES[pp].label + " board, " + cl + "." : "Not on the board right now (" + (c.stage || "New") + ").") : "Pick Buyer, Seller or Investor to put this contact on a board.";
     $("#shTemp").innerHTML = chips("temp", TEMPS, c.temp, cap);
     $("#shKind").innerHTML = chips("kind", KINDS, c.kind, cap);
     var nx = $("#shNext"); if (nx && nx !== document.activeElement) nx.value = c.next || "";
-    refreshBuy(c);
+    refreshBuy(c); refreshFamily(c);
     var bd = $("#shBday"); if (bd && bd !== document.activeElement) bd.value = mmdd(c.birthday) ? "2000-" + mmdd(c.birthday) : "";
     var cl = $("#shClose"); if (cl && cl !== document.activeElement) cl.value = c.closeDate || "";
     $("#shQuick").innerHTML = [["+2d", 2], ["+1w", 7], ["+1m", 30], ["+3m", 90]].map(function (q) { return '<button class="btn small" type="button" data-act="quick" data-n="' + q[1] + '">' + q[0] + "</button>"; }).join("");
@@ -604,6 +726,11 @@
   }
   function sheetChange(e) {
     var id = S.sheetId, c = S.contacts.get(id); if (!c) return; var t = e.target, f = {};
+    if (t.dataset && t.dataset.fam) {
+      var row = t.closest(".famrow"), fid = row && row.dataset.fid, k = t.dataset.fam;
+      f.family = (c.family || []).map(function (m) { if (m.id !== fid) return m; var n = Object.assign({}, m); if (k === "name") n.name = t.value.trim() || m.name; else if (k === "rel") n.rel = t.value; else n.birthday = t.value ? t.value.slice(5) : ""; return n; });
+      save(id, f); return;
+    }
     if (t.id === "shFirst") f.first = t.value.trim();
     else if (t.id === "shLast") f.last = t.value.trim();
     else if (t.id === "shPhone") { f.phone = normPhone(t.value); t.value = f.phone; if (f.phone && !/^\+1\d{10}$/.test(f.phone)) toast("Saved, but this is not a Canadian +1 number"); }
@@ -622,7 +749,7 @@
     $("#sheetHost").innerHTML = '<div class="veil" id="veil"><div class="sheet" role="dialog" aria-modal="true" aria-label="New lead"><div class="sheet-top"><h2>New lead</h2><button class="btn" type="button" data-act="closesheet">Cancel</button></div><div class="stack">' +
       '<div class="two"><label>First name<input class="field" id="nFirst"></label><label>Last name<input class="field" id="nLast"></label></div><div class="two"><label>Phone<input class="field" id="nPhone" inputmode="tel" placeholder="403 555 0123"></label><label>Email<input class="field" id="nEmail" inputmode="email"></label></div>' +
       '<div class="two"><label>Source<select class="field" id="nSource">' + SOURCES.map(function (s) { return "<option>" + esc(s) + "</option>"; }).join("") + '</select></label><label>Province<select class="field" id="nProv">' + PROVS.map(function (p) { return "<option" + (p === "Alberta" ? " selected" : "") + ">" + esc(p) + "</option>"; }).join("") + '</select></label></div>' +
-      '<label>Note<textarea class="field" id="nNote" placeholder="What are they looking for?"></textarea></label><p class="note" style="margin:0">New leads go to the top of Today as hot, due now.</p><button class="btn primary" type="button" data-act="createlead">Add lead</button></div></div></div>';
+      '<label>Looking to<select class="field" id="nKind"><option value="">Not sure yet</option><option value="buyer">Buy</option><option value="seller">Sell</option><option value="investor">Invest</option></select></label><label>Note<textarea class="field" id="nNote" placeholder="What are they looking for?"></textarea></label><p class="note" style="margin:0">New leads go to the top of Today as hot, due now.</p><button class="btn primary" type="button" data-act="createlead">Add lead</button></div></div></div>';
     $("#veil").addEventListener("click", function (e) { if (e.target.id === "veil") closeSheet(); });
     S.sheetId = "__new";
   }
@@ -630,7 +757,7 @@
     var first = $("#nFirst").value.trim(), last = $("#nLast").value.trim(), phone = normPhone($("#nPhone").value), email = $("#nEmail").value.trim().toLowerCase();
     if (!first && !last && !phone && !email) { toast("Add a name, phone or email"); return; }
     var src = $("#nSource").value, prov = $("#nProv").value, t = today(), id = "n" + Date.now().toString(36);
-    var rec = { id: id, first: first, last: last, email: email, phone: phone, province: prov, city: "", source: src, rel: "Lead", tags: ["src:" + slug(src), "prov:" + PROV_TAG[prov]].concat(phone ? ["ch:phone"] : [], email ? ["ch:email"] : []), lang: "", added: t, other: "", flags: "", notes: $("#nNote").value.trim(), stage: "New", temp: "hot", kind: "", next: t, lastTouch: "", log: [{ d: t, t: "Added" }] };
+    var rec = { id: id, first: first, last: last, email: email, phone: phone, province: prov, city: "", source: src, rel: "Lead", tags: ["src:" + slug(src), "prov:" + PROV_TAG[prov]].concat(phone ? ["ch:phone"] : [], email ? ["ch:email"] : []), lang: "", added: t, other: "", flags: "", notes: $("#nNote").value.trim(), stage: "New", temp: "hot", kind: $("#nKind").value, next: t, lastTouch: "", log: [{ d: t, t: "Added" }] };
     if (!S.user) return; S.contacts.set(id, rec);
     chain("c:" + id, function () { return Store.put(rec).then(function () { toast("Lead added to Today"); }); }, function () { S.contacts.delete(id); });
     closeSheet(); S.tab = "today"; location.hash = "today"; scheduleRender();
@@ -641,12 +768,19 @@
     var el = e.target.closest("[data-open],[data-act],[data-set],[data-tab]"); if (!el) return;
     if (el.dataset.tab) { setTab(el.dataset.tab); return; }
     if (el.dataset.open) { openSheet(el.dataset.open); return; }
-    if (el.dataset.set) { var id = S.sheetId, k = el.dataset.set, v = el.dataset.v; if (k === "stage") setStage(id, v); else if (k === "temp") { var c = S.contacts.get(id), cap = addDays(today(), RHYTHM[v]), f = { temp: v }; if (!c.next || c.next > cap) f.next = cap; save(id, f); } else if (k === "kind") save(id, { kind: v === S.contacts.get(id).kind ? "" : v }); else if (k === "btype") { var bb = readBuy(S.contacts.get(id)), ti = bb.types.indexOf(v); if (ti >= 0) bb.types.splice(ti, 1); else bb.types.push(v); save(id, { buy: bb }); } else if (k === "bpre") { var bp = readBuy(S.contacts.get(id)); bp.pre = bp.pre === v ? "" : v; save(id, { buy: bp }); } return; }
+    if (el.dataset.set) { var id = S.sheetId, k = el.dataset.set, v = el.dataset.v; if (k === "stage") setStage(id, v); else if (k === "temp") { var c = S.contacts.get(id), cap = addDays(today(), RHYTHM[v]), f = { temp: v }; if (!c.next || c.next > cap) f.next = cap; save(id, f); } else if (k === "kind") { var kc = S.contacts.get(id); save(id, kindFields(kc, v === kc.kind ? "" : v)); } else if (k === "btype") { var bb = readBuy(S.contacts.get(id)), ti = bb.types.indexOf(v); if (ti >= 0) bb.types.splice(ti, 1); else bb.types.push(v); save(id, { buy: bb }); } else if (k === "bpre") { var bp = readBuy(S.contacts.get(id)); bp.pre = bp.pre === v ? "" : v; save(id, { buy: bp }); } return; }
     var a = el.dataset.act, id2 = el.dataset.id;
     if (a === "backup") exportBackup();
     else if (a === "match") openMatch();
+    else if (a === "addfam") {
+      var fc = S.contacts.get(S.sheetId), fnm = $("#famName").value.trim(); if (!fc) return;
+      if (!fnm) { toast("Add a name"); return; }
+      save(fc.id, { family: (fc.family || []).concat([{ id: "f" + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36), name: fnm, rel: $("#famRel").value, birthday: $("#famBday").value ? $("#famBday").value.slice(5) : "" }]) });
+      $("#famName").value = ""; $("#famBday").value = ""; toast("Family member added");
+    }
+    else if (a === "delfam") { var dc = S.contacts.get(S.sheetId); if (dc) save(dc.id, { family: (dc.family || []).filter(function (m) { return m.id !== el.dataset.fid; }) }); }
     else if (a === "addbuy") { var abc = S.contacts.get(S.sheetId); if (abc) save(abc.id, { buy: { min: "", max: "", areas: "", types: [], beds: "", time: "", pre: "", must: "" } }); }
-    else if (a === "momentdone") { var mc = S.contacts.get(id2); if (mc) { var mt = today(); save(id2, { moments: (mc.moments || []).concat([el.dataset.key]), lastTouch: mt, log: [{ d: mt, t: el.dataset.kind === "birthday" ? "Birthday wishes sent" : "Home anniversary message sent" }].concat(mc.log || []).slice(0, 60) }); toast("Logged for " + nm(mc)); } }
+    else if (a === "momentdone") { var mc = S.contacts.get(id2); if (mc) { var mt = today(); save(id2, { moments: (mc.moments || []).concat([el.dataset.key]), lastTouch: mt, log: [{ d: mt, t: el.dataset.kind === "birthday" ? "Birthday wishes sent" : (el.dataset.kind === "familybday" ? "Family birthday wishes sent (" + el.dataset.name + ")" : "Home anniversary message sent") }].concat(mc.log || []).slice(0, 60) }); toast("Logged for " + nm(mc)); } }
     else if (a === "period") { S.period = el.dataset.v; render(); }
     else if (a === "addspend") {
       var amt = Number(String($("#spAmount").value).replace(/[$,\s]/g, ""));
@@ -663,7 +797,6 @@
     else if (a === "talked" || a === "messaged" || a === "noanswer") touch(id2, a);
     else if (a === "later") { save(id2, { next: addDays(today(), 7) }); toast("Moved to next week"); }
     else if (a === "showall") { S.showAllDue = true; render(); }
-    else if (a === "advance") { var cc = S.contacts.get(id2), i = STAGES.indexOf(cc.stage); setStage(id2, i >= 0 ? STAGES[i + 1] : "Contacted"); }
     else if (a === "pipemore") { S.pipeMore[el.dataset.stage] = (S.pipeMore[el.dataset.stage] || 25) + 25; render(); }
     else if (a === "clearf") { S.f = { q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, limit: 60 }; listsShellFor = ""; render(); }
     else if (a === "selmode") { S.selecting = !S.selecting; if (!S.selecting) S.selected.clear(); $("#bulkHost").dataset.n = ""; render(); }
@@ -681,11 +814,13 @@
     else if (a === "rmtag") { var c4 = S.contacts.get(S.sheetId); save(S.sheetId, { tags: (c4.tags || []).filter(function (x) { return x !== el.dataset.t; }) }); }
     else if (a === "addlog") { var li = $("#shLogIn"); logNote(S.sheetId, li.value, $("#shLogType").value); li.value = ""; }
     else if (a === "dealmode") { S.dealMode = true; refreshSheetParts(); }
-    else if (a === "deal") {
-      var c5 = S.contacts.get(S.sheetId), d = ($("#shDealDate") || {}).value || today(), deals = (S.settings.deals || []).concat([{ id: "d" + Date.now().toString(36), contact: c5.id, name: nm(c5), type: el.dataset.type, date: d }]);
-      saveSettings({ deals: deals }); save(c5.id, { stage: "Closed", next: addDays(today(), 14), log: [{ d: today(), t: "Closed: " + (el.dataset.type === "listing" ? "sold a listing" : "helped a buyer") }].concat(c5.log || []).slice(0, 60) });
-      S.dealMode = false; toast("Marked closed"); refreshSheetParts();
-    }
+    else if (a === "deal") { recordDeal(S.sheetId, el.dataset.type, ($("#shDealDate") || {}).value); S.dealMode = false; toast("Marked closed"); refreshSheetParts(); }
+    else if (a === "closedeal") { var cdv = ($("#clDate") || {}).value || today(); recordDeal(id2, el.dataset.type, cdv); toast("Marked closed"); closeSheet(); }
+    else if (a === "move") moveCard(id2, el.dataset.to);
+    else if (a === "pipe") { S.pipe = el.dataset.v === "seller" ? "seller" : "buyer"; try { localStorage.setItem("cd.pipe", S.pipe); } catch (e) {} render(); }
+    else if (a === "pickopen") openPick();
+    else if (a === "pkadd") { var pc0 = S.contacts.get(id2); addToPipe(id2, S.pipe); toast("Added to " + PIPES[S.pipe].label + (pc0 ? ": " + nm(pc0) : "")); }
+    else if (a === "settype") { var sc = S.contacts.get(id2); if (sc) save(id2, kindFields(sc, el.dataset.v)); }
     else if (a === "dead") { save(S.sheetId, { stage: "Dead" }); toast("Moved to Dead"); closeSheet(); }
     else if (a === "delask") { S.confirmDelete = true; refreshSheetParts(); }
     else if (a === "delcancel") { S.confirmDelete = false; refreshSheetParts(); }
@@ -713,7 +848,23 @@
     if (t.id === "fq") { S.f.q = t.value; S.f.limit = 60; clearTimeout(qTimer); qTimer = setTimeout(renderLists, 150); }
     else if (t.id === "ftag") { S.f.tag = t.value; S.f.limit = 60; clearTimeout(qTimer); qTimer = setTimeout(renderLists, 150); }
     else if (t.id === "shMsg") updateWa();
+    else if (t.id === "pkQ") { clearTimeout(qTimer); qTimer = setTimeout(renderPickResults, 120); }
     else if (t.id === "mPrice" || t.id === "mArea") { clearTimeout(qTimer); qTimer = setTimeout(renderMatchResults, 150); }
+  });
+  document.addEventListener("dragstart", function (e) {
+    var pc = e.target.closest && e.target.closest(".pc[data-id]"); if (!pc) return;
+    e.dataTransfer.setData("text/plain", pc.dataset.id); e.dataTransfer.effectAllowed = "move"; pc.classList.add("drag");
+  });
+  document.addEventListener("dragend", function () { var d = document.querySelector(".pc.drag"); if (d) d.classList.remove("drag"); document.querySelectorAll(".col.over").forEach(function (x) { x.classList.remove("over"); }); });
+  document.addEventListener("dragover", function (e) {
+    var col = e.target.closest && e.target.closest(".col[data-stage]"); if (!col) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = "move";
+    document.querySelectorAll(".col.over").forEach(function (x) { if (x !== col) x.classList.remove("over"); }); col.classList.add("over");
+  });
+  document.addEventListener("drop", function (e) {
+    var col = e.target.closest && e.target.closest(".col[data-stage]"); if (!col) return;
+    e.preventDefault(); col.classList.remove("over");
+    var id = e.dataTransfer.getData("text/plain"), to = col.dataset.stage; if (id) setTimeout(function () { moveCard(id, to); }, 0);
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && S.sheetId) closeSheet();

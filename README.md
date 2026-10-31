@@ -46,9 +46,11 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `vendor/supabase.js` | supabase-js 2.117.3 (MIT), saved locally so the app does not depend on a third-party host |
 | `supabase/schema.sql` | Database setup, run once |
 
-## What's inside (v1.1)
+## What's inside (v1.3)
 - **Today:** goals, last-7-days strip, Moments this week (birthdays and home anniversaries), and the daily follow-up list.
 - **Buyer profiles:** open a contact > Add buyer profile (budget, areas, home type, pre-approval, timeline). Lists > **Match buyers** finds who fits a home.
+- **Pipeline (v1.3):** two boards with a Buyers / Sellers toggle. Buyers: Cold, Engaged, Searching, Under contract, Closed. Sellers: Cold, Consult set, Listed, Under contract, Closed. A contact's **Type** (buyer, investor, seller) decides the board. Arrows move a card, or drag it on a computer. Moving to Closed records the deal for your yearly goal. "Needs a type" lists new or untyped leads with one-tap Buyer / Seller buttons. **+ Add** picks people from your contacts.
+- **Family (v1.2):** open a contact > Family. Add relatives with a relationship and birthday; their birthdays show in Moments.
 - **Scorecard (More):** leads, meetings, deals and ad spend by source, with cost per lead.
 
 ## Not built yet

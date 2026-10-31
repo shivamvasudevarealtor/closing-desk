@@ -46,5 +46,10 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `vendor/supabase.js` | supabase-js 2.117.3 (MIT), saved locally so the app does not depend on a third-party host |
 | `supabase/schema.sql` | Database setup, run once |
 
+## What's inside (v1.1)
+- **Today:** goals, last-7-days strip, Moments this week (birthdays and home anniversaries), and the daily follow-up list.
+- **Buyer profiles:** open a contact > Add buyer profile (budget, areas, home type, pre-approval, timeline). Lists > **Match buyers** finds who fits a home.
+- **Scorecard (More):** leads, meetings, deals and ad spend by source, with cost per lead.
+
 ## Not built yet
 WhatsApp Business API, bulk email and mass messaging. The WhatsApp button uses click-to-chat with a prefilled message for now.

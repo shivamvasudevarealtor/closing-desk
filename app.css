@@ -181,3 +181,21 @@ table.rh td, table.rh th { text-align: left; padding: 6px 4px; border-bottom: 1p
 @media (pointer: coarse) { input, select, textarea, label .field { font-size: 16px !important; } }
 
 label.btn { color: var(--ink); font-size: 14px; }
+
+/* Phase 1: moments, week strip, match, scorecard */
+.wk .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.three > div { display: flex; flex-direction: column; min-width: 0; }
+.three b { font-family: var(--font-display); font-size: 24px; line-height: 1.1; }
+.three span { font-size: 12.5px; color: var(--muted); }
+.mrow { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.mrow:last-of-type { border-bottom: 0; }
+.mrow .main { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; }
+.mrow .nm { font-weight: 600; overflow-wrap: anywhere; display: block; }
+.mrow .ln { font-size: 12.5px; color: var(--muted); display: flex; gap: 4px 8px; flex-wrap: wrap; align-items: center; }
+.mrow .why { display: block; font-size: 12.5px; color: var(--accent); margin-top: 2px; }
+.mrow .lnk { flex: none; }
+.tbl { overflow-x: auto; }
+.tbl table.rh th { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.tbl table.rh td.num { white-space: nowrap; }
+.lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }

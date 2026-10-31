@@ -2,7 +2,7 @@
    - Same-site files: network first (so updates arrive as soon as you are online), saved copy when offline.
    - Google Fonts: saved copy first, refreshed in the background.
    - Supabase (your contacts) is never touched here, so no contact data is ever stored by this file. */
-var CACHE = "closing-desk-v1";
+var CACHE = "closing-desk-v2";
 var SHELL = ["./", "index.html", "app.css", "app.js", "supa.js", "config.js", "vendor/supabase.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png"];
 

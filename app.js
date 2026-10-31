@@ -10,11 +10,14 @@
   var PROVS = ["Alberta", "British Columbia", "Saskatchewan", "Manitoba", "Ontario", "Quebec", "New Brunswick", "Nova Scotia / PEI", "Newfoundland and Labrador", "Yukon / NWT / Nunavut", "Unknown"];
   var PROV_TAG = { "Alberta": "ab", "British Columbia": "bc", "Saskatchewan": "sk", "Manitoba": "mb", "Ontario": "on", "Quebec": "qc", "New Brunswick": "nb", "Nova Scotia / PEI": "ns-pe", "Newfoundland and Labrador": "nl", "Yukon / NWT / Nunavut": "north", "Unknown": "unknown" };
   var SOURCES = ["Meta Ads", "Facebook Marketplace", "Open house", "Instagram", "Referral", "Friend or family", "SOI", "Phone contacts", "Door knock", "Flyer", "Other"];
+  var BTYPES = ["Detached", "Townhome", "Duplex", "Condo", "Acreage", "Pre-con", "Investment"];
+  var BTIMES = ["Now", "1-3 months", "3-6 months", "6-12 months", "12+ months"];
+  var BPRE = ["Not started", "In progress", "Approved"];
   var TABS = ["today", "pipeline", "lists", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", more: "More" };
 
-  var APP_VERSION = "1.0.0";
-  var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [] };
+  var APP_VERSION = "1.1.0";
+  var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
     contacts: new Map(),
@@ -43,10 +46,18 @@
   var WA_TEMPLATES = [
     { id: "flyer-warm", name: "Flyer follow-up (warm)", body: "Hi {name}, it's Shivam Vasudeva with The Modern Real Estate Group at Real Broker. You may remember my flyer about buyers looking in {community}. I'm sorry I'm only following up now. I'm working with new buyers looking in the area, and I'd love to hear whether you've ever thought about what's next for your home. No pressure at all. If you'd rather I didn't message, just tell me and I won't." },
     { id: "flyer-short", name: "Flyer follow-up (short)", body: "Hi {name}, Shivam Vasudeva here (Real Broker, Calgary). Following up on my flyer: I'm now working with buyers looking in {community}. If selling is ever on your mind, I'd be glad to walk you through what that could look like. Just tell me if you'd rather not hear from me." },
+    { id: "anniversary", name: "Home anniversary", body: "Hi {name}, it's Shivam. I was thinking of you today. It's been {yearsWord} since we closed your home deal. I hope the home has been good to you. If you're ever curious what's happening in your neighbourhood, I'm happy to share, no strings attached." },
+    { id: "birthday", name: "Birthday", body: "Hi {name}, it's Shivam. Wishing you a very happy birthday! I hope today is full of good people and good food." },
+    { id: "listing-match", name: "A home that fits", body: "Hi {name}, it's Shivam. A home just came up in {community} that fits some of what you told me you're looking for. Want me to send you the details?" },
     { id: "checkin", name: "Friendly check-in", body: "Hi {name}, it's Shivam Vasudeva with Real Broker in Calgary. Just checking in to see how you're doing. If real estate is ever on your mind, I'm always happy to chat." }
   ];
   function greetName(c) { var f = String(c.first || "").trim(); if (!f || /\d/.test(f)) return "there"; var w = f.split(/\s+/); if (/^(dr|mr|mrs|ms|miss|prof)\.?$/i.test(w[0]) && w[1]) return w[1]; return w[0]; }
-  function fillMsg(body, c) { return body.replace(/\{name\}/g, greetName(c)).replace(/\{community\}/g, String(c.city || "").trim() || "your area"); }
+  function yrsOf(c) { var cd = closeDateOf(c); return cd ? Math.max(0, Number(today().slice(0, 4)) - Number(cd.slice(0, 4))) : 0; }
+  function fillMsg(body, c, extra) {
+    extra = extra || {};
+    var yrs = extra.years != null ? extra.years : yrsOf(c), yw = yrs === 1 ? "1 year" : (yrs > 1 ? yrs + " years" : "a while");
+    return body.replace(/\{name\}/g, greetName(c)).replace(/\{community\}/g, extra.community || String(c.city || "").trim() || "your area").replace(/\{yearsWord\}/g, yw);
+  }
   function tplById(id) { for (var i = 0; i < WA_TEMPLATES.length; i++) if (WA_TEMPLATES[i].id === id) return WA_TEMPLATES[i]; return null; }
   function defaultTpl(c) { return (c.source === "Flyer" || (c.tags || []).indexOf("src:flyer") >= 0) ? "flyer-warm" : ""; }
   function defaultMsg(c) { var t = tplById(defaultTpl(c)); return t ? fillMsg(t.body, c) : ""; }
@@ -116,7 +127,7 @@
     else if (S.tab === "today") renderToday();
     else if (S.tab === "pipeline") renderPipeline();
     else renderMore();
-    if (S.sheetId) refreshSheetParts();
+    if (S.sheetId === "__match") renderMatchResults(); else if (S.sheetId) refreshSheetParts();
   }
 
   /* ---------- empty / restore ---------- */
@@ -161,6 +172,170 @@
     });
   }
 
+  /* ---------- Moments: birthdays and home anniversaries ---------- */
+  function mmdd(v) { var m = /(\d\d)-(\d\d)$/.exec(v || ""); return m ? m[1] + "-" + m[2] : ""; }
+  function isLeap(y) { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+  function occ(md, y) { if (md === "02-29" && !isLeap(y)) md = "02-28"; return y + "-" + md; }
+  function closeDateOf(c) {
+    var best = c.closeDate || "";
+    (S.settings.deals || []).forEach(function (d) { if (d.contact === c.id && d.date && d.date > best) best = d.date; });
+    return best;
+  }
+  function moments() {
+    var t = today(), y = Number(t.slice(0, 4)), lo = addDays(t, -3), hi = addDays(t, 7), out = [];
+    all().forEach(function (c) {
+      if (c.stage === "Dead") return;
+      var done = c.moments || [], b = mmdd(c.birthday), cd = closeDateOf(c), cm = mmdd(cd), cy = Number(String(cd).slice(0, 4));
+      [y - 1, y, y + 1].forEach(function (yy) {
+        if (b) { var d = occ(b, yy); if (d >= lo && d <= hi && done.indexOf("b" + yy) < 0) out.push({ c: c, kind: "birthday", date: d, key: "b" + yy, years: 0 }); }
+        if (cm && yy - cy >= 1) { var d2 = occ(cm, yy); if (d2 >= lo && d2 <= hi && done.indexOf("a" + yy) < 0) out.push({ c: c, kind: "anniversary", date: d2, key: "a" + yy, years: yy - cy }); }
+      });
+    });
+    return out.sort(function (a, b) { return a.date.localeCompare(b.date) || byPriority(a.c, b.c); });
+  }
+  function momentLabel(m) {
+    var when = m.date === today() ? "today" : (m.date < today() ? "missed " + fdate(m.date) : fdate(m.date));
+    return m.kind === "birthday" ? "Birthday, " + when : m.years + "-year home anniversary, " + when;
+  }
+  function momentRow(m) {
+    var c = m.c, msg = fillMsg(tplById(m.kind).body, c, { years: m.years });
+    return '<div class="mrow"><button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln"><span>' + esc(momentLabel(m)) + "</span></span></button>" +
+      (c.phone ? '<a class="lnk" href="' + esc(waUrl(c, msg)) + '" target="_blank" rel="noopener">WhatsApp</a>' : "") +
+      '<button class="lnk ghost" type="button" data-act="momentdone" data-id="' + esc(c.id) + '" data-key="' + esc(m.key) + '" data-kind="' + esc(m.kind) + '">Done</button></div>';
+  }
+  function momentsCard() {
+    var ms = moments(); if (!ms.length) return "";
+    var shown = ms.slice(0, 8);
+    return '<div class="card" style="margin-bottom:12px"><div class="sec" style="margin:0 0 4px"><h2>Moments this week</h2><span class="meta num">' + ms.length + '</span></div>' + shown.map(momentRow).join("") + (ms.length > shown.length ? '<p class="note" style="margin:8px 0 0">' + (ms.length - shown.length) + " more coming up</p>" : "") + '<p class="note" style="margin:8px 0 0">Tap Done after you send. Add birthdays and closing dates inside a contact.</p></div>';
+  }
+  var TOUCH_RE = /^(Talked|Sent a message|No answer|Call:|Text:|WhatsApp:|Email:|Meeting:|Note:|Birthday wishes|Home anniversary)/;
+  function weekStats() {
+    var since = addDays(today(), -6), touches = 0, leads = 0;
+    all().forEach(function (c) {
+      (c.log || []).forEach(function (l) { if (l.d >= since && TOUCH_RE.test(l.t || "")) touches++; });
+      if (c.added && c.added >= since) leads++;
+    });
+    return { touches: touches, leads: leads, deals: (S.settings.deals || []).filter(function (d) { return d.date >= since; }).length };
+  }
+  function weekCard() {
+    var w = weekStats();
+    return '<div class="card wk" style="margin-bottom:12px"><div class="lbl">Last 7 days</div><div class="three"><div><b class="num">' + w.touches + "</b><span>touches</span></div><div><b class=\"num\">" + w.leads + "</b><span>new leads</span></div><div><b class=\"num\">" + w.deals + "</b><span>deals closed</span></div></div></div>";
+  }
+
+  /* ---------- Buyer profile + match ---------- */
+  function money(v) {
+    var t = String(v == null ? "" : v).toLowerCase().replace(/[$,\s]/g, ""), mult = 1;
+    if (/k$/.test(t)) { mult = 1000; t = t.slice(0, -1); } else if (/m$/.test(t)) { mult = 1000000; t = t.slice(0, -1); }
+    var n = parseFloat(t) * mult; return isFinite(n) && n > 0 ? Math.round(n) : "";
+  }
+  function fmtMoney(n) { if (!n) return ""; return n >= 1000000 ? "$" + (n / 1000000).toFixed(2).replace(/\.?0+$/, "") + "M" : "$" + Math.round(n / 1000) + "k"; }
+  function budgetText(b) { b = b || {}; return b.min && b.max ? fmtMoney(b.min) + " to " + fmtMoney(b.max) : (b.max ? "up to " + fmtMoney(b.max) : (b.min ? "from " + fmtMoney(b.min) : "no budget yet")); }
+  function areaHit(areas, area) {
+    var a = String(area || "").toLowerCase().trim(); if (!a) return false;
+    return String(areas || "").toLowerCase().split(/[,;\/]+/).some(function (tk) { tk = tk.trim(); return tk.length >= 3 && (tk.indexOf(a) >= 0 || a.indexOf(tk) >= 0); });
+  }
+  function hasProfile(c) { var b = c.buy || {}; return !!(b.min || b.max || b.areas || (b.types || []).length) || c.kind === "buyer" || c.kind === "investor"; }
+  function matchBuyers(q) {
+    var out = [], skipped = 0;
+    all().forEach(function (c) {
+      if (c.stage === "Dead" || !hasProfile(c)) return;
+      var b = c.buy || {}, score = 0, why = [], bad = false;
+      if (q.price) {
+        if (b.max && q.price > b.max * 1.05) bad = true;
+        else if (b.min && q.price < b.min * 0.8) bad = true;
+        else if (b.max || b.min) { score += 3; why.push("budget fits"); } else why.push("no budget on file");
+      }
+      if (q.type) {
+        if ((b.types || []).length) { if (b.types.indexOf(q.type) >= 0) { score += 2; why.push(q.type.toLowerCase()); } else bad = true; } else why.push("no type on file");
+      }
+      if (q.beds && b.beds && Number(b.beds) > q.beds) bad = true;
+      if (bad) { skipped++; return; }
+      if (q.area) { if (b.areas) { if (areaHit(b.areas, q.area)) { score += 3; why.push("area match"); } else why.push("different area"); } else why.push("no area on file"); }
+      if (b.pre === "Approved") { score += 1; why.push("pre-approved"); }
+      if (b.time === "Now") { score += 1; why.push("ready now"); }
+      if (c.temp === "hot") score += 1;
+      out.push({ c: c, score: score, why: why });
+    });
+    out.sort(function (a, b) { return b.score - a.score || byPriority(a.c, b.c); });
+    return { rows: out, skipped: skipped };
+  }
+  function openMatch() {
+    $("#sheetHost").innerHTML = '<div class="veil" id="veil"><div class="sheet" role="dialog" aria-modal="true" aria-label="Match buyers"><div class="sheet-top"><h2>Match buyers</h2><button class="btn" type="button" data-act="closesheet">Close</button></div><div class="stack">' +
+      '<p class="note" style="margin:0">Enter the home. You get the buyers whose profile fits it. Only buyers with a profile show up, so fill profiles in as you talk to people.</p>' +
+      '<div class="two"><label>Price ($)<input class="field num" id="mPrice" inputmode="numeric" placeholder="650000"></label><label>Community<input class="field" id="mArea" placeholder="Cranston"></label></div>' +
+      '<div class="two"><label>Home type<select class="field" id="mType"><option value="">Any</option>' + BTYPES.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + '</select></label><label>Bedrooms<select class="field" id="mBeds"><option value="">Any</option>' + [1, 2, 3, 4, 5].map(function (n) { return "<option>" + n + "</option>"; }).join("") + '</select></label></div>' +
+      '<div id="mResults"></div></div></div></div>';
+    $("#veil").addEventListener("click", function (e) { if (e.target.id === "veil") closeSheet(); });
+    S.sheetId = "__match"; renderMatchResults();
+  }
+  function renderMatchResults() {
+    var host = $("#mResults"); if (!host) return;
+    var q = { price: money($("#mPrice").value) || 0, area: $("#mArea").value.trim(), type: $("#mType").value, beds: Number($("#mBeds").value) || 0 };
+    var r = matchBuyers(q), h = "";
+    var anyProfile = all().some(hasProfile);
+    if (!anyProfile) { host.innerHTML = '<div class="card empty"><p style="margin:0">No buyer profiles yet. Open a contact, tap Add buyer profile, and fill in budget, areas and home type.</p></div>'; return; }
+    h += '<div class="sec" style="margin:4px 0"><h2 class="num">' + r.rows.length + (r.rows.length === 1 ? " buyer fits" : " buyers fit") + '</h2><span class="meta num">' + r.skipped + " ruled out</span></div>";
+    h += r.rows.slice(0, 40).map(function (m) {
+      var c = m.c, b = c.buy || {}, msg = fillMsg(tplById("listing-match").body, c, { community: q.area || c.city });
+      return '<div class="mrow"><button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(budgetText(b)) + "</span>" + (b.areas ? "<span>" + esc(b.areas) + "</span>" : "") + '</span><span class="why">' + esc(m.why.join(", ")) + "</span></button>" + (c.phone ? '<a class="lnk" href="' + esc(waUrl(c, msg)) + '" target="_blank" rel="noopener">WhatsApp</a>' : "") + "</div>";
+    }).join("");
+    if (r.rows.length > 40) h += '<p class="note">Showing the best 40.</p>';
+    if (r.rows.length) h += '<p class="note">Check the home against each profile before you send. Say only what is true about the listing.</p>';
+    host.innerHTML = h;
+  }
+  function buyFormHtml() {
+    return '<div class="card stack"><div class="two"><label>Budget from ($)<input class="field num" id="buyMin" inputmode="numeric" placeholder="500000"></label><label>Budget up to ($)<input class="field num" id="buyMax" inputmode="numeric" placeholder="750000"></label></div>' +
+      '<label>Areas<input class="field" id="buyAreas" placeholder="Cranston, Mahogany, Airdrie"></label>' +
+      '<div><div class="lbl">Home type</div><div id="buyTypes"></div></div>' +
+      '<div class="two"><label>Bedrooms (at least)<select class="field" id="buyBeds"><option value="">Any</option>' + [1, 2, 3, 4, 5].map(function (n) { return "<option>" + n + "</option>"; }).join("") + '</select></label><label>Timeline<select class="field" id="buyTime"><option value="">Not sure</option>' + BTIMES.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + "</select></label></div>" +
+      '<div><div class="lbl">Pre-approval</div><div id="buyPre"></div></div>' +
+      '<label>Must-haves<textarea class="field" id="buyMust" rows="2" placeholder="Basement suite, 2-car garage, near a school"></textarea></label></div>';
+  }
+  function refreshBuy(c) {
+    var host = $("#shBuy"); if (!host) return;
+    var want = (c.buy || c.kind === "buyer" || c.kind === "investor") ? "form" : "button";
+    if (host.dataset.mode !== want) { host.innerHTML = want === "form" ? buyFormHtml() : '<button class="btn" type="button" data-act="addbuy">Add buyer profile</button>'; host.dataset.mode = want; }
+    if (want !== "form") return;
+    var b = c.buy || {}, setv = function (id, v) { var el = $(id); if (el && el !== document.activeElement) el.value = v; };
+    setv("#buyMin", b.min || ""); setv("#buyMax", b.max || ""); setv("#buyAreas", b.areas || ""); setv("#buyBeds", b.beds || ""); setv("#buyTime", b.time || ""); setv("#buyMust", b.must || "");
+    $("#buyTypes").innerHTML = '<div class="chips" role="group" aria-label="Home type">' + BTYPES.map(function (v) { return '<button class="chip" type="button" data-set="btype" data-v="' + esc(v) + '" aria-pressed="' + ((b.types || []).indexOf(v) >= 0 ? "true" : "false") + '">' + esc(v) + "</button>"; }).join("") + "</div>";
+    $("#buyPre").innerHTML = chips("bpre", BPRE, b.pre || "");
+  }
+  function readBuy(c) {
+    var b = Object.assign({}, c.buy || {}); b.types = (b.types || []).slice();
+    b.min = money($("#buyMin").value); b.max = money($("#buyMax").value); b.areas = $("#buyAreas").value.trim(); b.beds = $("#buyBeds").value; b.time = $("#buyTime").value; b.must = $("#buyMust").value.trim();
+    if (b.pre == null) b.pre = "";
+    return b;
+  }
+
+  /* ---------- Scorecard ---------- */
+  var FUNNEL_MTG = ["Meeting set", "Active", "Under contract", "Closed", "Past client"];
+  function periodStart() { var p = S.period || "90"; return p === "all" ? "0000-00-00" : addDays(today(), -Number(p)); }
+  function scoreRows() {
+    var start = periodStart(), rows = {}, byId = {};
+    function row(s) { s = s || "Unknown"; return rows[s] || (rows[s] = { source: s, leads: 0, mtg: 0, deals: 0, spend: 0 }); }
+    all().forEach(function (c) {
+      byId[c.id] = c;
+      if (c.added && c.added >= start) { var r = row(c.source); r.leads++; if (FUNNEL_MTG.indexOf(c.stage) >= 0) r.mtg++; }
+    });
+    (S.settings.deals || []).forEach(function (d) { if (d.date >= start) row(byId[d.contact] && byId[d.contact].source).deals++; });
+    (S.settings.spend || []).forEach(function (x) { if (x.date >= start) row(x.source).spend += Number(x.amount) || 0; });
+    return Object.keys(rows).map(function (k) { return rows[k]; }).sort(function (a, b) { return b.leads - a.leads || b.spend - a.spend; });
+  }
+  function dollars(n) { return "$" + Math.round(n).toLocaleString("en-CA"); }
+  function scorecardCard() {
+    var rows = scoreRows(), p = S.period || "90", sp = (S.settings.spend || []).slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); }).slice(0, 5);
+    var h = '<div class="card stack" style="margin-bottom:12px"><h2>Scorecard</h2><div class="chips" role="group" aria-label="Period">' + [["30", "30 days"], ["90", "90 days"], ["all", "All time"]].map(function (x) { return '<button class="chip" type="button" data-act="period" data-v="' + x[0] + '" aria-pressed="' + (p === x[0] ? "true" : "false") + '">' + x[1] + "</button>"; }).join("") + "</div>";
+    if (rows.length) {
+      h += '<div class="tbl"><table class="rh"><tr><th>Source</th><th>Leads</th><th>Mtgs</th><th>Deals</th><th>Spend</th><th>Per lead</th></tr>' + rows.map(function (r) {
+        return "<tr><td>" + esc(r.source) + '</td><td class="num">' + r.leads + '</td><td class="num">' + r.mtg + '</td><td class="num">' + r.deals + '</td><td class="num">' + (r.spend ? dollars(r.spend) : "") + '</td><td class="num">' + (r.spend && r.leads ? dollars(r.spend / r.leads) : "") + "</td></tr>";
+      }).join("") + "</table></div>";
+    } else h += '<p class="note" style="margin:0">No leads, deals or spend in this period yet. Leads count from the date they were added.</p>';
+    h += '<div class="lbl">Log ad spend</div><div class="two"><label>Source<select class="field" id="spSource">' + SOURCES.map(function (x) { return "<option" + (x === "Meta Ads" ? " selected" : "") + ">" + esc(x) + "</option>"; }).join("") + '</select></label><label>Amount ($)<input class="field num" id="spAmount" inputmode="decimal" placeholder="150"></label></div><div class="row"><input class="field" style="width:auto" id="spDate" type="date" value="' + today() + '"><button class="btn small" type="button" data-act="addspend">Add spend</button></div>';
+    if (sp.length) h += sp.map(function (x) { return '<div class="row" style="justify-content:space-between"><span>' + esc(x.source) + ' <span class="muted num">' + esc(fdate(x.date)) + '</span></span><span class="row"><b class="num">' + dollars(x.amount) + '</b><button class="btn small danger" type="button" data-act="delspend" data-id="' + esc(x.id) + '">Remove</button></span></div>'; }).join("");
+    return h + "</div>";
+  }
+
   /* ---------- Today ---------- */
   function scoreCard(label, n, goal) { var pct = Math.min(100, Math.round(n / Math.max(goal, 1) * 100)); return '<div class="card"><div class="lbl">' + esc(label) + '</div><div class="big num">' + n + ' <small>/ ' + goal + '</small></div><div class="bar" role="progressbar" aria-valuenow="' + n + '" aria-valuemin="0" aria-valuemax="' + goal + '" aria-label="' + esc(label) + '"><i style="width:' + pct + '%"></i></div></div>'; }
   function dealCount(type) { var y = String(S.settings.goalYear); return (S.settings.deals || []).filter(function (d) { return d.type === type && String(d.date || "").slice(0, 4) === y; }).length; }
@@ -181,6 +356,7 @@
   function renderToday() {
     var due = dueList(), cap = S.settings.dailyCap || 15, shown = S.showAllDue ? due : due.slice(0, cap), h = "";
     h += '<div class="score">' + scoreCard(S.settings.goalYear + " listings", dealCount("listing"), S.settings.listingsGoal) + scoreCard(S.settings.goalYear + " buyers", dealCount("buyer"), S.settings.buyersGoal) + "</div>";
+    h += weekCard() + momentsCard();
     if (due.length) {
       h += '<div class="sec"><h2>Reach out today</h2><span class="meta num">' + shown.length + " of " + due.length + " due</span></div><div class=\"stack\">" + shown.map(dueCard).join("") + "</div>";
       if (due.length > shown.length) h += '<p class="more"><button type="button" data-act="showall">Show all ' + due.length + " due</button> (your daily list is capped at " + cap + ")</p>";
@@ -248,7 +424,7 @@
       listsShellFor = "on";
     }
     var res = filtered(), lim = S.f.limit, shown = res.slice(0, lim), h = "";
-    h += '<div class="sec" style="margin-top:6px"><h2 class="num">' + res.length + (res.length === 1 ? " contact" : " contacts") + '</h2><span class="row"><button class="btn small" type="button" data-act="selmode">' + (S.selecting ? "Done" : "Select") + '</button><button class="btn small" type="button" data-act="export">Export CSV</button></span></div>';
+    h += '<div class="sec" style="margin-top:6px"><h2 class="num">' + res.length + (res.length === 1 ? " contact" : " contacts") + '</h2><span class="row"><button class="btn small" type="button" data-act="match">Match buyers</button><button class="btn small" type="button" data-act="selmode">' + (S.selecting ? "Done" : "Select") + '</button><button class="btn small" type="button" data-act="export">Export CSV</button></span></div>';
     if (S.selecting) h += '<div class="row" style="margin-bottom:8px"><button class="btn small" type="button" data-act="selall" data-n="' + res.length + '">Select all ' + res.length + '</button><button class="btn small" type="button" data-act="selnone">Clear selection</button></div>';
     h += shown.map(function (c) { return listRow(c, S.selecting); }).join("");
     if (!res.length) h += '<div class="card empty"><p style="margin:0">No contacts match these filters.</p></div>';
@@ -333,7 +509,7 @@
   /* ---------- More ---------- */
   function renderMore() {
     var st = S.settings, deals = (st.deals || []).slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
-    var h = '<div class="card stack"><h2>Goals</h2><div class="two"><label>Listings<input class="field num" id="gList" type="number" min="0" value="' + st.listingsGoal + '"></label><label>Buyers<input class="field num" id="gBuy" type="number" min="0" value="' + st.buyersGoal + '"></label></div><div class="two"><label>Goal year<input class="field num" id="gYear" type="number" min="2026" value="' + st.goalYear + '"></label><label>Daily list size<input class="field num" id="gCap" type="number" min="1" max="100" value="' + st.dailyCap + '"></label></div><p class="note" style="margin:0">Deals count toward a goal when you mark a contact closed with a date in the goal year.</p></div>';
+    var h = scorecardCard() + '<div class="card stack"><h2>Goals</h2><div class="two"><label>Listings<input class="field num" id="gList" type="number" min="0" value="' + st.listingsGoal + '"></label><label>Buyers<input class="field num" id="gBuy" type="number" min="0" value="' + st.buyersGoal + '"></label></div><div class="two"><label>Goal year<input class="field num" id="gYear" type="number" min="2026" value="' + st.goalYear + '"></label><label>Daily list size<input class="field num" id="gCap" type="number" min="1" max="100" value="' + st.dailyCap + '"></label></div><p class="note" style="margin:0">Deals count toward a goal when you mark a contact closed with a date in the goal year.</p></div>';
     h += '<div class="card stack" style="margin-top:12px"><h2>Follow-up rhythm</h2><table class="rh"><tr><th>Temperature</th><th>Next follow-up</th></tr>' + TEMPS.map(function (t) { return "<tr><td>" + pill(t) + "</td><td>" + RHYTHM_LABEL[t] + "</td></tr>"; }).join("") + '<tr><td>Closed</td><td>after 2 weeks</td></tr><tr><td>Past client</td><td>every 3 months</td></tr></table><p class="note" style="margin:0">Logging a touch sets the next date from this rhythm. No answer retries in 3 days.</p></div>';
     h += '<div class="card stack" style="margin-top:12px"><h2>Schedule</h2><p class="note" style="margin:0">Spread every follow-up date out again from today, by temperature. Use this on your first live day so Today starts clean.</p><button class="btn' + (S.confirmSpread ? " primary" : "") + '" type="button" data-act="spread">' + (S.confirmSpread ? "Tap again to reschedule " + all().filter(function (c) { return c.stage !== "Dead"; }).length + " contacts" : "Spread dates from today") + "</button></div>";
     h += '<div class="card stack" style="margin-top:12px"><h2>Closed deals</h2>' + (deals.length ? deals.map(function (d) { return '<div class="row" style="justify-content:space-between"><span>' + esc(d.name) + ' <span class="muted">' + (d.type === "listing" ? "listing" : "buyer") + ", " + esc(fdate(d.date)) + '</span></span><button class="btn small danger" type="button" data-act="deldeal" data-id="' + esc(d.id) + '">Remove</button></div>'; }).join("") : '<p class="note" style="margin:0">No deals yet. Open a contact and tap Mark closed.</p>') + "</div>";
@@ -378,6 +554,8 @@
       '<div class="two" style="margin-top:8px"><label>City<input class="field" id="shCity" value="' + esc(c.city) + '"></label><label>Province<select class="field" id="shProv">' + PROVS.map(function (p) { return "<option" + (p === c.province ? " selected" : "") + ">" + esc(p) + "</option>"; }).join("") + "</select></label></div>" +
       '<div class="sec-lbl">Stage</div><div id="shStage"></div><div class="sec-lbl">Temperature</div><div id="shTemp"></div><div class="sec-lbl">Type</div><div id="shKind"></div>' +
       '<div class="sec-lbl">Next follow-up</div><div class="row"><input class="field" style="width:auto" id="shNext" type="date" value="' + esc(c.next) + '"><div id="shQuick" class="row"></div></div><div class="note" id="shLast2"></div>' +
+      '<div class="sec-lbl">Buyer profile</div><div id="shBuy"></div>' +
+      '<div class="sec-lbl">Moments</div><div class="two"><label>Birthday<input class="field" id="shBday" type="date"></label><label>Closed with me<input class="field" id="shClose" type="date"></label></div><div class="note">Birthday year does not matter. These show on Today the week they happen.</div>' +
       '<div class="sec-lbl">Tags</div><div id="shTags" class="chips"></div><div class="row" style="margin-top:8px"><input class="field" style="flex:1" id="shTagIn" placeholder="Add a tag, like type:buyer"><button class="btn small" type="button" data-act="addtag">Add</button></div>' +
       '<div class="sec-lbl">Notes (private)</div><textarea class="field" id="shNotes">' + esc(c.notes) + "</textarea>" +
       '<div class="sec-lbl">History</div><div class="row"><select class="field" style="width:auto" id="shLogType" aria-label="Type of touch"><option>Call</option><option>Text</option><option>WhatsApp</option><option>Email</option><option>Meeting</option><option>Note</option></select><input class="field" style="flex:1" id="shLogIn" placeholder="What happened?"><button class="btn small" type="button" data-act="addlog">Log</button></div><div id="shLog" style="margin-top:6px"></div>' +
@@ -398,6 +576,9 @@
     $("#shTemp").innerHTML = chips("temp", TEMPS, c.temp, cap);
     $("#shKind").innerHTML = chips("kind", KINDS, c.kind, cap);
     var nx = $("#shNext"); if (nx && nx !== document.activeElement) nx.value = c.next || "";
+    refreshBuy(c);
+    var bd = $("#shBday"); if (bd && bd !== document.activeElement) bd.value = mmdd(c.birthday) ? "2000-" + mmdd(c.birthday) : "";
+    var cl = $("#shClose"); if (cl && cl !== document.activeElement) cl.value = c.closeDate || "";
     $("#shQuick").innerHTML = [["+2d", 2], ["+1w", 7], ["+1m", 30], ["+3m", 90]].map(function (q) { return '<button class="btn small" type="button" data-act="quick" data-n="' + q[1] + '">' + q[0] + "</button>"; }).join("");
     $("#shLast2").textContent = c.lastTouch ? "Last touch " + fdate(c.lastTouch) + ". " + (c.next ? diff(today(), c.next) + " days until next." : "") : "No touches logged yet.";
     $("#shTags").innerHTML = (c.tags || []).map(function (t) { return '<span class="tag">' + esc(t) + '<button type="button" data-act="rmtag" data-t="' + esc(t) + '" aria-label="Remove tag ' + esc(t) + '">&times;</button></span>'; }).join("") || '<span class="note">No tags</span>';
@@ -418,6 +599,9 @@
     else if (t.id === "shCity") f.city = t.value.trim();
     else if (t.id === "shNotes") f.notes = t.value;
     else if (t.id === "shNext") f.next = t.value;
+    else if (t.id === "shBday") f.birthday = t.value ? t.value.slice(5) : "";
+    else if (t.id === "shClose") f.closeDate = t.value;
+    else if (/^buy(Min|Max|Areas|Beds|Time|Must)$/.test(t.id)) f.buy = readBuy(c);
     else if (t.id === "shTpl") { var tp = tplById(t.value); $("#shMsg").value = tp ? fillMsg(tp.body, c) : ""; updateWa(); }
     else if (t.id === "shProv") { f.province = t.value; var tg = (c.tags || []).filter(function (x) { return x.indexOf("prov:") !== 0; }); tg.push("prov:" + PROV_TAG[t.value]); f.tags = tg; }
     if (Object.keys(f).length) save(id, f);
@@ -445,9 +629,19 @@
     var el = e.target.closest("[data-open],[data-act],[data-set],[data-tab]"); if (!el) return;
     if (el.dataset.tab) { setTab(el.dataset.tab); return; }
     if (el.dataset.open) { openSheet(el.dataset.open); return; }
-    if (el.dataset.set) { var id = S.sheetId, k = el.dataset.set, v = el.dataset.v; if (k === "stage") setStage(id, v); else if (k === "temp") { var c = S.contacts.get(id), cap = addDays(today(), RHYTHM[v]), f = { temp: v }; if (!c.next || c.next > cap) f.next = cap; save(id, f); } else if (k === "kind") save(id, { kind: v === S.contacts.get(id).kind ? "" : v }); return; }
+    if (el.dataset.set) { var id = S.sheetId, k = el.dataset.set, v = el.dataset.v; if (k === "stage") setStage(id, v); else if (k === "temp") { var c = S.contacts.get(id), cap = addDays(today(), RHYTHM[v]), f = { temp: v }; if (!c.next || c.next > cap) f.next = cap; save(id, f); } else if (k === "kind") save(id, { kind: v === S.contacts.get(id).kind ? "" : v }); else if (k === "btype") { var bb = readBuy(S.contacts.get(id)), ti = bb.types.indexOf(v); if (ti >= 0) bb.types.splice(ti, 1); else bb.types.push(v); save(id, { buy: bb }); } else if (k === "bpre") { var bp = readBuy(S.contacts.get(id)); bp.pre = bp.pre === v ? "" : v; save(id, { buy: bp }); } return; }
     var a = el.dataset.act, id2 = el.dataset.id;
     if (a === "backup") exportBackup();
+    else if (a === "match") openMatch();
+    else if (a === "addbuy") { var abc = S.contacts.get(S.sheetId); if (abc) save(abc.id, { buy: { min: "", max: "", areas: "", types: [], beds: "", time: "", pre: "", must: "" } }); }
+    else if (a === "momentdone") { var mc = S.contacts.get(id2); if (mc) { var mt = today(); save(id2, { moments: (mc.moments || []).concat([el.dataset.key]), lastTouch: mt, log: [{ d: mt, t: el.dataset.kind === "birthday" ? "Birthday wishes sent" : "Home anniversary message sent" }].concat(mc.log || []).slice(0, 60) }); toast("Logged for " + nm(mc)); } }
+    else if (a === "period") { S.period = el.dataset.v; render(); }
+    else if (a === "addspend") {
+      var amt = Number(String($("#spAmount").value).replace(/[$,\s]/g, ""));
+      if (!(amt > 0)) { toast("Enter an amount"); return; }
+      saveSettings({ spend: (S.settings.spend || []).concat([{ id: "s" + Date.now().toString(36), source: $("#spSource").value, amount: Math.round(amt * 100) / 100, date: $("#spDate").value || today() }]) }); toast("Spend logged");
+    }
+    else if (a === "delspend") saveSettings({ spend: (S.settings.spend || []).filter(function (x) { return x.id !== id2; }) });
     else if (a === "restorego") runRestore();
     else if (a === "restorecancel") { S.pendingRestore = null; S.restoreError = ""; render(); }
     else if (a === "refresh") { toast("Refreshing..."); reload().then(function () { if (!S.offline) toast("Up to date"); }); }
@@ -488,6 +682,7 @@
   });
   document.addEventListener("change", function (e) {
     var t = e.target;
+    if (t.id === "mType" || t.id === "mBeds") { renderMatchResults(); return; }
     if (t.id === "restoreFile") { var rf = t.files && t.files[0]; t.value = ""; readRestore(rf); return; }
     if (t.closest && t.closest(".sheet")) { sheetChange(e); return; }
     if (t.dataset && t.dataset.sel) { if (t.checked) S.selected.add(t.dataset.sel); else S.selected.delete(t.dataset.sel); $("#bulkHost").dataset.n = ""; renderBulk(); return; }
@@ -506,6 +701,7 @@
     if (t.id === "fq") { S.f.q = t.value; S.f.limit = 60; clearTimeout(qTimer); qTimer = setTimeout(renderLists, 150); }
     else if (t.id === "ftag") { S.f.tag = t.value; S.f.limit = 60; clearTimeout(qTimer); qTimer = setTimeout(renderLists, 150); }
     else if (t.id === "shMsg") updateWa();
+    else if (t.id === "mPrice" || t.id === "mArea") { clearTimeout(qTimer); qTimer = setTimeout(renderMatchResults, 150); }
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && S.sheetId) closeSheet();

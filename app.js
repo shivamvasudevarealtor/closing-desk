@@ -16,7 +16,7 @@
   var TABS = ["today", "pipeline", "lists", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", more: "More" };
 
-  var APP_VERSION = "1.1.0";
+  var APP_VERSION = "1.1.1";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -138,8 +138,9 @@
     var r = S.restoring, p = S.pendingRestore;
     if (r) return '<p class="note" style="margin:0">Restoring. Keep this page open until it finishes.</p><div class="prog"><i style="width:' + Math.round(r.done / Math.max(r.total, 1) * 100) + '%"></i></div><div class="note num">' + r.done + " of " + r.total + "</div>";
     var err = S.restoreError ? '<p class="late" style="margin:0">' + esc(S.restoreError) + "</p>" : "";
+    if (p && p.patch) return '<p style="margin:0"><b class="num">' + p.items.length + "</b> updates in <b>" + esc(p.name) + '</b>. Nothing is replaced. Only the fields listed below change.</p>' + p.items.map(function (it) { return '<div class="logrow"><span>' + esc(it.label || it.id) + "</span></div>"; }).join("") + (p.missing ? '<p class="note" style="margin:0">' + p.missing + " not found in your contacts, so skipped.</p>" : "") + '<div class="row"><button class="btn primary" type="button" data-act="restorego">Apply ' + p.items.length + ' updates</button><button class="btn" type="button" data-act="restorecancel">Cancel</button></div>' + err;
     if (p) return '<p style="margin:0"><b class="num">' + p.rows.length + "</b> contacts in <b>" + esc(p.name) + '</b>.' + (p.settings ? " Goals and closed deals come back too." : "") + ' Contacts with the same ID are replaced by the backup.</p><div class="row"><button class="btn primary" type="button" data-act="restorego">Restore ' + p.rows.length + ' contacts</button><button class="btn" type="button" data-act="restorecancel">Cancel</button></div>' + err;
-    return '<label class="btn" style="text-align:center;cursor:pointer">Choose a backup file<input id="restoreFile" type="file" accept=".json,application/json" hidden></label><p class="note" style="margin:0">Use the .json file from Download backup.</p>' + err;
+    return '<label class="btn" style="text-align:center;cursor:pointer">Choose a backup file<input id="restoreFile" type="file" accept=".json,application/json" hidden></label><p class="note" style="margin:0">Use a .json backup from Download backup, or an update file from Claude.</p>' + err;
   }
   function readRestore(file) {
     S.restoreError = "";
@@ -149,6 +150,12 @@
     fr.onload = function () {
       try {
         var j = JSON.parse(String(fr.result || ""));
+        if (j && j.format === "closing-desk-patch" && Array.isArray(j.patches)) {
+          var items = j.patches.filter(function (x) { return x && typeof x.id === "string" && x.fields && typeof x.fields === "object" && !Array.isArray(x.fields) && S.contacts.has(x.id); }).map(function (x) { var f = Object.assign({}, x.fields); delete f.id; return { id: x.id, fields: f, label: x.label || "" }; });
+          if (!items.length) throw new Error("None of these updates match your contacts.");
+          S.pendingRestore = { patch: true, name: file.name, items: items, missing: j.patches.length - items.length, rows: items, settings: null };
+          render(); return;
+        }
         var rows = Array.isArray(j) ? j : (j && Array.isArray(j.contacts) ? j.contacts : null);
         if (!rows) throw new Error("This does not look like a Closing Desk backup.");
         rows = rows.filter(function (r) { return r && typeof r === "object" && typeof r.id === "string" && r.id; });
@@ -162,6 +169,11 @@
   }
   function runRestore() {
     var p = S.pendingRestore; if (!p || S.restoring || !S.user) return;
+    if (p.patch) {
+      S.pendingRestore = null; S.restoreError = "";
+      saveMany(p.items.map(function (it) { return [it.id, it.fields]; })).then(function () { toast("Applied " + p.items.length + " updates"); }, function () { S.pendingRestore = p; scheduleRender(); });
+      return;
+    }
     S.restoreError = ""; S.restoring = { done: 0, total: p.rows.length }; render();
     Store.bulkPut(p.rows, function (d, t) { S.restoring = { done: d, total: t }; scheduleRender(); }).then(function () {
       return p.settings ? Store.putSettings(Object.assign({}, DEFAULT_SETTINGS, p.settings)) : null;

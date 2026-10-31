@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Closing Desk</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ECF1EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B1311" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Closing Desk">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="top">
+    <div>
+      <h1 id="title">Today</h1>
+      <div class="sub num" id="subtitle"></div>
+    </div>
+    <button class="btn primary" id="addBtn" type="button">+ New lead</button>
+  </div>
+  <div id="warnBar"></div>
+  <div id="view"></div>
+</div>
+
+<div id="bulkHost"></div>
+<nav class="tabs" aria-label="Main">
+  <div class="in">
+    <button type="button" data-tab="today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Today<span class="badge" id="dueBadge" hidden></span></button>
+    <button type="button" data-tab="pipeline"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="4" height="6" rx="1.5"/></svg>Pipeline</button>
+    <button type="button" data-tab="lists"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>Lists</button>
+    <button type="button" data-tab="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
+  </div>
+</nav>
+<div id="sheetHost"></div>
+<div id="toastHost" aria-live="polite"></div>
+<div id="authHost"></div>
+
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="supa.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

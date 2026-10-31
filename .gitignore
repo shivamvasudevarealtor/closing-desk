@@ -1,0 +1,9 @@
+# nothing private lives in this repo, but keep it that way
+*.json.bak
+backup*.json
+closing-desk-backup-*.json
+seed.json
+*.csv
+.env
+.DS_Store
+node_modules/

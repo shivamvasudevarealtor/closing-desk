@@ -79,6 +79,28 @@ Supabase > SQL Editor > New query > paste all of `supabase/email.sql` > Run. Thi
 - Every email carries your name, brokerage, mailing address and an unsubscribe link automatically. Unsubscribes must be honoured within 10 business days; here it is immediate.
 - Check the brokerage line wording and your email content with your brokerage's compliance contact (RECA advertising rules). The app warns about words like "best", "#1" and "guaranteed".
 
+## Tell Claude setup (v1.6, about 10 minutes, once)
+
+**What it does.** A box at the top of Today. Type a quick note ("Met Harpreet at the show home, 403 555 0147, wants a 3-bed duplex in Airdrie under 550k, call her Friday") and Claude suggests what to save: a new contact, a note in a client's history, a follow-up date, a buyer profile, a change to a detail, a to-do, or an idea for your workspace. **Nothing is saved until you tap Apply.** Changes to details you already saved, and possible duplicates, start unticked.
+
+**Where it runs.** Your note goes from the app to a small function in your own Supabase project, which asks Claude (Anthropic's API) and sends the suggestions back. The function never writes contacts. Your Anthropic key lives only in Supabase, never in this repo or the browser.
+
+**Cost.** Each note uses Claude Opus 5.5 and costs roughly 2 to 5 cents, billed by Anthropic. The app shows the approximate cost on every note. Set a monthly limit in the Anthropic Console.
+
+### 1. Database
+Supabase > SQL Editor > New query > paste all of `supabase/tell-claude.sql` > Run. It adds three private tables: `inbox` (your notes), `tasks` (to-dos) and `requests` (workspace ideas).
+
+### 2. Anthropic API key
+1. console.anthropic.com > sign in > Billing: add a small credit balance and set a monthly spend limit.
+2. API keys > Create key. Name it Closing Desk. Copy it (it starts with `sk-ant-`).
+3. Supabase > Edge Functions > Secrets > Add new secret. Name: `ANTHROPIC_API_KEY`. Value: the key. Save. Never put this key anywhere else.
+
+### 3. The function
+Supabase > Edge Functions > Deploy a new function > Via Editor. Name it exactly `tell-claude`. Replace the sample code with all of `supabase/functions/tell-claude/index.ts` > Deploy. Leave JWT verification on (only you, signed in, can use it).
+
+### 4. Try it
+Open Closing Desk > Today > Tell Claude. The first note confirms everything works. If something is missing, the app says which step.
+
 ## Updating the app
 Change files in the repo, commit to `main`. Open the app twice (it updates in the background). If a phone seems stuck on an old version, close the app fully and reopen it.
 
@@ -91,12 +113,16 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `email.js` | The Email tab: who may be emailed, daily cap, warm-up, pacing, pause/stop rules |
 | `unsub.html`, `unsub.js` | The page a recipient opens from the unsubscribe link |
 | `config.js` | Your Supabase URL and public key |
+| `tell.js` | The Tell Claude box on Today: saves your note, asks the function, shows suggestions, applies what you tick |
+| `supabase/tell-claude.sql` | Tables for Tell Claude, run once |
+| `supabase/functions/tell-claude/index.ts` | The Supabase function that asks Claude (holds no data, writes nothing) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Makes it installable and able to open with a weak signal |
 | `vendor/supabase.js` | supabase-js 2.117.3 (MIT), saved locally so the app does not depend on a third-party host |
 | `supabase/schema.sql` | Database setup, run once (already includes `email.sql`) |
 | `supabase/email.sql` | Only the email part of the setup. Run this one if your database was set up before v1.5 |
 
-## What's inside (v1.5)
+## What's inside (v1.6)
+- **Tell Claude (v1.6):** a box on Today. Claude turns quick notes into suggested contacts, notes, follow-ups, buyer profiles, to-dos and workspace ideas; you apply what you want. See "Tell Claude setup".
 - **Email (v1.5):** a tab for emailing many people through your own Gmail without getting blocked. See "Email setup" below.
 - **Today:** goals, last-7-days strip, Moments this week (birthdays and home anniversaries), and the daily follow-up list.
 - **Buyer profiles:** open a contact > Add buyer profile (budget, areas, home type, pre-approval, timeline). Lists > **Match buyers** finds who fits a home.

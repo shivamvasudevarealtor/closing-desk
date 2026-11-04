@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.5.0";
+  var APP_VERSION = "1.6.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -153,6 +153,13 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.6.0", date: "2026-11-03", title: "Tell Claude", items: [
+      "New box at the top of Today: type a quick note about a call, a showing or a new lead, and Claude suggests what to save.",
+      "It can add a new contact, add a note to a client's history, set a follow-up date, fill in a buyer profile, change a detail, add a to-do, or save an idea for your workspace.",
+      "Nothing is saved until you tap Apply. Changes to details you already saved, and possible duplicates, start unticked.",
+      "Your note is saved first, so it is never lost, even if Claude is busy.",
+      "To-dos show on Today. Each note shows roughly what it cost.",
+      "Needs a one-time setup: see the README (Supabase SQL, one function, and your Anthropic API key)."] },
     { v: "1.5.0", date: "2026-10-31", title: "Email from Gmail", items: [
       "New Email tab: write one email, pick who gets it, and it goes out through your own Gmail, one person at a time.",
       "Built so Gmail does not block you: a daily cap well under Gmail's limit, a warm-up that starts small, random pauses, sending hours, and an automatic stop if Gmail says slow down.",
@@ -217,6 +224,7 @@
     document.querySelectorAll(".tabs button").forEach(function (b) { if (b.dataset.tab === S.tab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     $("#warnBar").innerHTML = S.offline ? '<div class="warn">Can\'t reach the server right now. ' + (S.contacts.size ? 'You are looking at your last saved copy, and changes will not save until the connection is back.' : 'Your contacts will show up here as soon as it is back.') + (S.loadError ? ' <span class="muted">(' + esc(S.loadError) + ')</span>' : '') + ' <button class="lnk" type="button" data-act="refresh">Try again</button></div>' : (S.connectNote && !S.loaded ? '<div class="warn">Still connecting to your database...</div>' : "");
     renderBulk();
+    if (window.CDTellUI) window.CDTellUI.render();
     if (!S.user) return;
     if (!S.loaded) { $("#view").innerHTML = '<div class="empty"><h2>Opening your contacts</h2><p>Connecting to the database.</p></div>'; return; }
     if (S.tab === "lists") { renderLists(); }
@@ -829,6 +837,15 @@
     $("#veil").addEventListener("click", function (e) { if (e.target.id === "veil") closeSheet(); });
     S.sheetId = "__new";
   }
+  /* Adds a whole new contact (Tell Claude uses this). Resolves once the database has it; on failure the contact is taken back off the screen. */
+  function addContact(rec) {
+    if (!S.user) return Promise.reject(new Error("Not signed in"));
+    S.contacts.set(rec.id, rec); scheduleRender();
+    var ok = false;
+    return chain("c:" + rec.id, function () { return Store.put(rec).then(function () { ok = true; }); }, function () { S.contacts.delete(rec.id); }).then(function () {
+      if (!ok) throw new Error("Contact not saved");
+    });
+  }
   function createLead() {
     var first = $("#nFirst").value.trim(), last = $("#nLast").value.trim(), phone = normPhone($("#nPhone").value), email = $("#nEmail").value.trim().toLowerCase();
     if (!first && !last && !phone && !email) { toast("Add a name, phone or email"); return; }
@@ -842,7 +859,8 @@
   /* What email.js (the Gmail sending part) is allowed to use. */
   window.CDApp = { S: S, $: $, esc: esc, toast: toast, today: today, addDays: addDays, fdate: fdate, nm: nm, greetName: greetName, all: all, opt: opt, chips: chips,
     TEMPS: TEMPS, KINDS: KINDS, PROVS: PROVS, ALL_STAGES: ALL_STAGES, stageLabel: stageLabel, save: save, saveMany: saveMany, saveSettings: saveSettings, patchNow: patchNow,
-    render: scheduleRender, closeSheet: closeSheet, openLists: function (f) { S.f = Object.assign({ q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, consent: "", limit: 60 }, f || {}); setTab("lists"); } };
+    render: scheduleRender, closeSheet: closeSheet, openSheet: function (id) { openSheet(id); }, addContact: addContact,
+    normPhone: normPhone, fphone: fphone, slug: slug, PROV_TAG: PROV_TAG, SOURCES: SOURCES, BTYPES: BTYPES, BTIMES: BTIMES, BPRE: BPRE, money: money, budgetText: budgetText, openLists: function (f) { S.f = Object.assign({ q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, consent: "", limit: 60 }, f || {}); setTab("lists"); } };
 
   /* ---------- events ---------- */
   document.addEventListener("click", function (e) {

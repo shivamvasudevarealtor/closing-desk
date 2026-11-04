@@ -131,9 +131,31 @@
       .subscribe(function (status) { if (h.status) h.status(status); });
   }
 
+  /* ---------- Tell Claude (v1.6): inbox, tasks and requests tables, same row shape as contacts ---------- */
+  function listDocs(table, limit) {
+    return client().from(table).select("id,data,updated_at").order("updated_at", { ascending: false }).limit(limit || 200).then(function (r) {
+      if (r.error) fail(r.error);
+      return (r.data || []).map(shape);
+    });
+  }
+  function putDoc(table, rec) {
+    return userId().then(function (uid) {
+      return client().from(table).upsert({ id: rec.id, owner: uid, data: plain(rec) }, { onConflict: "id" });
+    }).then(function (r) { if (r.error) fail(r.error); });
+  }
+  /* Calls a Supabase Edge Function as the signed-in user. Resolves with its JSON; a failure carries .status and .code. */
+  function invoke(name, body) {
+    return client().functions.invoke(name, { body: body }).then(function (r) {
+      if (!r.error) return r.data;
+      var ctx = r.error.context, e = new Error(r.error.message || "Request failed");
+      e.status = ctx && ctx.status;
+      return (ctx && ctx.json ? ctx.json().catch(function () { return {}; }) : Promise.resolve({})).then(function (j) { if (j && j.error) e.code = j.error; throw e; });
+    });
+  }
+
   window.CDStore = {
     configured: configured, onAuth: onAuth, getSession: getSession, signIn: signIn, signOut: signOut,
     loadAll: loadAll, fetchOne: fetchOne, patch: patch, patchMany: patchMany, put: put, remove: remove, putSettings: putSettings, bulkPut: bulkPut,
-    subscribe: subscribe, unsubscribe: unsubscribe
+    subscribe: subscribe, unsubscribe: unsubscribe, listDocs: listDocs, putDoc: putDoc, invoke: invoke
   };
 })();

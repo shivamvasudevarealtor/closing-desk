@@ -238,3 +238,33 @@ label.btn { color: var(--ink); font-size: 14px; }
 .mrow > span:first-child { min-width: 0; }
 .live { font-size: 13px; color: var(--muted); min-height: 18px; }
 .sheet pre.note { overflow-wrap: anywhere; }
+
+/* Tell Claude (v1.6) */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#tellHost { margin: 4px auto 18px; max-width: 640px; }
+body:not([data-view="today"]) #tellHost { display: none; }
+.tl { box-shadow: var(--shadow); border-color: var(--accent); }
+.tl h2 { font-size: 21px; }
+.tl textarea.field { min-height: 84px; font-size: 16px; }
+.tl-note { background: var(--surface2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin-top: 12px; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tl-sum { margin: 10px 0 6px; font-weight: 600; }
+.tl-status { margin-top: 10px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tl-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: tlp 1s ease-in-out infinite alternate; }
+@keyframes tlp { from { opacity: .3; } to { opacity: 1; } }
+.tl-acts { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.tl-act { display: flex; gap: 10px; align-items: flex-start; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 400; cursor: pointer; }
+.tl-act input { width: 20px; height: 20px; margin-top: 1px; flex: none; accent-color: var(--accent); }
+.tl-act.q { cursor: default; background: var(--warm-bg); }
+.tl-q { width: 20px; height: 20px; flex: none; border-radius: 50%; background: var(--warm); color: var(--surface); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.tl-row { display: flex; width: 100%; gap: 10px; justify-content: space-between; align-items: center; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 8px 2px; font-size: 13.5px; }
+.tl-row.on .tl-txt { font-weight: 600; }
+.tl-txt { min-width: 0; overflow-wrap: anywhere; }
+.tl-st { flex: none; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--stale-bg); color: var(--stale); }
+.tl-st.st-proposed { background: var(--warm-bg); color: var(--warm); }
+.tl-st.st-applied { background: var(--accent-soft); color: var(--accent); }
+.tl-st.st-failed { background: var(--hot-bg); color: var(--hot); }
+.tl-st.st-analyzing { background: var(--cold-bg); color: var(--cold); }
+.tl-task { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.tl-task input { width: 20px; height: 20px; flex: none; accent-color: var(--accent); }
+.tl-task .lnk { min-height: 28px; padding: 0 8px; font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .tl-dot { animation: none; } }

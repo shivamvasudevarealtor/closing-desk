@@ -7,6 +7,11 @@
   "use strict";
   var A = window.CDApp, Store = window.CDStore;
   if (!A || !Store) return;
+  /* Feature switch (config.js > features.tellClaude). Off: no box, no database reads, no calls to Claude. */
+  if (!((window.CD_CONFIG || {}).features || {}).tellClaude) {
+    window.CDTellUI = { render: function () { var h = document.getElementById("tellHost"); if (h) h.hidden = true; } };
+    return;
+  }
   var S = A.S, $ = A.$, esc = A.esc;
   var T = { uid: null, inbox: [], tasks: [], requests: [], loaded: false, setupNeeded: "", openNote: null, analyzing: null, applying: null, draft: "", ctl: 0 };
   var LABEL = { "new": "Saved", analyzing: "Reading", proposed: "Waiting for you", applied: "Applied", dismissed: "Dismissed", failed: "Not analysed" };

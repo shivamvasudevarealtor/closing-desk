@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.6.0";
+  var APP_VERSION = "1.6.1";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -153,6 +153,9 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.6.1", date: "2026-11-03", title: "Tell Claude switched off for now", items: [
+      "Tell Claude is built and its database and function are set up, but it is switched off so nothing is charged.",
+      "To turn it on later: add your Anthropic key in Supabase, then set tellClaude to true in config.js (README, Tell Claude setup)."] },
     { v: "1.6.0", date: "2026-11-03", title: "Tell Claude", items: [
       "New box at the top of Today: type a quick note about a call, a showing or a new lead, and Claude suggests what to save.",
       "It can add a new contact, add a note to a client's history, set a follow-up date, fill in a buyer profile, change a detail, add a to-do, or save an idea for your workspace.",

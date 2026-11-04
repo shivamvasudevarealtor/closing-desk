@@ -88,7 +88,7 @@ Supabase > SQL Editor > New query > paste all of `supabase/email.sql` > Run. Thi
 **Cost.** Each note uses Claude Opus 5.5 and costs roughly 2 to 5 cents, billed by Anthropic. The app shows the approximate cost on every note. Set a monthly limit in the Anthropic Console.
 
 ### 1. Database
-Supabase > SQL Editor > New query > paste all of `supabase/tell-claude.sql` > Run. It adds three private tables: `inbox` (your notes), `tasks` (to-dos) and `requests` (workspace ideas).
+Supabase > SQL Editor > New query > paste all of `supabase/tell-claude.sql` > Run. (Done 2026-11-03.) It adds three private tables: `inbox` (your notes), `tasks` (to-dos) and `requests` (workspace ideas).
 
 ### 2. Anthropic API key
 1. console.anthropic.com > sign in > Billing: add a small credit balance and set a monthly spend limit.
@@ -96,9 +96,12 @@ Supabase > SQL Editor > New query > paste all of `supabase/tell-claude.sql` > Ru
 3. Supabase > Edge Functions > Secrets > Add new secret. Name: `ANTHROPIC_API_KEY`. Value: the key. Save. Never put this key anywhere else.
 
 ### 3. The function
-Supabase > Edge Functions > Deploy a new function > Via Editor. Name it exactly `tell-claude`. Replace the sample code with all of `supabase/functions/tell-claude/index.ts` > Deploy. Leave JWT verification on (only you, signed in, can use it).
+Supabase > Edge Functions > Deploy a new function > Via Editor. Name it exactly `tell-claude`. Replace the sample code with all of `supabase/functions/tell-claude/index.ts` > Deploy. Then in the function's Settings, turn **Verify JWT with legacy secret** off and save: the function checks your sign-in itself, and the legacy check can reject sign-ins from Supabase's newer keys. (Deployed 2026-11-03.)
 
-### 4. Try it
+### 4. Turn it on
+Tell Claude ships switched **off** (no box, no calls, no cost). In `config.js`, change `tellClaude: false` to `tellClaude: true`, commit, and open the app twice so it updates.
+
+### 5. Try it
 Open Closing Desk > Today > Tell Claude. The first note confirms everything works. If something is missing, the app says which step.
 
 ## Updating the app

@@ -64,7 +64,8 @@ async function signedIn(req: Request): Promise<boolean> {
   const auth = req.headers.get("authorization") ?? "";
   if (!auth.startsWith("Bearer ")) return false;
   const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/auth/v1/user`, {
-    headers: { authorization: auth, apikey: Deno.env.get("SUPABASE_ANON_KEY") ?? "" },
+    // The app sends its publishable key as apikey; fall back to the project's legacy anon key.
+    headers: { authorization: auth, apikey: req.headers.get("apikey") || (Deno.env.get("SUPABASE_ANON_KEY") ?? "") },
   }).catch(() => null);
   if (!r || !r.ok) return false;
   const user = await r.json().catch(() => null);

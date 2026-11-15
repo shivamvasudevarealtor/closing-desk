@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.7.0";
+  var APP_VERSION = "1.7.1";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -153,6 +153,10 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.7.1", date: "2026-11-15", title: "Links between your apps", items: [
+      "More now opens with a Real Estate OS card: one tap to your Daily 3 Tasks page and one to the page that explains how the pieces connect.",
+      "The Reached card on Today also links to how it connects.",
+      "Nothing else changed. Your contacts and settings are untouched."] },
     { v: "1.7.0", date: "2026-11-15", title: "Reached counter and Daily 3 link", items: [
       "New card on Today: how many of your contacts you have reached at least once, plus today's touches, emails sent and who is due.",
       "Reached means you logged Talked, Sent a message, a call, text, WhatsApp, email, meeting or a mass email to that person. No answer does not count.",
@@ -360,6 +364,10 @@
   var ATTEMPT_RE = /^(Talked|Sent a message|No answer|Call:|Text:|WhatsApp:|Meeting:)/;
   var MASS_RE = /^Mass email: /;
   var DAILY3_URL = "https://claude.ai/artifact/KQRfvsM4LdeaMEnRp3hqYf";
+  var OS_DOC_URL = "https://claude.ai/artifact/D9aSgJEv7WZWE8t2JUXfaw";
+  function osLinksCard() {
+    return '<div class="card stack" style="margin-bottom:12px"><h2>Real Estate OS</h2><p class="note" style="margin:0">Your three pieces: Closing Desk (this app), Daily 3 Tasks, and the page that explains how they connect.</p><div class="row"><a class="lnk" href="' + DAILY3_URL + '" target="_blank" rel="noopener">Daily 3 Tasks</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+  }
   function osStats() {
     var td = today();
     var s = { contacts: 0, reached: 0, withEmail: 0, withPhone: 0, consented: 0, touchesToday: 0, emailsToday: 0, dueToday: 0 };
@@ -395,7 +403,7 @@
     return '<div class="card os" style="margin-bottom:12px"><div class="lbl">Reached at least once</div><div class="big num">' + s.reached.toLocaleString("en-CA") + ' <small>of ' + s.contacts.toLocaleString("en-CA") + ' · ' + s.pct + '%</small></div>' +
       '<div class="bar" role="progressbar" aria-valuenow="' + s.reached + '" aria-valuemin="0" aria-valuemax="' + s.contacts + '" aria-label="Contacts reached"><i style="width:' + s.pct + '%"></i></div>' +
       '<div class="three" style="margin-top:10px"><div><b class="num">' + s.touchesToday + '</b><span>calls & messages today</span></div><div><b class="num">' + s.emailsToday + '</b><span>emails today</span></div><div><b class="num">' + s.left.toLocaleString("en-CA") + '</b><span>still to reach</span></div></div>' +
-      '<div class="row" style="margin-top:10px"><button class="btn small" type="button" data-act="oscopy">Copy for Daily 3</button><a class="lnk" href="' + DAILY3_URL + '" target="_blank" rel="noopener">Open Daily 3</a></div></div>';
+      '<div class="row" style="margin-top:10px"><button class="btn small" type="button" data-act="oscopy">Copy for Daily 3</button><a class="lnk" href="' + DAILY3_URL + '" target="_blank" rel="noopener">Open Daily 3</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
   }
   function weekCard() {
     var w = weekStats();
@@ -776,7 +784,7 @@
   /* ---------- More ---------- */
   function renderMore() {
     var st = S.settings, deals = (st.deals || []).slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
-    var h = scorecardCard() + '<div class="card stack"><h2>Goals</h2><div class="two"><label>Listings<input class="field num" id="gList" type="number" min="0" value="' + st.listingsGoal + '"></label><label>Buyers<input class="field num" id="gBuy" type="number" min="0" value="' + st.buyersGoal + '"></label></div><div class="two"><label>Goal year<input class="field num" id="gYear" type="number" min="2026" value="' + st.goalYear + '"></label><label>Daily list size<input class="field num" id="gCap" type="number" min="1" max="100" value="' + st.dailyCap + '"></label></div><p class="note" style="margin:0">Deals count toward a goal when you mark a contact closed with a date in the goal year.</p></div>';
+    var h = osLinksCard() + scorecardCard() + '<div class="card stack"><h2>Goals</h2><div class="two"><label>Listings<input class="field num" id="gList" type="number" min="0" value="' + st.listingsGoal + '"></label><label>Buyers<input class="field num" id="gBuy" type="number" min="0" value="' + st.buyersGoal + '"></label></div><div class="two"><label>Goal year<input class="field num" id="gYear" type="number" min="2026" value="' + st.goalYear + '"></label><label>Daily list size<input class="field num" id="gCap" type="number" min="1" max="100" value="' + st.dailyCap + '"></label></div><p class="note" style="margin:0">Deals count toward a goal when you mark a contact closed with a date in the goal year.</p></div>';
     h += '<div class="card stack" style="margin-top:12px"><h2>Follow-up rhythm</h2><table class="rh"><tr><th>Temperature</th><th>Next follow-up</th></tr>' + TEMPS.map(function (t) { return "<tr><td>" + pill(t) + "</td><td>" + RHYTHM_LABEL[t] + "</td></tr>"; }).join("") + '<tr><td>Closed</td><td>after 2 weeks</td></tr><tr><td>Past client</td><td>every 3 months</td></tr></table><p class="note" style="margin:0">Logging a touch sets the next date from this rhythm. No answer retries in 3 days.</p></div>';
     h += '<div class="card stack" style="margin-top:12px"><h2>Schedule</h2><p class="note" style="margin:0">Spread every follow-up date out again from today, by temperature. Use this on your first live day so Today starts clean.</p><button class="btn' + (S.confirmSpread ? " primary" : "") + '" type="button" data-act="spread">' + (S.confirmSpread ? "Tap again to reschedule " + all().filter(function (c) { return c.stage !== "Dead"; }).length + " contacts" : "Spread dates from today") + "</button></div>";
     h += '<div class="card stack" style="margin-top:12px"><h2>Closed deals</h2>' + (deals.length ? deals.map(function (d) { return '<div class="row" style="justify-content:space-between"><span>' + esc(d.name) + ' <span class="muted">' + (d.type === "listing" ? "listing" : "buyer") + ", " + esc(fdate(d.date)) + '</span></span><button class="btn small danger" type="button" data-act="deldeal" data-id="' + esc(d.id) + '">Remove</button></div>'; }).join("") : '<p class="note" style="margin:0">No deals yet. Open a contact and tap Mark closed.</p>') + "</div>";

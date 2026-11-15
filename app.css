@@ -268,3 +268,8 @@ body:not([data-view="today"]) #tellHost { display: none; }
 .tl-task input { width: 20px; height: 20px; flex: none; accent-color: var(--accent); }
 .tl-task .lnk { min-height: 28px; padding: 0 8px; font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .tl-dot { animation: none; } }
+
+/* v1.7: reached counter card on Today */
+.os .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+.os .big { font-family: var(--font-display); font-size: 30px; font-weight: 700; line-height: 1.1; margin: 4px 0 8px; }
+.os .big small { font-size: 15px; color: var(--muted); font-weight: 600; }

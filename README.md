@@ -104,6 +104,16 @@ Tell Claude ships switched **off** (no box, no calls, no cost). In `config.js`, 
 ### 5. Try it
 Open Closing Desk > Today > Tell Claude. The first note confirms everything works. If something is missing, the app says which step.
 
+## Real Estate OS connection (v1.7)
+
+Closing Desk is the source of truth for contacts, touches, consent, deals and the Reached counter. The Daily 3 Tasks page is the source of truth for the day's 3 tasks, notes, content ideas and the content calendar. They are linked two ways. Nothing here adds a server, a key or a database table.
+
+**1. The Reached card (Today).** Shows how many contacts (not Dead) you have reached at least once, calls and messages today, mass emails today, and who is still to reach. Reached = a logged Talked, Sent a message, Call, Text, WhatsApp, Email, Meeting, Mass email, birthday wishes or home anniversary. No answer, Note and Added do not count. **Copy for Daily 3** copies one plain sentence of these numbers; paste it as a note in Daily 3 and Claude reads it as a scoreboard. **Open Daily 3** jumps to that page.
+
+**2. Automatic copy (needs the Supabase connector in Claude).** `supabase/os-snapshot.sql` is one read-only SELECT with the same definition as the card. Claude runs it against this project and copies the single result row into the Daily 3 page, where it shows as a small Closing Desk card and can tick Task 1 when your logged calls and messages reach the number in the task. It only reads. It never writes to your contacts.
+
+The card in app.js (`osStats`) and the SQL are tested to give identical numbers on the same data. If you change one, change the other.
+
 ## Updating the app
 Change files in the repo, commit to `main`. Open the app twice (it updates in the background). If a phone seems stuck on an old version, close the app fully and reopen it.
 
@@ -122,9 +132,11 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `sw.js`, `manifest.webmanifest`, `icons/` | Makes it installable and able to open with a weak signal |
 | `vendor/supabase.js` | supabase-js 2.117.3 (MIT), saved locally so the app does not depend on a third-party host |
 | `supabase/schema.sql` | Database setup, run once (already includes `email.sql`) |
+| `supabase/os-snapshot.sql` | One read-only SELECT of the Reached numbers, for the Daily 3 page (v1.7) |
 | `supabase/email.sql` | Only the email part of the setup. Run this one if your database was set up before v1.5 |
 
-## What's inside (v1.6)
+## What's inside (v1.7)
+- **Reached card (v1.7):** on Today. How many contacts you have reached at least once, plus a link to Daily 3. See "Real Estate OS connection".
 - **Tell Claude (v1.6):** a box on Today. Claude turns quick notes into suggested contacts, notes, follow-ups, buyer profiles, to-dos and workspace ideas; you apply what you want. See "Tell Claude setup".
 - **Email (v1.5):** a tab for emailing many people through your own Gmail without getting blocked. See "Email setup" below.
 - **Today:** goals, last-7-days strip, Moments this week (birthdays and home anniversaries), and the daily follow-up list.

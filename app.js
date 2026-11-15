@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.6.1";
+  var APP_VERSION = "1.7.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -153,6 +153,11 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.7.0", date: "2026-11-15", title: "Reached counter and Daily 3 link", items: [
+      "New card on Today: how many of your contacts you have reached at least once, plus today's touches, emails sent and who is due.",
+      "Reached means you logged Talked, Sent a message, a call, text, WhatsApp, email, meeting or a mass email to that person. No answer does not count.",
+      "Copy for Daily 3 copies these numbers so you can paste them as a note in your Daily 3 Tasks page. Open Daily 3 jumps there.",
+      "Nothing else changed. Your contacts and settings are untouched."] },
     { v: "1.6.1", date: "2026-11-03", title: "Tell Claude switched off for now", items: [
       "Tell Claude is built and its database and function are set up, but it is switched off so nothing is charged.",
       "To turn it on later: add your Anthropic key in Supabase, then set tellClaude to true in config.js (README, Tell Claude setup)."] },
@@ -346,6 +351,52 @@
     });
     return { touches: touches, leads: leads, deals: (S.settings.deals || []).filter(function (d) { return d.date >= since; }).length };
   }
+
+  /* ---------- Real Estate OS (v1.7): reached counter, shared with the Daily 3 Tasks page ----------
+     "Reached" = the contact has at least one logged touch that means a real conversation or message went out.
+     No answer, Note and Added do not count. The same definition is written as SQL in supabase/os-snapshot.sql,
+     which Claude uses to read these numbers into the Daily 3 page; keep the two in step. */
+  var REACH_RE = /^(Talked|Sent a message|Call:|Text:|WhatsApp:|Email:|Meeting:|Mass email: |Birthday wishes|Family birthday|Home anniversary)/;
+  var ATTEMPT_RE = /^(Talked|Sent a message|No answer|Call:|Text:|WhatsApp:|Meeting:)/;
+  var MASS_RE = /^Mass email: /;
+  var DAILY3_URL = "https://claude.ai/artifact/KQRfvsM4LdeaMEnRp3hqYf";
+  function osStats() {
+    var td = today();
+    var s = { contacts: 0, reached: 0, withEmail: 0, withPhone: 0, consented: 0, touchesToday: 0, emailsToday: 0, dueToday: 0 };
+    all().forEach(function (c) {
+      if (c.stage === "Dead") return;
+      s.contacts++;
+      if (c.email) s.withEmail++;
+      if (c.phone) s.withPhone++;
+      if (c.consent) s.consented++;
+      if (c.next && c.next <= td) s.dueToday++;
+      var got = false;
+      (c.log || []).forEach(function (l) {
+        var t = (l && l.t) || "", d = (l && l.d) || "";
+        if (REACH_RE.test(t)) got = true;
+        if (ATTEMPT_RE.test(t) && d === td) s.touchesToday++;
+        if (MASS_RE.test(t) && d === td) s.emailsToday++;
+      });
+      if (got) s.reached++;
+    });
+    s.left = s.contacts - s.reached;
+    s.pct = s.contacts ? Math.round(s.reached * 100 / s.contacts) : 0;
+    s.goalYear = S.settings.goalYear; s.dealsListings = dealCount("listing"); s.dealsBuyers = dealCount("buyer");
+    s.goalListings = S.settings.listingsGoal; s.goalBuyers = S.settings.buyersGoal;
+    return s;
+  }
+  function osText(s) {
+    var n = function (x) { return Number(x).toLocaleString("en-CA"); };
+    return "Closing Desk numbers (" + fdate(today()) + "): " + n(s.reached) + " of " + n(s.contacts) + " contacts reached (" + s.pct + "%), " + n(s.left) + " left. Today: " + s.touchesToday + " calls or messages, " + s.emailsToday + " mass emails sent, " + s.dueToday + " due. Consent recorded: " + n(s.consented) + ". " + s.goalYear + ": listings " + s.dealsListings + " of " + s.goalListings + ", buyers " + s.dealsBuyers + " of " + s.goalBuyers + ".";
+  }
+  function osCard() {
+    var s = osStats();
+    if (!s.contacts) return "";
+    return '<div class="card os" style="margin-bottom:12px"><div class="lbl">Reached at least once</div><div class="big num">' + s.reached.toLocaleString("en-CA") + ' <small>of ' + s.contacts.toLocaleString("en-CA") + ' · ' + s.pct + '%</small></div>' +
+      '<div class="bar" role="progressbar" aria-valuenow="' + s.reached + '" aria-valuemin="0" aria-valuemax="' + s.contacts + '" aria-label="Contacts reached"><i style="width:' + s.pct + '%"></i></div>' +
+      '<div class="three" style="margin-top:10px"><div><b class="num">' + s.touchesToday + '</b><span>calls & messages today</span></div><div><b class="num">' + s.emailsToday + '</b><span>emails today</span></div><div><b class="num">' + s.left.toLocaleString("en-CA") + '</b><span>still to reach</span></div></div>' +
+      '<div class="row" style="margin-top:10px"><button class="btn small" type="button" data-act="oscopy">Copy for Daily 3</button><a class="lnk" href="' + DAILY3_URL + '" target="_blank" rel="noopener">Open Daily 3</a></div></div>';
+  }
   function weekCard() {
     var w = weekStats();
     return '<div class="card wk" style="margin-bottom:12px"><div class="lbl">Last 7 days</div><div class="three"><div><b class="num">' + w.touches + "</b><span>touches</span></div><div><b class=\"num\">" + w.leads + "</b><span>new leads</span></div><div><b class=\"num\">" + w.deals + "</b><span>deals closed</span></div></div></div>";
@@ -494,7 +545,7 @@
   function renderToday() {
     var due = dueList(), cap = S.settings.dailyCap || 15, shown = S.showAllDue ? due : due.slice(0, cap), h = "";
     h += '<div class="score">' + scoreCard(S.settings.goalYear + " listings", dealCount("listing"), S.settings.listingsGoal) + scoreCard(S.settings.goalYear + " buyers", dealCount("buyer"), S.settings.buyersGoal) + "</div>";
-    h += weekCard() + momentsCard();
+    h += osCard() + weekCard() + momentsCard();
     if (due.length) {
       h += '<div class="sec"><h2>Reach out today</h2><span class="meta num">' + shown.length + " of " + due.length + " due</span></div><div class=\"stack\">" + shown.map(dueCard).join("") + "</div>";
       if (due.length > shown.length) h += '<p class="more"><button type="button" data-act="showall">Show all ' + due.length + " due</button> (your daily list is capped at " + cap + ")</p>";
@@ -860,7 +911,7 @@
   }
 
   /* What email.js (the Gmail sending part) is allowed to use. */
-  window.CDApp = { S: S, $: $, esc: esc, toast: toast, today: today, addDays: addDays, fdate: fdate, nm: nm, greetName: greetName, all: all, opt: opt, chips: chips,
+  window.CDApp = { osStats: osStats, osText: osText, S: S, $: $, esc: esc, toast: toast, today: today, addDays: addDays, fdate: fdate, nm: nm, greetName: greetName, all: all, opt: opt, chips: chips,
     TEMPS: TEMPS, KINDS: KINDS, PROVS: PROVS, ALL_STAGES: ALL_STAGES, stageLabel: stageLabel, save: save, saveMany: saveMany, saveSettings: saveSettings, patchNow: patchNow,
     render: scheduleRender, closeSheet: closeSheet, openSheet: function (id) { openSheet(id); }, addContact: addContact,
     normPhone: normPhone, fphone: fphone, slug: slug, PROV_TAG: PROV_TAG, SOURCES: SOURCES, BTYPES: BTYPES, BTIMES: BTIMES, BPRE: BPRE, money: money, budgetText: budgetText, openLists: function (f) { S.f = Object.assign({ q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, consent: "", limit: 60 }, f || {}); setTab("lists"); } };
@@ -894,6 +945,7 @@
     else if (a === "restorecancel") { S.pendingRestore = null; S.restoreError = ""; render(); }
     else if (a === "refresh") { toast("Refreshing..."); reload().then(function () { if (!S.offline) toast("Up to date"); }); }
     else if (a === "signout") signOutNow();
+    else if (a === "oscopy") { var otx = osText(osStats()); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(otx).then(function () { toast("Copied. Paste it as a note in Daily 3"); }, function () { toast(otx); }); else toast(otx); }
     else if (a === "copy") { var v2 = el.dataset.v; var done = function () { toast("Copied " + v2); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v2).then(done, function () { toast(v2); }); else toast(v2); }
     else if (a === "copymsg") { var mv = ($("#shMsg") || {}).value || ""; if (!mv.trim()) { toast("Nothing to copy"); return; } if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(mv).then(function () { toast("Message copied"); }, function () { toast("Select the text and copy it"); }); else toast("Select the text and copy it"); }
     else if (a === "talked" || a === "messaged" || a === "noanswer") touch(id2, a);

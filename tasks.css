@@ -295,7 +295,7 @@ button:active{opacity:1;transform:scale(.98)}
 
 /* brand strip (same as Closing Desk) */
 .strip{max-width:560px;margin:0 auto;padding:14px 14px 4px;display:flex;align-items:center;gap:10px}
-.logo{width:32px;height:32px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(150deg,#0F4A39,#04170F);color:#EBCB82;box-shadow:inset 0 0 0 1px rgba(235,203,130,.55);display:grid;place-items:center;flex:none}
 .logo svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .seg2{display:flex;padding:4px;gap:2px;border-radius:999px;background:var(--seg)}
 .seg2 .s{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none}
@@ -418,3 +418,17 @@ body[data-tab="ideas"] .bar-top,body[data-tab="notes"] .bar-top{display:none}
 .ptrin{border:1px solid var(--line)}
 .foot{color:var(--muted)}
 @media (max-width:380px){.seg2 .s{padding:0 11px}}
+
+/* Later list (Plan tab) */
+.later{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.lt{display:flex;align-items:center;gap:12px;padding:8px 0}
+.ltck{width:26px;height:26px;border-radius:50%;border:2px solid var(--label2);background:transparent;color:var(--accent-ink);flex:none;display:grid;place-items:center;font-size:15px;font-weight:700;line-height:1;cursor:pointer;padding:0}
+.lt.done .ltck{background:var(--accent);border-color:var(--accent)}
+.ltx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ltx b{font-weight:600;font-size:15px;line-height:1.3}
+.ltx small{font-size:13px;line-height:1.3;color:var(--label2)}
+.lt.done .ltx b{text-decoration:line-through;color:var(--label2)}
+.ltdel{font-size:13px;padding:0 4px;color:var(--label2);flex:none}
+.ltadd{display:flex;gap:8px;align-items:center}
+.ltadd input{flex:1;min-width:0;border:0;border-radius:12px;background:var(--fill);padding:11px 14px;font:inherit;font-size:16px;color:var(--label);outline:none;-webkit-appearance:none;appearance:none}
+.ltadd input:focus{box-shadow:0 0 0 2px var(--blue)}

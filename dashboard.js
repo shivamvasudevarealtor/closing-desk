@@ -220,7 +220,7 @@
   }
   function buildChrome() {
     var strip = h("div", { class: "strip" }, [
-      h("span", { class: "logo", "aria-hidden": "true", html: '<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg>' }),
+      h("span", { class: "logo", "aria-hidden": "true", html: '<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M9 15l2.2 2.2L15 12.8"/></svg>' }),
       h("div", { class: "seg2", role: "group", "aria-label": "Switch app" }, [
         h("a", { class: "s", href: "tasks.html", "aria-label": "Win the Day", text: "Win" }),
         h("a", { class: "s", href: "./", text: "Clients" }),

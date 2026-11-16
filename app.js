@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.10.3";
+  var APP_VERSION = "1.10.4";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,10 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.10.4", date: "2026-11-15", title: "Later list and icon fix", items: [
+      "New Later list on the Plan tab (inside Win the Day) for things you want to do in the future. Your first one is added: a 6-digit code for your login.",
+      "The logo at the top of the app now matches the new gold-and-green icon.",
+      "Home Screen icon files have new names so iOS picks up the new one. Delete the old icon, then Add to Home Screen again."] },
     { v: "1.10.3", date: "2026-11-15", title: "Luxury icon in deep midnight green", items: [
       "New app icon: deep midnight green with a champagne-gold house and check.",
       "To see it on your iPhone: delete the Closing Desk icon, open the link in Safari, then Share > Add to Home Screen. Sign in once more.",

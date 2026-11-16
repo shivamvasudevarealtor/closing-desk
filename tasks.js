@@ -12,14 +12,16 @@
   }
 
   /* ---------- state: outcomes and placements, saved locally and, when available, in the shared database ---------- */
-  var outcomes={},placements={},notes=[],draft='',analyzing={},sampleFn=null,dict=null,listening=false,dictBlocked=false,content=[],archOpen=false,ideas=[],flash='',doneOpen=false,openIdea=null,openTask=null,noClickUntil=0,composeOpen=false,nextOpen=false,nextRow=null,ideasAll=false,delArm=null,askDraft={},genning={},reAsk={};
+  var outcomes={},placements={},notes=[],draft='',analyzing={},sampleFn=null,dict=null,listening=false,dictBlocked=false,content=[],archOpen=false,ideas=[],later=[],laterKnown=false,flash='',doneOpen=false,openIdea=null,openTask=null,noClickUntil=0,composeOpen=false,nextOpen=false,nextRow=null,ideasAll=false,delArm=null,askDraft={},genning={},reAsk={};
   var autoRead={s:'wait',code:''},ptrEl=null,ptrBusy=false,dbPull=null,osRef=null,cd=null,cdAt='',CD_URL='./',OS_DOC_URL='https://claude.ai/artifact/D9aSgJEv7WZWE8t2JUXfaw';
   var dbRef=null,synced=false,writing=false,dirty=false,failCount=0,retryT=null,lastSent='',savedT=null,saveMsg='',sentTs={},writeId=0,writeT=null;
   try{
     var raw=localStorage.getItem('ros3:state2');
-    if(raw){var s0=JSON.parse(raw);outcomes=s0.outcomes||{};placements=s0.placements||{};notes=Array.isArray(s0.notes)?s0.notes:[];content=Array.isArray(s0.content)?s0.content:[];ideas=Array.isArray(s0.ideas)?s0.ideas:[];}
+    if(raw){var s0=JSON.parse(raw);outcomes=s0.outcomes||{};placements=s0.placements||{};notes=Array.isArray(s0.notes)?s0.notes:[];content=Array.isArray(s0.content)?s0.content:[];ideas=Array.isArray(s0.ideas)?s0.ideas:[];if(Array.isArray(s0.later)){later=s0.later;laterKnown=true;}}
   }catch(e){}
   try{draft=localStorage.getItem('ros3:draft')||'';}catch(e){}
+  /* Starter for the Later list. Used once, only while the saved document has no "later" list at all. */
+  var LATER_SEED=[{id:'l-2step',title:'Add a 6-digit code to your login',note:'2-step sign-in. Claude builds it, you test it once.',ts:'2026-11-16T04:05:00.000Z'}];
 
   var today=todayEdm();
   var afterEnd=today>R.END;
@@ -32,7 +34,7 @@
     if(D.changed){placements=D.placements;}
   }
   function localSave(){
-    try{localStorage.setItem('ros3:state2',JSON.stringify({outcomes:outcomes,placements:placements,notes:notes,content:content,ideas:ideas}));}catch(e){}
+    try{localStorage.setItem('ros3:state2',JSON.stringify({outcomes:outcomes,placements:placements,notes:notes,content:content,ideas:ideas,later:later}));}catch(e){}
   }
   function buildPayload(){
     recompute();
@@ -46,6 +48,7 @@
       notes:notes,
       content:content,
       ideas:ideas,
+      later:later,
       updated:t
     };
   }
@@ -145,7 +148,7 @@
         var v=unwrap(s);
         /* Local changes not yet written, or an older echo of our own write: do not let it overwrite what is on screen. */
         if(v&&v.outcomes&&!first&&(writing||dirty||(v.updated&&v.updated!==lastSent&&sentTs[v.updated]))){return;}
-        var before=first?'':JSON.stringify([outcomes,placements,notes,content,ideas]);
+        var before=first?'':JSON.stringify([outcomes,placements,notes,content,ideas,later]);
         if(v&&v.outcomes&&typeof v.outcomes==='object'){
           outcomes=v.outcomes;placements=v.placements||{};
           var mergeIds=function(remote,local){
@@ -162,13 +165,16 @@
           var ii=mergeIds(v.ideas,ideas);
           if(addLocal) ii.sort(function(a,b){return a.ts<b.ts?1:-1;});
           ideas=ii;
+          if(Array.isArray(v.later)){laterKnown=true;later=mergeIds(v.later,later);}
+          else if(!laterKnown&&!later.length){later=LATER_SEED.map(function(x){return {id:x.id,title:x.title,note:x.note,ts:x.ts,done:false};});laterKnown=true;addLocal=true;}
+          else if(later.length){addLocal=true;}
           localSave();
         } else if(first&&(Object.keys(outcomes).length||notes.length||ideas.length||content.length)){
           addLocal=true;
         }
         var wasFirst=first;
         first=false;synced=true;recompute();setTimeout(cdAuto,60);
-        if(!wasFirst&&!addLocal&&before===JSON.stringify([outcomes,placements,notes,content,ideas])){renderFoot();return;}
+        if(!wasFirst&&!addLocal&&before===JSON.stringify([outcomes,placements,notes,content,ideas,later])){renderFoot();return;}
         if(addLocal){persist();}
         if(!drag&&!noteFocused()){render();}else{pendingRender=true;}
       };
@@ -342,7 +348,7 @@
   var LABELS={today:'Today',plan:'Plan',ideas:'Ideas',notes:'Notes'};
   function buildChrome(){
     var strip=h('div',{class:'strip'},[
-      h('span',{class:'logo','aria-hidden':'true',html:'<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg>'}),
+      h('span',{class:'logo','aria-hidden':'true',html:'<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M9 15l2.2 2.2L15 12.8"/></svg>'}),
       h('div',{class:'seg2',role:'group','aria-label':'Switch app'},[
         h('span',{class:'s on','aria-current':'page','aria-label':'Win the Day',text:'Win'}),
         h('a',{class:'s',href:CD_URL,text:'Clients'}),
@@ -412,6 +418,7 @@
     ]));
     wrap.appendChild(tabIn('today',tasksGrp));
     var nxg=nextGroup();if(nxg) wrap.appendChild(tabIn('plan',nxg));
+    wrap.appendChild(tabIn('plan',laterGroup()));
     wrap.appendChild(tabIn('today',cdGroup()));
     var ig=ideaGroup(),cg=contentGroup();
     if(ig) wrap.appendChild(tabIn('ideas',ig));
@@ -483,7 +490,7 @@
   }
 
   /* ---------- notes: what you did that was not on the list ---------- */
-  function noteFocused(){var a=document.activeElement;return listening||!!(a&&(a.id==='note-in'||(a.hasAttribute&&a.hasAttribute('data-askbox'))));}
+  function noteFocused(){var a=document.activeElement;return listening||!!(a&&(a.id==='note-in'||a.id==='later-in'||(a.hasAttribute&&a.hasAttribute('data-askbox'))));}
   function noteTime(n){
     if(n.src==='chat') return 'Added from your chat with Claude';
     try{return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Edmonton',hour:'numeric',minute:'2-digit'}).format(new Date(n.ts));}catch(e){return '';}
@@ -820,6 +827,33 @@
     }
     return out;
   }
+  /* Later: things parked for the future. They are not part of the daily 3. */
+  function laterAdd(){
+    var el=document.getElementById('later-in');
+    var txt=String(el?el.value:'').trim().slice(0,140);
+    if(!txt) return;
+    later.unshift({id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),title:txt,note:'',ts:new Date().toISOString(),done:false});
+    laterKnown=true;persist();render();
+  }
+  function laterGroup(){
+    var kids=[];
+    if(later.length){
+      var ul=h('ul',{class:'later'});
+      later.forEach(function(x){
+        ul.appendChild(h('li',{class:'lt'+(x.done?' done':'')},[
+          h('button',{class:'ltck','data-act':'later-tog','data-id':x.id,'aria-label':x.done?'Mark not done':'Mark done',text:x.done?'\u2713':''}),
+          h('span',{class:'ltx'},[h('b',{text:x.title}),x.note?h('small',{text:x.note}):null]),
+          h('button',{class:'lnk ltdel','data-act':'later-del','data-id':x.id,'aria-label':'Remove',text:(delArm===x.id?'Tap again':'Remove')})
+        ]));
+      });
+      kids.push(ul);
+    }
+    kids.push(h('div',{class:'ltadd'},[
+      h('input',{id:'later-in',type:'text',maxlength:'140',placeholder:'Add something for later',enterkeyhint:'done',autocomplete:'off'}),
+      h('button',{class:'lnk','data-act':'later-add',text:'Add'})
+    ]));
+    return grp('Later',h('div',{class:'card'},kids));
+  }
   function nextGroup(){
     var list=nextTasks();
     if(!list.length) return null;
@@ -1102,6 +1136,7 @@
   app.addEventListener('pointercancel',endDrag);
 
   app.addEventListener('keydown',function(e){
+    if(e.target&&e.target.id==='later-in'&&e.key==='Enter'){e.preventDefault();laterAdd();return;}
     var front=e.target.closest&&e.target.closest('.front');
     if(!front||e.target!==front) return;
     var i=Number(front.parentNode.getAttribute('data-i'));
@@ -1118,7 +1153,7 @@
     else if(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-askbox')){askDraft[e.target.getAttribute('data-id')]=e.target.value;}
   });
   app.addEventListener('focusout',function(e){
-    if(e.target&&(e.target.id==='note-in'||(e.target.hasAttribute&&e.target.hasAttribute('data-askbox')))){
+    if(e.target&&(e.target.id==='note-in'||e.target.id==='later-in'||(e.target.hasAttribute&&e.target.hasAttribute('data-askbox')))){
       setTimeout(function(){if(pendingRender&&!noteFocused()&&!drag){pendingRender=false;render();}},400);
     }
   });
@@ -1144,6 +1179,20 @@
     else if(act==='note-save'){
       if(listening&&dict){try{Promise.resolve(dict.stop()).then(saveNote,saveNote);}catch(e){saveNote();}}
       else{saveNote();}
+    }
+    else if(act==='later-add'){laterAdd();}
+    else if(act==='later-tog'){
+      var lid=bt.getAttribute('data-id');
+      later.forEach(function(x){if(x.id===lid) x.done=!x.done;});
+      persist();render();
+    }
+    else if(act==='later-del'){
+      var ldid=bt.getAttribute('data-id');
+      if(delArm===ldid){delArm=null;later=later.filter(function(x){return x.id!==ldid;});persist();render();}
+      else{
+        delArm=ldid;bt.textContent='Tap again';
+        setTimeout(function(){if(delArm===ldid){delArm=null;if(bt.isConnected) bt.textContent='Remove';}},4000);
+      }
     }
     else if(act==='idea-tog'){ideaTog(bt.getAttribute('data-id'),bt.getAttribute('data-k'));}
     else if(act==='idea-del'){

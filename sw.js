@@ -2,9 +2,9 @@
    - Same-site files: network first (so updates arrive as soon as you are online), saved copy when offline.
    - Google Fonts: saved copy first, refreshed in the background.
    - Supabase (your contacts) is never touched here, so no contact data is ever stored by this file. */
-var CACHE = "closing-desk-v11";
+var CACHE = "closing-desk-v12";
 var SHELL = ["./", "index.html", "theme.js", "launch.js", "app.css", "tasks.html", "tasks.css", "tasks-plan.js", "tasks.js", "dashboard.html", "dashboard.css", "dashboard.js", "osstats.js", "app.js", "email.js", "tell.js", "gmail.js", "unsub.html", "unsub.js", "supa.js", "config.js", "vendor/supabase.js", "manifest.webmanifest",
-  "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png"];
+  "icons/app-192-v3.png", "icons/app-512-v3.png", "icons/app-maskable-512-v3.png", "icons/app-180-v3.png"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));

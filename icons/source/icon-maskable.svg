@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
 <defs>
   <radialGradient id="bg" cx="512" cy="400" r="760" gradientUnits="userSpaceOnUse">
-    <stop offset="0" stop-color="#1B2A4A"/><stop offset="0.5" stop-color="#0D1528"/><stop offset="1" stop-color="#04070F"/>
+    <stop offset="0" stop-color="#0F4A39"/><stop offset="0.5" stop-color="#08291F"/><stop offset="1" stop-color="#020E0A"/>
   </radialGradient>
   <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.09"/><stop offset="0.42" stop-color="#FFFFFF" stop-opacity="0"/>
@@ -14,7 +14,7 @@
     <stop offset="0" stop-color="#F6E3B0"/><stop offset="0.5" stop-color="#B98B3E"/><stop offset="1" stop-color="#EBCB82"/>
   </linearGradient>
   <radialGradient id="glow" cx="512" cy="560" r="360" gradientUnits="userSpaceOnUse">
-    <stop offset="0" stop-color="#E2BE70" stop-opacity="0.10"/><stop offset="1" stop-color="#E2BE70" stop-opacity="0"/>
+    <stop offset="0" stop-color="#E2BE70" stop-opacity="0.08"/><stop offset="1" stop-color="#E2BE70" stop-opacity="0"/>
   </radialGradient>
   <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="14"/></filter>
   <clipPath id="rr"><rect width="1024" height="1024" rx="230"/></clipPath>

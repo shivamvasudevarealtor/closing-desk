@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.10.1";
+  var APP_VERSION = "1.10.2";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,10 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.10.2", date: "2026-11-15", title: "New luxury icon", items: [
+      "New app icon: deep midnight with a champagne-gold house and check.",
+      "To see it on your iPhone: delete the Closing Desk icon, open the link in Safari, then Share > Add to Home Screen. Sign in once more.",
+      "Opening splash colour now matches the Midnight look."] },
     { v: "1.10.1", date: "2026-11-15", title: "Opens on Win the Day", items: [
       "When you open the app fresh, from the Home Screen icon or the main link, it now starts on Win the Day.",
       "Tap Clients or Dash at the top any time. The app stays where you put it until you close it and open it again.",

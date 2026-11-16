@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.7.1";
+  var APP_VERSION = "1.8.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -48,6 +48,8 @@
   function fdate(s) { if (!s) return "none"; var p = s.split("-").map(Number); var d = new Date(p[0], p[1] - 1, p[2]); var o = { month: "short", day: "numeric" }; if (p[0] !== new Date().getFullYear()) o.year = "numeric"; return d.toLocaleDateString("en-CA", o); }
 
   /* ---------- contact helpers ---------- */
+  function initials(c) { var a = ((c.first || "").trim().charAt(0) + (c.last || "").trim().charAt(0)).toUpperCase(); return a || String(c.email || "?").charAt(0).toUpperCase(); }
+  function avatar(c) { var k = String(c.id || nm(c)), h = 0, i; for (i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; return '<span class="av av' + (h % 4) + '" aria-hidden="true">' + esc(initials(c)) + "</span>"; }
   function nm(c) { return ((c.first || "") + " " + (c.last || "")).trim() || c.email || fphone(c.phone) || "No name"; }
   function fphone(p) { var m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ""); return m ? "(" + m[1] + ") " + m[2] + "-" + m[3] : (p || ""); }
   function normPhone(v) { var d = String(v || "").replace(/\D/g, ""); if (d.length === 10) return "+1" + d; if (d.length === 11 && d[0] === "1") return "+" + d; return String(v || "").trim(); }
@@ -153,6 +155,12 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.8.0", date: "2026-11-15", title: "New look: Midnight, with a dark and light switch", items: [
+      "A new design shared with Daily 3 Tasks: same colors, type, cards and buttons in both apps.",
+      "Use the sun or moon button at the top to switch between dark and light. The app remembers your choice.",
+      "The top strip has a Tasks / Clients switch to jump between the two apps.",
+      "Reached now shows as a dial with today's numbers underneath. Every contact has a round badge with their initials.",
+      "Nothing else changed. Your contacts and settings are untouched. Open the app twice to get the update."] },
     { v: "1.7.1", date: "2026-11-15", title: "Links between your apps", items: [
       "More now opens with a Real Estate OS card: one tap to your Daily 3 Tasks page and one to the page that explains how the pieces connect.",
       "The Reached card on Today also links to how it connects.",
@@ -400,10 +408,13 @@
   function osCard() {
     var s = osStats();
     if (!s.contacts) return "";
-    return '<div class="card os" style="margin-bottom:12px"><div class="lbl">Reached at least once</div><div class="big num">' + s.reached.toLocaleString("en-CA") + ' <small>of ' + s.contacts.toLocaleString("en-CA") + ' · ' + s.pct + '%</small></div>' +
-      '<div class="bar" role="progressbar" aria-valuenow="' + s.reached + '" aria-valuemin="0" aria-valuemax="' + s.contacts + '" aria-label="Contacts reached"><i style="width:' + s.pct + '%"></i></div>' +
-      '<div class="three" style="margin-top:10px"><div><b class="num">' + s.touchesToday + '</b><span>calls & messages today</span></div><div><b class="num">' + s.emailsToday + '</b><span>emails today</span></div><div><b class="num">' + s.left.toLocaleString("en-CA") + '</b><span>still to reach</span></div></div>' +
-      '<div class="row" style="margin-top:10px"><button class="btn small" type="button" data-act="oscopy">Copy for Daily 3</button><a class="lnk" href="' + DAILY3_URL + '" target="_blank" rel="noopener">Open Daily 3</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+    var C = 2 * Math.PI * 42, off = C * (1 - Math.min(100, s.pct) / 100), n = function (x) { return Number(x).toLocaleString("en-CA"); };
+    var gauge = '<svg class="gauge" viewBox="0 0 100 100" role="progressbar" aria-valuenow="' + s.reached + '" aria-valuemin="0" aria-valuemax="' + s.contacts + '" aria-label="Contacts reached"><circle class="gt" cx="50" cy="50" r="42"/>' +
+      (s.reached > 0 ? '<circle class="gf" cx="50" cy="50" r="42" transform="rotate(-90 50 50)" stroke-dasharray="' + C.toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"/>' : '<circle class="gd" cx="50" cy="8" r="4.5"/>') +
+      '<text x="50" y="57">' + s.pct + '%</text></svg>';
+    return '<div class="card os" style="margin-bottom:12px"><div class="hero-top">' + gauge + '<div class="hero-txt"><div class="lbl">Reached at least once</div><div class="big num">' + n(s.reached) + ' <small>of ' + n(s.contacts) + '</small></div><div class="hsub">' + n(s.left) + ' still to reach</div></div></div>' +
+      '<div class="tiles"><div><b class="num">' + s.touchesToday + '</b><span>touches today</span></div><div><b class="num">' + s.emailsToday + '</b><span>emails today</span></div><div><b class="num">' + s.dueToday + '</b><span>follow-ups due</span></div></div>' +
+      '<div class="row"><button class="btn small" type="button" data-act="oscopy">Copy for Daily 3</button><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
   }
   function weekCard() {
     var w = weekStats();
@@ -547,13 +558,14 @@
     return out;
   }
   function dueCard(c) {
-    return '<article class="card due"><button class="due-head" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + "</span><span>" + dueText(c) + "</span>" + (c.kind ? "<span>" + esc(c.kind) + "</span>" : "") + "</span></button>" +
+    return '<article class="card due"><button class="due-head" type="button" data-open="' + esc(c.id) + '">' + avatar(c) + '<span class="dh-txt"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + "</span><span>" + dueText(c) + "</span>" + (c.kind ? "<span>" + esc(c.kind) + "</span>" : "") + "</span></span></button>" +
       '<div class="reach">' + reachRow(c) + '</div><div class="outcomes"><button type="button" data-act="talked" data-id="' + esc(c.id) + '">Talked</button><button type="button" data-act="messaged" data-id="' + esc(c.id) + '">Messaged</button><button type="button" data-act="noanswer" data-id="' + esc(c.id) + '">No answer</button><button type="button" data-act="later" data-id="' + esc(c.id) + '">Later</button></div></article>';
   }
   function renderToday() {
     var due = dueList(), cap = S.settings.dailyCap || 15, shown = S.showAllDue ? due : due.slice(0, cap), h = "";
+    h += osCard();
     h += '<div class="score">' + scoreCard(S.settings.goalYear + " listings", dealCount("listing"), S.settings.listingsGoal) + scoreCard(S.settings.goalYear + " buyers", dealCount("buyer"), S.settings.buyersGoal) + "</div>";
-    h += osCard() + weekCard() + momentsCard();
+    h += weekCard() + momentsCard();
     if (due.length) {
       h += '<div class="sec"><h2>Reach out today</h2><span class="meta num">' + shown.length + " of " + due.length + " due</span></div><div class=\"stack\">" + shown.map(dueCard).join("") + "</div>";
       if (due.length > shown.length) h += '<p class="more"><button type="button" data-act="showall">Show all ' + due.length + " due</button> (your daily list is capped at " + cap + ")</p>";
@@ -683,7 +695,7 @@
   }
   function opt(list, v, label) { return '<option value="">' + esc(label) + "</option>" + list.map(function (x) { return '<option' + (x === v ? " selected" : "") + ">" + esc(x) + "</option>"; }).join(""); }
   function listRow(c, withCheck) {
-    return '<div class="li">' + (withCheck ? '<input type="checkbox" data-sel="' + esc(c.id) + '"' + (S.selected.has(c.id) ? " checked" : "") + ' aria-label="Select ' + esc(nm(c)) + '">' : "") + '<button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + "</span><span>" + esc(c.province) + "</span>" + (c.phone ? '<span class="num">' + esc(fphone(c.phone)) + "</span>" : "") + (c.next ? "<span>next " + esc(fdate(c.next)) + "</span>" : "") + "</span></button></div>";
+    return '<div class="li">' + (withCheck ? '<input type="checkbox" data-sel="' + esc(c.id) + '"' + (S.selected.has(c.id) ? " checked" : "") + ' aria-label="Select ' + esc(nm(c)) + '">' : "") + avatar(c) + '<button class="main" type="button" data-open="' + esc(c.id) + '"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + "</span><span>" + esc(c.province) + "</span>" + (c.phone ? '<span class="num">' + esc(fphone(c.phone)) + "</span>" : "") + (c.next ? "<span>next " + esc(fdate(c.next)) + "</span>" : "") + "</span></button></div>";
   }
   var listsShellFor = "";
   function renderLists() {
@@ -1035,6 +1047,14 @@
     if (e.key === "Enter" && e.target.id === "shLogIn") { e.preventDefault(); $('[data-act="addlog"]').click(); }
   });
   $("#addBtn").addEventListener("click", openAdd);
+  function setTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem("cd.theme", t); } catch (e) {}
+    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", t === "light" ? "#F3F6FB" : "#0B1220");
+    var b = $("#themeBtn"); if (b) b.setAttribute("aria-label", t === "light" ? "Switch to dark mode" : "Switch to light mode");
+  }
+  $("#themeBtn").addEventListener("click", function () { setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"); });
+  setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
 
   function setTab(t) { if (TABS.indexOf(t) < 0) t = "today"; S.tab = t; if (location.hash !== "#" + t) location.hash = t; listsShellFor = ""; S.showAllDue = false; window.scrollTo(0, 0); render(); }
   window.addEventListener("hashchange", function () { var t = location.hash.slice(1); if (TABS.indexOf(t) >= 0 && t !== S.tab) { S.tab = t; listsShellFor = ""; render(); } });

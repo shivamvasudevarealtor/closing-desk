@@ -142,3 +142,34 @@ $$;
 
 revoke all on function public.unsubscribe_contact(text) from public;
 grant execute on function public.unsubscribe_contact(text) to anon, authenticated;
+
+-- ===== Tasks page (v1.9) =====
+-- The Tasks page keeps its notes, ideas, content calendar and ticks as one JSON document in os_docs (row id "main").
+-- Same row shape and the same owner-only protection as contacts and settings. Safe to run again.
+create table if not exists public.os_docs (
+  id          text primary key,
+  owner       uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  data        jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.os_docs enable row level security;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'os_docs' and policyname = 'owner full access') then
+    create policy "owner full access" on public.os_docs
+      for all to authenticated
+      using (owner = (select auth.uid()))
+      with check (owner = (select auth.uid()));
+  end if;
+  if not exists (select 1 from pg_trigger where tgname = 'os_docs_touch') then
+    create trigger os_docs_touch before update on public.os_docs
+      for each row execute function public.touch_updated_at();
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'os_docs') then
+    alter publication supabase_realtime add table public.os_docs;
+  end if;
+end $$;
+
+revoke all on public.os_docs from anon;

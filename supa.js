@@ -38,7 +38,7 @@
       return r.data.session;
     });
   }
-  function signOut() { unsubscribe(); return client().auth.signOut().then(function () {}, function () {}); }
+  function signOut() { unsubscribe(); if (docChannel && sb) { try { sb.removeChannel(docChannel); } catch (e) {} docChannel = null; } return client().auth.signOut().then(function () {}, function () {}); }
   function userId() { return client().auth.getSession().then(function (r) { var s = r && r.data && r.data.session; return s ? s.user.id : null; }); }
 
   /* ---------- reads ---------- */
@@ -153,9 +153,33 @@
     });
   }
 
+  /* ---------- Tasks page (v1.9): one JSON document per row in os_docs, same shape and protection as contacts ---------- */
+  var docChannel = null;
+  function getOsDoc(id) {
+    return client().from("os_docs").select("data").eq("id", id).maybeSingle().then(function (r) {
+      if (r.error) fail(r.error);
+      return r.data ? r.data.data : null;
+    });
+  }
+  function putOsDoc(id, obj) {
+    return userId().then(function (uid) {
+      return client().from("os_docs").upsert({ id: id, owner: uid, data: obj }, { onConflict: "id" });
+    }).then(function (r) { if (r.error) fail(r.error); });
+  }
+  /* cb(data) on every change to that row made anywhere (another device, or Claude). status(s) reports the connection. */
+  function subscribeOsDoc(id, cb, status) {
+    if (docChannel && sb) { try { sb.removeChannel(docChannel); } catch (e) {} }
+    docChannel = client().channel("os-doc-" + id)
+      .on("postgres_changes", { event: "*", schema: "public", table: "os_docs", filter: "id=eq." + id }, function (p) {
+        if (p.new && p.new.data) cb(p.new.data);
+      })
+      .subscribe(function (st) { if (status) status(st); });
+  }
+
   window.CDStore = {
     configured: configured, onAuth: onAuth, getSession: getSession, signIn: signIn, signOut: signOut,
     loadAll: loadAll, fetchOne: fetchOne, patch: patch, patchMany: patchMany, put: put, remove: remove, putSettings: putSettings, bulkPut: bulkPut,
-    subscribe: subscribe, unsubscribe: unsubscribe, listDocs: listDocs, putDoc: putDoc, invoke: invoke
+    subscribe: subscribe, unsubscribe: unsubscribe, listDocs: listDocs, putDoc: putDoc, invoke: invoke,
+    getOsDoc: getOsDoc, putOsDoc: putOsDoc, subscribeOsDoc: subscribeOsDoc
   };
 })();

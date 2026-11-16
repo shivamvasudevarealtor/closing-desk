@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.8.0";
+  var APP_VERSION = "1.9.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,12 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.9.0", date: "2026-11-15", title: "Tasks now lives inside Closing Desk", items: [
+      "Your Daily 3 Tasks page is now part of this app. Tap Tasks at the top and you stay in the same app: no new window, no second login.",
+      "Tasks has the same four tabs as before (Today, Plan, Ideas, Notes), and the Reached numbers on it are always live from your contacts.",
+      "One dark and light switch for both. Your notes, ideas and posts moved over untouched.",
+      "Claude still reads your notes about once an hour, 7am to 10pm. The instant-read button is gone because it only worked inside the Claude app.",
+      "Open the app twice to get the update."] },
     { v: "1.8.0", date: "2026-11-15", title: "New look: Midnight, with a dark and light switch", items: [
       "A new design shared with Daily 3 Tasks: same colors, type, cards and buttons in both apps.",
       "Use the sun or moon button at the top to switch between dark and light. The app remembers your choice.",
@@ -364,39 +370,15 @@
     return { touches: touches, leads: leads, deals: (S.settings.deals || []).filter(function (d) { return d.date >= since; }).length };
   }
 
-  /* ---------- Real Estate OS (v1.7): reached counter, shared with the Daily 3 Tasks page ----------
-     "Reached" = the contact has at least one logged touch that means a real conversation or message went out.
-     No answer, Note and Added do not count. The same definition is written as SQL in supabase/os-snapshot.sql,
-     which Claude uses to read these numbers into the Daily 3 page; keep the two in step. */
-  var REACH_RE = /^(Talked|Sent a message|Call:|Text:|WhatsApp:|Email:|Meeting:|Mass email: |Birthday wishes|Family birthday|Home anniversary)/;
-  var ATTEMPT_RE = /^(Talked|Sent a message|No answer|Call:|Text:|WhatsApp:|Meeting:)/;
-  var MASS_RE = /^Mass email: /;
-  var DAILY3_URL = "https://claude.ai/artifact/KQRfvsM4LdeaMEnRp3hqYf";
+  /* ---------- Real Estate OS: reached counter, shared with the Tasks page (tasks.html) ----------
+     The counting rules live in osstats.js so Today here and Tasks always agree. */
+  var TASKS_URL = "tasks.html";
   var OS_DOC_URL = "https://claude.ai/artifact/D9aSgJEv7WZWE8t2JUXfaw";
   function osLinksCard() {
-    return '<div class="card stack" style="margin-bottom:12px"><h2>Real Estate OS</h2><p class="note" style="margin:0">Your three pieces: Closing Desk (this app), Daily 3 Tasks, and the page that explains how they connect.</p><div class="row"><a class="lnk" href="' + DAILY3_URL + '" target="_blank" rel="noopener">Daily 3 Tasks</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+    return '<div class="card stack" style="margin-bottom:12px"><h2>Real Estate OS</h2><p class="note" style="margin:0">Closing Desk and your Tasks page are one app. The page that explains how it all connects is one tap away.</p><div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Tasks</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
   }
   function osStats() {
-    var td = today();
-    var s = { contacts: 0, reached: 0, withEmail: 0, withPhone: 0, consented: 0, touchesToday: 0, emailsToday: 0, dueToday: 0 };
-    all().forEach(function (c) {
-      if (c.stage === "Dead") return;
-      s.contacts++;
-      if (c.email) s.withEmail++;
-      if (c.phone) s.withPhone++;
-      if (c.consent) s.consented++;
-      if (c.next && c.next <= td) s.dueToday++;
-      var got = false;
-      (c.log || []).forEach(function (l) {
-        var t = (l && l.t) || "", d = (l && l.d) || "";
-        if (REACH_RE.test(t)) got = true;
-        if (ATTEMPT_RE.test(t) && d === td) s.touchesToday++;
-        if (MASS_RE.test(t) && d === td) s.emailsToday++;
-      });
-      if (got) s.reached++;
-    });
-    s.left = s.contacts - s.reached;
-    s.pct = s.contacts ? Math.round(s.reached * 100 / s.contacts) : 0;
+    var s = window.CDStats.compute(all(), today());
     s.goalYear = S.settings.goalYear; s.dealsListings = dealCount("listing"); s.dealsBuyers = dealCount("buyer");
     s.goalListings = S.settings.listingsGoal; s.goalBuyers = S.settings.buyersGoal;
     return s;
@@ -414,7 +396,7 @@
       '<text x="50" y="57">' + s.pct + '%</text></svg>';
     return '<div class="card os" style="margin-bottom:12px"><div class="hero-top">' + gauge + '<div class="hero-txt"><div class="lbl">Reached at least once</div><div class="big num">' + n(s.reached) + ' <small>of ' + n(s.contacts) + '</small></div><div class="hsub">' + n(s.left) + ' still to reach</div></div></div>' +
       '<div class="tiles"><div><b class="num">' + s.touchesToday + '</b><span>touches today</span></div><div><b class="num">' + s.emailsToday + '</b><span>emails today</span></div><div><b class="num">' + s.dueToday + '</b><span>follow-ups due</span></div></div>' +
-      '<div class="row"><button class="btn small" type="button" data-act="oscopy">Copy for Daily 3</button><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+      '<div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Tasks</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
   }
   function weekCard() {
     var w = weekStats();
@@ -965,7 +947,6 @@
     else if (a === "restorecancel") { S.pendingRestore = null; S.restoreError = ""; render(); }
     else if (a === "refresh") { toast("Refreshing..."); reload().then(function () { if (!S.offline) toast("Up to date"); }); }
     else if (a === "signout") signOutNow();
-    else if (a === "oscopy") { var otx = osText(osStats()); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(otx).then(function () { toast("Copied. Paste it as a note in Daily 3"); }, function () { toast(otx); }); else toast(otx); }
     else if (a === "copy") { var v2 = el.dataset.v; var done = function () { toast("Copied " + v2); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v2).then(done, function () { toast(v2); }); else toast(v2); }
     else if (a === "copymsg") { var mv = ($("#shMsg") || {}).value || ""; if (!mv.trim()) { toast("Nothing to copy"); return; } if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(mv).then(function () { toast("Message copied"); }, function () { toast("Select the text and copy it"); }); else toast("Select the text and copy it"); }
     else if (a === "talked" || a === "messaged" || a === "noanswer") touch(id2, a);

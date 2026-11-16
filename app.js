@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.9.0";
+  var APP_VERSION = "1.9.1";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,9 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.9.1", date: "2026-11-15", title: "Tasks is now Win the Day", items: [
+      "Your daily 3 now has a new name: Win the Day. The switch at the top says Win | Clients, and your three tasks sit under Today's 3 wins.",
+      "Nothing else changed. Your plan, notes, ideas and posts are exactly as they were. Open the app twice to get the update."] },
     { v: "1.9.0", date: "2026-11-15", title: "Tasks now lives inside Closing Desk", items: [
       "Your Daily 3 Tasks page is now part of this app. Tap Tasks at the top and you stay in the same app: no new window, no second login.",
       "Tasks has the same four tabs as before (Today, Plan, Ideas, Notes), and the Reached numbers on it are always live from your contacts.",
@@ -375,7 +378,7 @@
   var TASKS_URL = "tasks.html";
   var OS_DOC_URL = "https://claude.ai/artifact/D9aSgJEv7WZWE8t2JUXfaw";
   function osLinksCard() {
-    return '<div class="card stack" style="margin-bottom:12px"><h2>Real Estate OS</h2><p class="note" style="margin:0">Closing Desk and your Tasks page are one app. The page that explains how it all connects is one tap away.</p><div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Tasks</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+    return '<div class="card stack" style="margin-bottom:12px"><h2>Real Estate OS</h2><p class="note" style="margin:0">Closing Desk and Win the Day (your daily 3) are one app. The page that explains how it all connects is one tap away.</p><div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Win the Day</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
   }
   function osStats() {
     var s = window.CDStats.compute(all(), today());
@@ -396,7 +399,7 @@
       '<text x="50" y="57">' + s.pct + '%</text></svg>';
     return '<div class="card os" style="margin-bottom:12px"><div class="hero-top">' + gauge + '<div class="hero-txt"><div class="lbl">Reached at least once</div><div class="big num">' + n(s.reached) + ' <small>of ' + n(s.contacts) + '</small></div><div class="hsub">' + n(s.left) + ' still to reach</div></div></div>' +
       '<div class="tiles"><div><b class="num">' + s.touchesToday + '</b><span>touches today</span></div><div><b class="num">' + s.emailsToday + '</b><span>emails today</span></div><div><b class="num">' + s.dueToday + '</b><span>follow-ups due</span></div></div>' +
-      '<div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Tasks</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+      '<div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Win the Day</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
   }
   function weekCard() {
     var w = weekStats();

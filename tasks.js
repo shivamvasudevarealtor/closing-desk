@@ -344,7 +344,7 @@
     var strip=h('div',{class:'strip'},[
       h('span',{class:'logo','aria-hidden':'true',html:'<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg>'}),
       h('div',{class:'seg2',role:'group','aria-label':'Switch app'},[
-        h('span',{class:'s on','aria-current':'page',text:'Tasks'}),
+        h('span',{class:'s on','aria-current':'page','aria-label':'Win the Day',text:'Win'}),
         h('a',{class:'s',href:CD_URL,text:'Clients'})
       ]),
       h('span',{class:'sp'}),
@@ -404,7 +404,7 @@
 
     var ul=h('ul',{class:'list'});
     tasks.forEach(function(t,i){ul.appendChild(row(t,i,oc[i]||''));});
-    var tasksGrp=grp('The 3 tasks',ul);
+    var tasksGrp=grp('Today\u2019s 3 wins',ul);
     tasksGrp.appendChild(h('p',{class:'swipehint',id:'swipehelp'},[
       h('span',{html:'<i class="g"></i>Swipe right: done'}),
       h('span',{html:'<i class="o"></i>Swipe left: didn’t do it'})

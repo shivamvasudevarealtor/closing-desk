@@ -155,7 +155,7 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
-    { v: "1.10.0", date: "2026-11-16", title: "New: Dashboard", items: [
+    { v: "1.10.0", date: "2026-11-15", title: "New: Dashboard", items: [
       "Tap Dash at the top to see all your numbers on one page: how many people you have reached, today's calls and messages, who you can reach, your 2027 goals, scheduled posts and your commercial licence dates.",
       "Everything is live from your contacts and uses the same counting as Today and Win the Day, so the numbers always agree.",
       "The Replies card says Not tracked yet. Closing Desk has no one-tap Replied button, so it does not guess.",

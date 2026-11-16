@@ -417,3 +417,4 @@ body[data-tab="ideas"] .bar-top,body[data-tab="notes"] .bar-top{display:none}
 .tabs button[aria-current="page"]::before{content:"";position:absolute;top:0;left:34%;right:34%;height:3px;background:var(--accent);border-radius:0 0 3px 3px;box-shadow:0 6px 14px var(--accent)}
 .ptrin{border:1px solid var(--line)}
 .foot{color:var(--muted)}
+@media (max-width:380px){.seg2 .s{padding:0 11px}}

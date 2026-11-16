@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.9.1";
+  var APP_VERSION = "1.10.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,11 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.10.0", date: "2026-11-16", title: "New: Dashboard", items: [
+      "Tap Dash at the top to see all your numbers on one page: how many people you have reached, today's calls and messages, who you can reach, your 2027 goals, scheduled posts and your commercial licence dates.",
+      "Everything is live from your contacts and uses the same counting as Today and Win the Day, so the numbers always agree.",
+      "The Replies card says Not tracked yet. Closing Desk has no one-tap Replied button, so it does not guess.",
+      "Open the app twice to get the update."] },
     { v: "1.9.1", date: "2026-11-15", title: "Tasks is now Win the Day", items: [
       "Your daily 3 now has a new name: Win the Day. The switch at the top says Win | Clients, and your three tasks sit under Today's 3 wins.",
       "Nothing else changed. Your plan, notes, ideas and posts are exactly as they were. Open the app twice to get the update."] },
@@ -378,7 +383,7 @@
   var TASKS_URL = "tasks.html";
   var OS_DOC_URL = "https://claude.ai/artifact/D9aSgJEv7WZWE8t2JUXfaw";
   function osLinksCard() {
-    return '<div class="card stack" style="margin-bottom:12px"><h2>Real Estate OS</h2><p class="note" style="margin:0">Closing Desk and Win the Day (your daily 3) are one app. The page that explains how it all connects is one tap away.</p><div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Win the Day</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+    return '<div class="card stack" style="margin-bottom:12px"><h2>Real Estate OS</h2><p class="note" style="margin:0">Closing Desk, Win the Day (your daily 3) and the Dashboard are one app. Use the switch at the top to move between them. The page that explains how it all connects is one tap away.</p><div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Win the Day</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
   }
   function osStats() {
     var s = window.CDStats.compute(all(), today());

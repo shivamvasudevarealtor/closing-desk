@@ -345,7 +345,8 @@
       h('span',{class:'logo','aria-hidden':'true',html:'<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg>'}),
       h('div',{class:'seg2',role:'group','aria-label':'Switch app'},[
         h('span',{class:'s on','aria-current':'page','aria-label':'Win the Day',text:'Win'}),
-        h('a',{class:'s',href:CD_URL,text:'Clients'})
+        h('a',{class:'s',href:CD_URL,text:'Clients'}),
+        h('a',{class:'s',href:'dashboard.html','aria-label':'Dashboard',text:'Dash'})
       ]),
       h('span',{class:'sp'}),
       h('button',{class:'ib',id:'themeBtn',type:'button','aria-label':'Switch to light mode',html:'<svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg><svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>'})

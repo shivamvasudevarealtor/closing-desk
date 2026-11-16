@@ -126,6 +126,9 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `email.js` | The Email tab: who may be emailed, daily cap, warm-up, pacing, pause/stop rules |
 | `unsub.html`, `unsub.js` | The page a recipient opens from the unsubscribe link |
 | `config.js` | Your Supabase URL and public key |
+| `tasks.html`, `tasks.css`, `tasks.js`, `tasks-plan.js` | Win the Day (your daily 3 wins, notes, ideas and posts) |
+| `dashboard.html`, `dashboard.css`, `dashboard.js` | Dashboard (v1.10): read-only page with reached, today, who you can reach, goals, scheduled posts and licence dates |
+| `osstats.js` | The one place the Reached numbers are counted, used by Today, Win the Day and the Dashboard |
 | `tell.js` | The Tell Claude box on Today: saves your note, asks the function, shows suggestions, applies what you tick |
 | `supabase/tell-claude.sql` | Tables for Tell Claude, run once |
 | `supabase/functions/tell-claude/index.ts` | The Supabase function that asks Claude (holds no data, writes nothing) |

@@ -13,11 +13,13 @@
 
   /* ---------- state: outcomes and placements, saved locally and, when available, in the shared database ---------- */
   var outcomes={},placements={},notes=[],draft='',analyzing={},sampleFn=null,dict=null,listening=false,dictBlocked=false,content=[],archOpen=false,ideas=[],later=[],laterKnown=false,flash='',doneOpen=false,openIdea=null,openTask=null,noClickUntil=0,composeOpen=false,nextOpen=false,nextRow=null,ideasAll=false,delArm=null,askDraft={},genning={},reAsk={};
+  var steps={},doing=null,pushes={},people=[],colSel='today',stepOpen=null,focusKey=null,kbLeft=null,upOpen=false,blNote='';
   var autoRead={s:'wait',code:''},ptrEl=null,ptrBusy=false,dbPull=null,osRef=null,cd=null,cdAt='',CD_URL='./',OS_DOC_URL='https://claude.ai/artifact/D9aSgJEv7WZWE8t2JUXfaw';
   var dbRef=null,synced=false,writing=false,dirty=false,failCount=0,retryT=null,lastSent='',savedT=null,saveMsg='',sentTs={},writeId=0,writeT=null;
   try{
     var raw=localStorage.getItem('ros3:state2');
-    if(raw){var s0=JSON.parse(raw);outcomes=s0.outcomes||{};placements=s0.placements||{};notes=Array.isArray(s0.notes)?s0.notes:[];content=Array.isArray(s0.content)?s0.content:[];ideas=Array.isArray(s0.ideas)?s0.ideas:[];if(Array.isArray(s0.later)){later=s0.later;laterKnown=true;}}
+    if(raw){var s0=JSON.parse(raw);outcomes=s0.outcomes||{};placements=s0.placements||{};notes=Array.isArray(s0.notes)?s0.notes:[];content=Array.isArray(s0.content)?s0.content:[];ideas=Array.isArray(s0.ideas)?s0.ideas:[];if(Array.isArray(s0.later)){later=s0.later;laterKnown=true;}
+      steps=s0.steps&&typeof s0.steps==='object'?s0.steps:{};doing=s0.doing||null;pushes=s0.pushes&&typeof s0.pushes==='object'?s0.pushes:{};}
   }catch(e){}
   try{draft=localStorage.getItem('ros3:draft')||'';}catch(e){}
   /* Starter for the Later list. Used once, only while the saved document has no "later" list at all. */
@@ -34,7 +36,7 @@
     if(D.changed){placements=D.placements;}
   }
   function localSave(){
-    try{localStorage.setItem('ros3:state2',JSON.stringify({outcomes:outcomes,placements:placements,notes:notes,content:content,ideas:ideas,later:later}));}catch(e){}
+    try{localStorage.setItem('ros3:state2',JSON.stringify({outcomes:outcomes,placements:placements,notes:notes,content:content,ideas:ideas,later:later,steps:steps,doing:doing,pushes:pushes}));}catch(e){}
   }
   function buildPayload(){
     recompute();
@@ -49,6 +51,9 @@
       content:content,
       ideas:ideas,
       later:later,
+      steps:steps,
+      doing:doing,
+      pushes:pushes,
       updated:t
     };
   }
@@ -148,9 +153,12 @@
         var v=unwrap(s);
         /* Local changes not yet written, or an older echo of our own write: do not let it overwrite what is on screen. */
         if(v&&v.outcomes&&!first&&(writing||dirty||(v.updated&&v.updated!==lastSent&&sentTs[v.updated]))){return;}
-        var before=first?'':JSON.stringify([outcomes,placements,notes,content,ideas,later]);
+        var before=first?'':JSON.stringify([outcomes,placements,notes,content,ideas,later,steps,doing,pushes]);
         if(v&&v.outcomes&&typeof v.outcomes==='object'){
           outcomes=v.outcomes;placements=v.placements||{};
+          if(v.steps&&typeof v.steps==='object') steps=v.steps; else if(first&&Object.keys(steps).length) addLocal=true;
+          if(v.pushes&&typeof v.pushes==='object') pushes=v.pushes; else if(first&&Object.keys(pushes).length) addLocal=true;
+          if(v.doing!==undefined) doing=v.doing||null;
           var mergeIds=function(remote,local){
             var out=Array.isArray(remote)?remote.slice():[];
             if(first&&local.length){
@@ -174,7 +182,7 @@
         }
         var wasFirst=first;
         first=false;synced=true;recompute();setTimeout(cdAuto,60);
-        if(!wasFirst&&!addLocal&&before===JSON.stringify([outcomes,placements,notes,content,ideas,later])){renderFoot();return;}
+        if(!wasFirst&&!addLocal&&before===JSON.stringify([outcomes,placements,notes,content,ideas,later,steps,doing,pushes])){renderFoot();return;}
         if(addLocal){persist();}
         if(!drag&&!noteFocused()){render();}else{pendingRender=true;}
       };
@@ -185,6 +193,18 @@
   }
   /* Closing Desk numbers are worked out here from the same contacts, with the same rules as the Today page there. */
   function localToday(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+  /* People due today, in the same order as the Clients list, with a phone number you saved. Used to name the steps of a reach task. */
+  var TEMPS=['hot','warm','cold','stale'];
+  function rankC(c){return (c.stage==='New'?0:1)*10+Math.max(TEMPS.indexOf(c.temp),0);}
+  function fphone(p){var m=/^\+1(\d{3})(\d{3})(\d{4})$/.exec(p||'');return m?'('+m[1]+') '+m[2]+'-'+m[3]:(p||'');}
+  function duePeople(list,td){
+    return list.filter(function(c){return c.stage!=='Dead'&&c.next&&c.next<=td&&c.phone;})
+      .sort(function(a,b){return rankC(a)-rankC(b)||String(a.next||'').localeCompare(String(b.next||''));})
+      .slice(0,25).map(function(c){
+        var nm=((c.first||'')+' '+(c.last||'')).trim()||c.email||fphone(c.phone)||'No name';
+        return {id:c.id,name:nm,phone:fphone(c.phone)};
+      });
+  }
   var cdBusy=false;
   function loadCd(){
     if(cdBusy||!Store||!window.CDStats) return Promise.resolve();
@@ -192,10 +212,12 @@
     return Store.loadAll().then(function(res){
       var s=window.CDStats.compute(res.contacts||[],localToday());
       s.asOf=new Date().toISOString();
+      var pl=duePeople(res.contacts||[],localToday()),plSig=JSON.stringify(pl),plSame=(plSig===JSON.stringify(people));
+      people=pl;
       var same=JSON.stringify(s,function(k,v){return k==='asOf'?0:v;})===JSON.stringify(cd,function(k,v){return k==='asOf'?0:v;});
       cd=s;cdAt='';
       cdBusy=false;
-      if(!same){if(!drag&&!noteFocused()){render();}else{pendingRender=true;}}
+      if(!same||!plSame){if(!drag&&!noteFocused()){render();}else{pendingRender=true;}}
       setTimeout(cdAuto,60);
     },function(){cdBusy=false;});
   }
@@ -255,7 +277,7 @@
     line.appendChild(h('button',{class:'lnk','data-act':'undo','data-i':String(i),text:'Undo'}));
     return line;
   }
-  var TI={"Call or WhatsApp your 5 warmest people.": {"head": "Reach your 5 warmest people", "desc": "Open Closing Desk › Today tab and start with the people you know best. A call or a WhatsApp both count. Keep it a friendly check-in, not a pitch."}, "Count your contacts. In the Lists tab, write down total contacts and how many have email, phone and consent. Tell Claude.": {"head": "Count your contacts", "desc": "In the Lists tab, write down total contacts and how many have email, phone and consent. Then tell Claude the numbers."}, "Schedule next Saturday’s 9am Reel and reply to comments.": {"head": "Schedule Saturday's 9am Reel", "desc": "Schedule next Saturday's 9am Reel, then reply to the comments."}, "Read your reached number (or how many people you contacted this week) to Claude.": {"head": "Tell Claude your reached number", "desc": "Read your reached number to Claude. If you do not have one yet, tell Claude how many people you contacted this week."}, "Pick 3 Reel ideas for the week.": {"head": "Pick 3 Reel ideas", "desc": "Pick 3 Reel ideas for the week. Type each one in the notes box below starting with RI and it lands in Content ideas."}, "Do something that is not work. It counts as a task.": {"head": "Take a real break", "desc": "Do something that is not work. It counts as a task, so tick it without guilt."}, "Mark Client consent on past clients: Lists › Select › Email consent.": {"head": "Mark client consent", "desc": "Mark Client consent on your past clients: Lists › Select › Email consent."}, "Pick your commercial course. Claude’s pick for fast AI study is Haskayne ($699). Confirm total hours first.": {"head": "Pick your commercial course", "desc": "Claude's pick for fast AI study is Haskayne ($699). Confirm the total course hours first, then choose."}, "Mark Said yes or Asked me consent on people who agreed or contacted you. Skip anyone you are unsure about.": {"head": "Mark who said yes", "desc": "Mark Said yes or Asked me consent on people who agreed or contacted you. Skip anyone you are unsure about."}, "Enrol and pay for the course and save the login. Haskayne can take up to 72 hours to unlock. Order the HP 10bII+ calculator too.": {"head": "Enrol and pay for the course", "desc": "Enrol, pay and save the login. Haskayne can take up to 72 hours to unlock. Order the HP 10bII+ calculator too."}, "Gmail setup 1/2. Make the Google Cloud project and turn on the Gmail API (README, Email setup step 2). If it is already connected, say done.": {"head": "Gmail setup, part 1 of 2", "desc": "Make the Google Cloud project and turn on the Gmail API (README, Email setup step 2). If it is already connected, say done."}, "Film 2 Reels in one sitting and send the raw clips to the editor so posts go out while you study.": {"head": "Film 2 Reels in one sitting", "desc": "Film 2 Reels in one sitting and send the raw clips to the editor so posts go out while you study."}, "Gmail setup 2/2. Paste the Client ID in the Email tab, test the unsubscribe link, then Connect Gmail.": {"head": "Gmail setup, part 2 of 2", "desc": "Paste the Client ID in the Email tab, test the unsubscribe link, then Connect Gmail."}, "Check the course has unlocked and skim the outline. Your 9-day plan is already on the calendar.": {"head": "Check your course unlocked", "desc": "Check the course has unlocked and skim the outline. Your 9-day plan is already on the calendar."}, "Email #1. Pick a starter, send a test to yourself, check your inbox and your spam folder.": {"head": "Send your first test email", "desc": "Email #1. Pick a starter, send a test to yourself, then check your inbox and your spam folder."}, "Schedule the banked Reels for Nov 21–29.": {"head": "Schedule the banked Reels", "desc": "Schedule the banked Reels for Nov 21–29."}, "Log in and skim the outline. Read the RECA exam blueprint. Domains 1–2 units, then a time-value-of-money drill on the HP 10bII+.": {"head": "Study day 1: outline and blueprint", "desc": "Log in and skim the outline. Read the RECA exam blueprint. Cover the Domains 1–2 units, then do a time-value-of-money drill on the HP 10bII+."}, "Reply to WhatsApp messages.": {"head": "Reply to WhatsApp", "desc": "Reply to your WhatsApp messages."}, "Domain 3, Prospecting and Marketing (14%). Course units, then ask Claude to quiz you on 3.1–3.4.": {"head": "Study day 2: Domain 3", "desc": "Domain 3, Prospecting and Marketing (14%). Do the course units, then ask Claude to quiz you on 3.1–3.4."}, "Send one thinking-of-you WhatsApp to a favourite past client.": {"head": "Thinking-of-you WhatsApp", "desc": "Send one thinking-of-you WhatsApp to a favourite past client."}, "Domain 4, part 1 (48% of the exam). Units for 4.1–4.2, then rent drills: base, additional and percentage rent, rentable and usable.": {"head": "Study day 3: Domain 4, part 1", "desc": "Domain 4 is 48% of the exam. Do the units for 4.1–4.2, then rent drills: base, additional and percentage rent, rentable and usable."}, "Reply to Instagram DMs.": {"head": "Reply to Instagram DMs", "desc": "Reply to your Instagram DMs."}, "Domain 4, part 2. Valuation 4.3: gross income, NOI, cap rates, then DCF, NPV and IRR on the calculator.": {"head": "Study day 4: Domain 4, part 2", "desc": "Valuation 4.3: gross income, NOI and cap rates, then DCF, NPV and IRR on the calculator."}, "Call one warm contact.": {"head": "Call one warm contact", "desc": "Call one warm contact."}, "Domain 4, part 3. Financing 4.4: mortgage payments and balances, loan-to-value, debt coverage, net effective rent.": {"head": "Study day 5: Domain 4, part 3", "desc": "Financing 4.4: mortgage payments and balances, loan-to-value, debt coverage and net effective rent."}, "Reply to emails.": {"head": "Reply to emails", "desc": "Reply to your emails."}, "Domain 5, part 1, Negotiating and Closing (28%). Units for 5.1–5.3, then ask Claude to quiz you.": {"head": "Study day 6: Domain 5, part 1", "desc": "Domain 5, Negotiating and Closing (28%). Do the units for 5.1–5.3, then ask Claude to quiz you."}, "Send 3 WhatsApps from Today. Relationship contacts only.": {"head": "Send 3 WhatsApps", "desc": "Send 3 WhatsApps from Today. Relationship contacts only."}, "Domain 5, part 2. Units for 5.4–5.5, then finish any course units you have not opened.": {"head": "Study day 7: Domain 5, part 2", "desc": "Do the units for 5.4–5.5, then finish any course units you have not opened."}, "Reply to anything still open.": {"head": "Reply to anything still open", "desc": "Reply to anything still open."}, "Mixed practice exam with Claude, weighted 48% Domain 4, 28% Domain 5, 14% Domain 3. Redo your weakest topics.": {"head": "Study day 8: practice exam", "desc": "Mixed practice exam with Claude, weighted 48% Domain 4, 28% Domain 5 and 14% Domain 3. Redo your weakest topics."}, "Call one hot lead.": {"head": "Call one hot lead", "desc": "Call one hot lead."}, "Ask your provider to mark you Ready for Exam in myRECA. Look up the exam fee and date on reca.ca, book it, then do a light review.": {"head": "Study day 9: book the exam", "desc": "Ask your provider to mark you Ready for Exam in myRECA. Look up the exam fee and date on reca.ca, book it, then do a light review."}, "Glance at messages and reply to hot ones only.": {"head": "Quick message check", "desc": "Glance at your messages and reply to the hot ones only."}, "Call 10 people, Tier A first. Leave a 15-second voicemail if there is no answer.": {"head": "Call 10 people", "desc": "Call 10 people, Tier A first. Leave a 15-second voicemail if there is no answer."}, "Start campaign #1 to consented Clients: Email › New campaign › Start. Keep the laptop open.": {"head": "Start campaign #1", "desc": "Start campaign #1 to consented Clients: Email › New campaign › Start. Keep the laptop open."}, "Answer every unanswered message on WhatsApp, Instagram and email.": {"head": "Clear your inboxes", "desc": "Answer every unanswered message on WhatsApp, Instagram and email."}, "Email day. Keep the email campaign running with the laptop open and answer replies.": {"head": "Email day", "desc": "Keep the email campaign running with the laptop open and answer replies."}, "Claude builds a reached counter (X of N reached) into Closing Desk. You test it on one contact.": {"head": "Reached counter", "desc": "Claude builds a reached counter (X of N reached) into Closing Desk. You test it on one contact."}, "Pick this week’s Reel idea and hook with the caption-generator skill.": {"head": "Pick this week's Reel idea", "desc": "Pick this week's Reel idea and its hook with the caption-generator skill."}, "WhatsApp 15 people with a template.": {"head": "WhatsApp 15 people", "desc": "Send a template WhatsApp to 15 people."}, "WhatsApp. Set Tier A/B/C labels in the WhatsApp Business app and decide click-to-chat or continuing API registration.": {"head": "WhatsApp setup", "desc": "Set Tier A/B/C labels in the WhatsApp Business app and decide between click-to-chat or continuing the API registration."}, "Film one Reel in one take, or hand the raw clip to the editor.": {"head": "Film one Reel", "desc": "Film one Reel in one take, or hand the raw clip to the editor."}, "Call 10 people, then call back anyone who replied.": {"head": "Call 10, then call back", "desc": "Call 10 people, then call back anyone who replied."}, "Follow-up sequences. Claude builds Day 3, 7 and 21 reminders. You approve the wording.": {"head": "Follow-up sequences", "desc": "Claude builds Day 3, 7 and 21 reminders. You approve the wording."}, "Message one builder or past client and ask what is new, using the builder-inquiry skill.": {"head": "Message one builder", "desc": "Message one builder or past client and ask what is new, using the builder-inquiry skill."}, "Answer every reply, then message the No-answer people.": {"head": "Answer replies, chase no-answers", "desc": "Answer every reply, then message the No-answer people."}, "Claude builds the weekly scorecard: reached, replies, appointments, listings x/20, buyers x/30. You check it.": {"head": "Weekly scorecard", "desc": "Claude builds the weekly scorecard: reached, replies, appointments, listings x/20 and buyers x/30. You check it."}, "5-minute scoreboard. Tell Claude reached, replies and appointments this week.": {"head": "5-minute scoreboard", "desc": "Tell Claude how many people you reached, how many replied and how many appointments you have this week."}, "Send 10 Instagram DMs to people who watched, commented or replied. No cold pitches.": {"head": "Send 10 Instagram DMs", "desc": "Send 10 Instagram DMs to people who watched, commented or replied. No cold pitches."}, "Facebook Marketplace auto-reply. Claude writes it, you paste it in.": {"head": "Marketplace auto-reply", "desc": "Claude writes the Facebook Marketplace auto-reply and you paste it in."}, "Email health check: bounces and unsubscribes. If it is clean, raise the daily cap in Email settings.": {"head": "Email health check", "desc": "Check bounces and unsubscribes. If it is clean, raise the daily cap in Email settings."}, "Lead capture. Claude builds a form link that drops leads into Closing Desk. You put it in your Instagram bio.": {"head": "Lead capture form", "desc": "Claude builds a form link that drops leads into Closing Desk. You put it in your Instagram bio."}, "Editing check. Send the videographer brief, count Reels edited vs waiting, and remove the one bottleneck.": {"head": "Editing check", "desc": "Send the videographer brief, count Reels edited vs waiting, and remove the one bottleneck."}, "Turn on Tell Claude. Put the Anthropic key in the Supabase secret and set tellClaude to true. About 2–5 cents per note.": {"head": "Turn on Tell Claude", "desc": "Put the Anthropic key in the Supabase secret and set tellClaude to true. It costs about 2–5 cents per note."}, "Full test. Send yourself one email, one WhatsApp, one call and one DM. Note what annoys you.": {"head": "Full test", "desc": "Send yourself one email, one WhatsApp, one call and one DM. Note what annoys you."}, "Claude fixes the top 3 annoyances. You retest.": {"head": "Fix the top 3 annoyances", "desc": "Claude fixes the top 3 annoyances from your test. You retest."}, "Pace check. Reached vs target. Claude resets your daily number.": {"head": "Pace check", "desc": "Compare reached vs target. Claude resets your daily number."}, "Hot replies. Set the next step and move cards on Pipeline.": {"head": "Hot replies", "desc": "Set the next step on each hot reply and move the cards on Pipeline."}, "Offers library 1/2. Pre-construction offer #1. You supply builder, community, price, deposit and possession. Claude drafts and flags gaps.": {"head": "Offers library, part 1 of 2", "desc": "Pre-construction offer #1. You supply builder, community, price, deposit and possession. Claude drafts it and flags gaps."}, "Offers library 2/2. Three MLS investor picks and a custom-home guide outline, same rule.": {"head": "Offers library, part 2 of 2", "desc": "Three MLS investor picks and a custom-home guide outline, same rule: you supply the details and Claude flags gaps."}, "Year-end message. Claude drafts the email and the WhatsApp, you approve.": {"head": "Year-end message", "desc": "Claude drafts the year-end email and the WhatsApp. You approve them."}, "Regression test: tap every button once. Then build the last-mile list in Lists by filtering people not yet reached.": {"head": "Regression test", "desc": "Tap every button once. Then build the last-mile list in Lists by filtering people not yet reached."}, "Send the year-end email campaign.": {"head": "Send the year-end email", "desc": "Send the year-end email campaign."}, "Send the year-end WhatsApp to Tier A from Today.": {"head": "Send the year-end WhatsApp", "desc": "Send the year-end WhatsApp to Tier A from Today."}, "More › Download backup. Save it somewhere private.": {"head": "Download a backup", "desc": "More › Download backup. Save it somewhere private."}, "Send 5 personal holiday WhatsApps to favourite past clients.": {"head": "Send 5 holiday WhatsApps", "desc": "Send 5 personal holiday WhatsApps to favourite past clients."}, "More › Download backup.": {"head": "Download a backup", "desc": "More › Download backup."}, "Close the laptop. It counts as a task.": {"head": "Close the laptop", "desc": "Close the laptop. It counts as a task."}, "Last mile 1/2. Call everyone still unreached. 10 dials.": {"head": "Last mile, part 1 of 2", "desc": "Call everyone still unreached. 10 dials."}, "Log an outcome on every contact you touched this month so the counter is true.": {"head": "Log every outcome", "desc": "Log an outcome on every contact you touched this month so the counter is true."}, "Last mile 2/2. Message the rest, only people it is OK to message.": {"head": "Last mile, part 2 of 2", "desc": "Message the rest, only people it is OK to message."}, "Set January follow-up dates for everyone: Lists › Select.": {"head": "Set January follow-ups", "desc": "Set January follow-up dates for everyone: Lists › Select."}, "Year-end review with Claude. Replies by channel, listings x/20, buyers x/30, plan January.": {"head": "Year-end review", "desc": "Review with Claude: replies by channel, listings x/20, buyers x/30, then plan January."}, "Finish line. Read the final reached count, download a backup, celebrate.": {"head": "Finish line", "desc": "Read the final reached count, download a backup, celebrate."}};
+  var TI={"Call or WhatsApp your 5 warmest people.": {"head": "Reach your 5 warmest people", "desc": "Open Closing Desk › Clients and start with the people you know best. A call or a WhatsApp both count. Keep it a friendly check-in, not a pitch."}, "Count your contacts. In Clients › Everyone, write down total contacts and how many have email, phone and consent. Tell Claude.": {"head": "Count your contacts", "desc": "In Clients › Everyone, write down total contacts and how many have email, phone and consent. Then tell Claude the numbers."}, "Schedule next Saturday’s 9am Reel and reply to comments.": {"head": "Schedule Saturday's 9am Reel", "desc": "Schedule next Saturday's 9am Reel, then reply to the comments."}, "Read your reached number (or how many people you contacted this week) to Claude.": {"head": "Tell Claude your reached number", "desc": "Read your reached number to Claude. If you do not have one yet, tell Claude how many people you contacted this week."}, "Pick 3 Reel ideas for the week.": {"head": "Pick 3 Reel ideas", "desc": "Pick 3 Reel ideas for the week. Type each one in the notes box below starting with RI and it lands in Content ideas."}, "Do something that is not work. It counts as a task.": {"head": "Take a real break", "desc": "Do something that is not work. It counts as a task, so tick it without guilt."}, "Mark Client consent on past clients: Clients › Everyone › Select › Email consent.": {"head": "Mark client consent", "desc": "Mark Client consent on your past clients: Clients › Everyone › Select › Email consent."}, "Pick your commercial course. Claude’s pick for fast AI study is Haskayne ($699). Confirm total hours first.": {"head": "Pick your commercial course", "desc": "Claude's pick for fast AI study is Haskayne ($699). Confirm the total course hours first, then choose."}, "Mark Said yes or Asked me consent on people who agreed or contacted you. Skip anyone you are unsure about.": {"head": "Mark who said yes", "desc": "Mark Said yes or Asked me consent on people who agreed or contacted you. Skip anyone you are unsure about."}, "Enrol and pay for the course and save the login. Haskayne can take up to 72 hours to unlock. Order the HP 10bII+ calculator too.": {"head": "Enrol and pay for the course", "desc": "Enrol, pay and save the login. Haskayne can take up to 72 hours to unlock. Order the HP 10bII+ calculator too."}, "Gmail setup 1/2. Make the Google Cloud project and turn on the Gmail API (README, Email setup step 2). If it is already connected, say done.": {"head": "Gmail setup, part 1 of 2", "desc": "Make the Google Cloud project and turn on the Gmail API (README, Email setup step 2). If it is already connected, say done."}, "Film 2 Reels in one sitting and send the raw clips to the editor so posts go out while you study.": {"head": "Film 2 Reels in one sitting", "desc": "Film 2 Reels in one sitting and send the raw clips to the editor so posts go out while you study."}, "Gmail setup 2/2. Paste the Client ID in the Email tab, test the unsubscribe link, then Connect Gmail.": {"head": "Gmail setup, part 2 of 2", "desc": "Paste the Client ID in the Email tab, test the unsubscribe link, then Connect Gmail."}, "Check the course has unlocked and skim the outline. Your 9-day plan is already on the calendar.": {"head": "Check your course unlocked", "desc": "Check the course has unlocked and skim the outline. Your 9-day plan is already on the calendar."}, "Email #1. Pick a starter, send a test to yourself, check your inbox and your spam folder.": {"head": "Send your first test email", "desc": "Email #1. Pick a starter, send a test to yourself, then check your inbox and your spam folder."}, "Schedule the banked Reels for Nov 21–29.": {"head": "Schedule the banked Reels", "desc": "Schedule the banked Reels for Nov 21–29."}, "Log in and skim the outline. Read the RECA exam blueprint. Domains 1–2 units, then a time-value-of-money drill on the HP 10bII+.": {"head": "Study day 1: outline and blueprint", "desc": "Log in and skim the outline. Read the RECA exam blueprint. Cover the Domains 1–2 units, then do a time-value-of-money drill on the HP 10bII+."}, "Reply to WhatsApp messages.": {"head": "Reply to WhatsApp", "desc": "Reply to your WhatsApp messages."}, "Domain 3, Prospecting and Marketing (14%). Course units, then ask Claude to quiz you on 3.1–3.4.": {"head": "Study day 2: Domain 3", "desc": "Domain 3, Prospecting and Marketing (14%). Do the course units, then ask Claude to quiz you on 3.1–3.4."}, "Send one thinking-of-you WhatsApp to a favourite past client.": {"head": "Thinking-of-you WhatsApp", "desc": "Send one thinking-of-you WhatsApp to a favourite past client."}, "Domain 4, part 1 (48% of the exam). Units for 4.1–4.2, then rent drills: base, additional and percentage rent, rentable and usable.": {"head": "Study day 3: Domain 4, part 1", "desc": "Domain 4 is 48% of the exam. Do the units for 4.1–4.2, then rent drills: base, additional and percentage rent, rentable and usable."}, "Reply to Instagram DMs.": {"head": "Reply to Instagram DMs", "desc": "Reply to your Instagram DMs."}, "Domain 4, part 2. Valuation 4.3: gross income, NOI, cap rates, then DCF, NPV and IRR on the calculator.": {"head": "Study day 4: Domain 4, part 2", "desc": "Valuation 4.3: gross income, NOI and cap rates, then DCF, NPV and IRR on the calculator."}, "Call one warm contact.": {"head": "Call one warm contact", "desc": "Call one warm contact."}, "Domain 4, part 3. Financing 4.4: mortgage payments and balances, loan-to-value, debt coverage, net effective rent.": {"head": "Study day 5: Domain 4, part 3", "desc": "Financing 4.4: mortgage payments and balances, loan-to-value, debt coverage and net effective rent."}, "Reply to emails.": {"head": "Reply to emails", "desc": "Reply to your emails."}, "Domain 5, part 1, Negotiating and Closing (28%). Units for 5.1–5.3, then ask Claude to quiz you.": {"head": "Study day 6: Domain 5, part 1", "desc": "Domain 5, Negotiating and Closing (28%). Do the units for 5.1–5.3, then ask Claude to quiz you."}, "Send 3 WhatsApps from Clients. Relationship contacts only.": {"head": "Send 3 WhatsApps", "desc": "Send 3 WhatsApps from Clients. Relationship contacts only."}, "Domain 5, part 2. Units for 5.4–5.5, then finish any course units you have not opened.": {"head": "Study day 7: Domain 5, part 2", "desc": "Do the units for 5.4–5.5, then finish any course units you have not opened."}, "Reply to anything still open.": {"head": "Reply to anything still open", "desc": "Reply to anything still open."}, "Mixed practice exam with Claude, weighted 48% Domain 4, 28% Domain 5, 14% Domain 3. Redo your weakest topics.": {"head": "Study day 8: practice exam", "desc": "Mixed practice exam with Claude, weighted 48% Domain 4, 28% Domain 5 and 14% Domain 3. Redo your weakest topics."}, "Call one hot lead.": {"head": "Call one hot lead", "desc": "Call one hot lead."}, "Ask your provider to mark you Ready for Exam in myRECA. Look up the exam fee and date on reca.ca, book it, then do a light review.": {"head": "Study day 9: book the exam", "desc": "Ask your provider to mark you Ready for Exam in myRECA. Look up the exam fee and date on reca.ca, book it, then do a light review."}, "Glance at messages and reply to hot ones only.": {"head": "Quick message check", "desc": "Glance at your messages and reply to the hot ones only."}, "Call 10 people, Tier A first. Leave a 15-second voicemail if there is no answer.": {"head": "Call 10 people", "desc": "Call 10 people, Tier A first. Leave a 15-second voicemail if there is no answer."}, "Start campaign #1 to consented Clients: Email › New campaign › Start. Keep the laptop open.": {"head": "Start campaign #1", "desc": "Start campaign #1 to consented Clients: Email › New campaign › Start. Keep the laptop open."}, "Answer every unanswered message on WhatsApp, Instagram and email.": {"head": "Clear your inboxes", "desc": "Answer every unanswered message on WhatsApp, Instagram and email."}, "Email day. Keep the email campaign running with the laptop open and answer replies.": {"head": "Email day", "desc": "Keep the email campaign running with the laptop open and answer replies."}, "Claude builds a reached counter (X of N reached) into Closing Desk. You test it on one contact.": {"head": "Reached counter", "desc": "Claude builds a reached counter (X of N reached) into Closing Desk. You test it on one contact."}, "Pick this week’s Reel idea and hook with the caption-generator skill.": {"head": "Pick this week's Reel idea", "desc": "Pick this week's Reel idea and its hook with the caption-generator skill."}, "WhatsApp 15 people with a template.": {"head": "WhatsApp 15 people", "desc": "Send a template WhatsApp to 15 people."}, "WhatsApp. Set Tier A/B/C labels in the WhatsApp Business app and decide click-to-chat or continuing API registration.": {"head": "WhatsApp setup", "desc": "Set Tier A/B/C labels in the WhatsApp Business app and decide between click-to-chat or continuing the API registration."}, "Film one Reel in one take, or hand the raw clip to the editor.": {"head": "Film one Reel", "desc": "Film one Reel in one take, or hand the raw clip to the editor."}, "Call 10 people, then call back anyone who replied.": {"head": "Call 10, then call back", "desc": "Call 10 people, then call back anyone who replied."}, "Follow-up sequences. Claude builds Day 3, 7 and 21 reminders. You approve the wording.": {"head": "Follow-up sequences", "desc": "Claude builds Day 3, 7 and 21 reminders. You approve the wording."}, "Message one builder or past client and ask what is new, using the builder-inquiry skill.": {"head": "Message one builder", "desc": "Message one builder or past client and ask what is new, using the builder-inquiry skill."}, "Answer every reply, then message the No-answer people.": {"head": "Answer replies, chase no-answers", "desc": "Answer every reply, then message the No-answer people."}, "Claude builds the weekly scorecard: reached, replies, appointments, listings x/20, buyers x/30. You check it.": {"head": "Weekly scorecard", "desc": "Claude builds the weekly scorecard: reached, replies, appointments, listings x/20 and buyers x/30. You check it."}, "5-minute scoreboard. Tell Claude reached, replies and appointments this week.": {"head": "5-minute scoreboard", "desc": "Tell Claude how many people you reached, how many replied and how many appointments you have this week."}, "Send 10 Instagram DMs to people who watched, commented or replied. No cold pitches.": {"head": "Send 10 Instagram DMs", "desc": "Send 10 Instagram DMs to people who watched, commented or replied. No cold pitches."}, "Facebook Marketplace auto-reply. Claude writes it, you paste it in.": {"head": "Marketplace auto-reply", "desc": "Claude writes the Facebook Marketplace auto-reply and you paste it in."}, "Email health check: bounces and unsubscribes. If it is clean, raise the daily cap in Email settings.": {"head": "Email health check", "desc": "Check bounces and unsubscribes. If it is clean, raise the daily cap in Email settings."}, "Lead capture. Claude builds a form link that drops leads into Closing Desk. You put it in your Instagram bio.": {"head": "Lead capture form", "desc": "Claude builds a form link that drops leads into Closing Desk. You put it in your Instagram bio."}, "Editing check. Send the videographer brief, count Reels edited vs waiting, and remove the one bottleneck.": {"head": "Editing check", "desc": "Send the videographer brief, count Reels edited vs waiting, and remove the one bottleneck."}, "Turn on Tell Claude. Put the Anthropic key in the Supabase secret and set tellClaude to true. About 2–5 cents per note.": {"head": "Turn on Tell Claude", "desc": "Put the Anthropic key in the Supabase secret and set tellClaude to true. It costs about 2–5 cents per note."}, "Full test. Send yourself one email, one WhatsApp, one call and one DM. Note what annoys you.": {"head": "Full test", "desc": "Send yourself one email, one WhatsApp, one call and one DM. Note what annoys you."}, "Claude fixes the top 3 annoyances. You retest.": {"head": "Fix the top 3 annoyances", "desc": "Claude fixes the top 3 annoyances from your test. You retest."}, "Pace check. Reached vs target. Claude resets your daily number.": {"head": "Pace check", "desc": "Compare reached vs target. Claude resets your daily number."}, "Hot replies. Set the next step and move cards on Pipeline.": {"head": "Hot replies", "desc": "Set the next step on each hot reply and move the cards on Pipeline."}, "Offers library 1/2. Pre-construction offer #1. You supply builder, community, price, deposit and possession. Claude drafts and flags gaps.": {"head": "Offers library, part 1 of 2", "desc": "Pre-construction offer #1. You supply builder, community, price, deposit and possession. Claude drafts it and flags gaps."}, "Offers library 2/2. Three MLS investor picks and a custom-home guide outline, same rule.": {"head": "Offers library, part 2 of 2", "desc": "Three MLS investor picks and a custom-home guide outline, same rule: you supply the details and Claude flags gaps."}, "Year-end message. Claude drafts the email and the WhatsApp, you approve.": {"head": "Year-end message", "desc": "Claude drafts the year-end email and the WhatsApp. You approve them."}, "Regression test: tap every button once. Then build the last-mile list in Clients › Everyone by filtering people not yet reached.": {"head": "Regression test", "desc": "Tap every button once. Then build the last-mile list in Clients › Everyone by filtering people not yet reached."}, "Send the year-end email campaign.": {"head": "Send the year-end email", "desc": "Send the year-end email campaign."}, "Send the year-end WhatsApp to Tier A from Clients.": {"head": "Send the year-end WhatsApp", "desc": "Send the year-end WhatsApp to Tier A from Clients."}, "More › Download backup. Save it somewhere private.": {"head": "Download a backup", "desc": "More › Download backup. Save it somewhere private."}, "Send 5 personal holiday WhatsApps to favourite past clients.": {"head": "Send 5 holiday WhatsApps", "desc": "Send 5 personal holiday WhatsApps to favourite past clients."}, "More › Download backup.": {"head": "Download a backup", "desc": "More › Download backup."}, "Close the laptop. It counts as a task.": {"head": "Close the laptop", "desc": "Close the laptop. It counts as a task."}, "Last mile 1/2. Call everyone still unreached. 10 dials.": {"head": "Last mile, part 1 of 2", "desc": "Call everyone still unreached. 10 dials."}, "Log an outcome on every contact you touched this month so the counter is true.": {"head": "Log every outcome", "desc": "Log an outcome on every contact you touched this month so the counter is true."}, "Last mile 2/2. Message the rest, only people it is OK to message.": {"head": "Last mile, part 2 of 2", "desc": "Message the rest, only people it is OK to message."}, "Set January follow-up dates for everyone: Clients › Everyone › Select.": {"head": "Set January follow-ups", "desc": "Set January follow-up dates for everyone: Clients › Everyone › Select."}, "Year-end review with Claude. Replies by channel, listings x/20, buyers x/30, plan January.": {"head": "Year-end review", "desc": "Review with Claude: replies by channel, listings x/20, buyers x/30, then plan January."}, "Finish line. Read the final reached count, download a backup, celebrate.": {"head": "Finish line", "desc": "Read the final reached count, download a backup, celebrate."}};
   function tinfo(title){
     var x=TI[title];
     if(x) return x;
@@ -329,9 +351,11 @@
     if(TABS.indexOf(name)<0) name='today';
     curTab=name;
     document.body.setAttribute('data-tab',name);
-    var bs=document.querySelectorAll('.tabs button');
-    for(var i=0;i<bs.length;i++){if(bs[i].getAttribute('data-tab')===name) bs[i].setAttribute('aria-current','page'); else bs[i].removeAttribute('aria-current');}
+    var bs=document.querySelectorAll('.subnav button');
+    for(var i=0;i<bs.length;i++){var on=bs[i].getAttribute('data-tab')===name;bs[i].setAttribute('aria-pressed',on?'true':'false');bs[i].classList.toggle('on',on);}
+    try{var hh='#'+(HASHES[name]||'board');if(location.hash!==hh) history.replaceState(null,'',hh);}catch(e){}
     if(!keepScroll) window.scrollTo(0,0);
+    if(name==='today') kbScroll();
   }
   function setTheme(t){
     document.documentElement.setAttribute('data-theme',t);
@@ -339,37 +363,25 @@
     var m=document.querySelector('meta[name="theme-color"]');if(m) m.setAttribute('content',t==='light'?'#F3F6FB':'#0B1220');
     var b=document.getElementById('themeBtn');if(b) b.setAttribute('aria-label',t==='light'?'Switch to dark mode':'Switch to light mode');
   }
-  var ICONS={
-    today:'<path d="M5 13l4 4L19 7"/><circle cx="12" cy="12" r="9"/>',
-    plan:'<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>',
-    ideas:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
-    notes:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>'
-  };
-  var LABELS={today:'Today',plan:'Plan',ideas:'Ideas',notes:'Notes'};
+  var HASHES={today:'board',plan:'plan',ideas:'ideas',notes:'notes'};
+  function tabFromHash(){var h0=String(location.hash||'').replace('#','');for(var k in HASHES){if(HASHES[k]===h0) return k;}return 'today';}
   function buildChrome(){
     var strip=h('div',{class:'strip'},[
       h('span',{class:'logo','aria-hidden':'true',html:'<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M9 15l2.2 2.2L15 12.8"/></svg>'}),
-      h('div',{class:'seg2',role:'group','aria-label':'Switch app'},[
-        h('span',{class:'s on','aria-current':'page','aria-label':'Win the Day',text:'Win'}),
-        h('a',{class:'s',href:CD_URL,text:'Clients'}),
-        h('a',{class:'s',href:'dashboard.html','aria-label':'Dashboard',text:'Dash'})
-      ]),
+      h('span',{class:'brand',text:'Closing Desk'}),
       h('span',{class:'sp'}),
       h('button',{class:'ib',id:'themeBtn',type:'button','aria-label':'Switch to light mode',html:'<svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg><svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>'})
     ]);
     app.parentNode.insertBefore(strip,app);
-    var inner=h('div',{class:'in'});
-    TABS.forEach(function(n){inner.appendChild(h('button',{type:'button','data-tab':n,html:'<svg viewBox="0 0 24 24" aria-hidden="true">'+ICONS[n]+'</svg><span>'+LABELS[n]+'</span>'}));});
-    var tabs=h('nav',{class:'tabs','aria-label':'Sections'},[inner]);
-    document.body.appendChild(tabs);
-    tabs.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button[data-tab]');if(b) setTab(b.getAttribute('data-tab'));});
     document.getElementById('themeBtn').addEventListener('click',function(){setTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light');});
     setTheme(document.documentElement.getAttribute('data-theme')==='light'?'light':'dark');
-    setTab('today',true);
+    setTab(tabFromHash(),true);
   }
+  window.addEventListener('hashchange',function(){var t=tabFromHash();if(t!==curTab){setTab(t);render();}});
 
   function render(focusIdx){
     pendingRender=false;
+    if(doing&&doing.d<R.clamp(today)){doing=null;focusKey=null;}
     var plan=R.planFor(viewing);
     var tasks=D.eff[viewing];
     var oc=outcomes[viewing]||[];
@@ -388,6 +400,9 @@
 
     var wrap=h('div',{class:'wrap'});
     app.appendChild(wrap);
+    wrap.appendChild(h('div',{class:'subnav',role:'tablist','aria-label':'Board sections'},[['today','Board'],['plan','Plan'],['ideas','Ideas'],['notes','Notes']].map(function(c){
+      return h('button',{type:'button',role:'tab','data-tab':c[0],'aria-pressed':curTab===c[0]?'true':'false',class:curTab===c[0]?'on':'',text:c[1]});
+    })));
 
     wrap.appendChild(tabIn('today',h('header',{class:'title-row'},[
       h('div',{},[
@@ -399,7 +414,7 @@
     wrap.appendChild(tabIn('plan',tabHead('Plan','Next 10 days and the full calendar')));
     wrap.appendChild(tabIn('ideas',tabHead('Ideas','Content to make and post')));
     wrap.appendChild(tabIn('notes',tabHead('Notes','Capture a thought')));
-    if(viewing<=today) wrap.appendChild(tabIn('today notes',composeBlock()));
+    if(viewing<=today){var cmp=composeBlock();cmp.classList.add('cmp');wrap.appendChild(tabIn('today notes',cmp));}
     var msg=null;
     if(count===3) msg='All 3 done. That is the day.';
     else if(missed>0&&count+missed===3) msg='Nothing left for this day. The rest is back on the board.';
@@ -409,29 +424,16 @@
       wrap.appendChild(tabIn('today',h('div',{class:'banner',text:'The plan is finished. Ask Claude for a January plan whenever you want one.'})));
     }
 
-    var ul=h('ul',{class:'list'});
-    tasks.forEach(function(t,i){ul.appendChild(row(t,i,oc[i]||''));});
-    var tasksGrp=grp('Today\u2019s 3 wins',ul);
-    tasksGrp.appendChild(h('p',{class:'swipehint',id:'swipehelp'},[
-      h('span',{html:'<i class="g"></i>Swipe right: done'}),
-      h('span',{html:'<i class="o"></i>Swipe left: didn’t do it'})
-    ]));
-    wrap.appendChild(tabIn('today',tasksGrp));
+    var nsEl=numbersStrip();nsEl.classList.add('nsw');wrap.appendChild(tabIn('today',nsEl));
+    wrap.appendChild(tabIn('today',boardSection()));
     var nxg=nextGroup();if(nxg) wrap.appendChild(tabIn('plan',nxg));
     wrap.appendChild(tabIn('plan',laterGroup()));
-    wrap.appendChild(tabIn('today',cdGroup()));
     var ig=ideaGroup(),cg=contentGroup();
     if(ig) wrap.appendChild(tabIn('ideas',ig));
     if(cg) wrap.appendChild(tabIn('ideas',cg));
     if(!ig&&!cg) wrap.appendChild(tabIn('ideas',emptyCard('No ideas yet','Add one with the + line on Today or Notes and it will show up here.')));
     if(viewing<=today){var ng=noteGroup();if(ng){ng.id='note-sec';wrap.appendChild(tabIn('notes',ng));} else wrap.appendChild(tabIn('notes',emptyCard('No notes yet','Tap “Add a note or idea” above. Claude reads new notes within the hour and files them.')));}
-    if(!testHidden) wrap.appendChild(tabIn('today',testGroup()));
 
-    if(D.board.length){
-      var bl=h('ul',{class:'list'});
-      D.board.forEach(function(e){bl.appendChild(boardRow(e));});
-      wrap.appendChild(tabIn('today',grp('Back on the board',bl)));
-    }
 
     if(plan.pace){
       var n=R.workingDaysLeft(viewing);
@@ -481,16 +483,364 @@
     footEl=h('p',{class:'foot',text:footText()});
     wrap.appendChild(tabIn('today notes',footEl));
     renderSync();
-    if(testHidden) wrap.appendChild(tabIn('today',h('div',{class:'acts'},[h('button',{class:'lnk','data-act':'t-show',text:'Show the swipe practice'})])));
 
     if(typeof focusIdx==='number'){
       var f=app.querySelector('.swipe[data-i="'+focusIdx+'"] .front');
       if(f&&f.focus) f.focus({preventScroll:true});
     }
+    kbScroll();
+    renderFocus();
   }
 
+  /* ================= Board: Backlog | Today | Doing | Done =================
+     One card per task. Every card has small steps (about 2 minutes each). Start opens one step at a time.
+     Only one card can be Doing. A task pushed twice shrinks to its first step. Steps, Doing and push counts are saved in the same document. */
+  var ST=window.ROSSTEPS;
+  function keyOf(t){return t.oid||t.id;}
+  function genSteps(t){return ST.forTask(t,people).map(function(x){return {t:x.t,m:x.m,d:0};});}
+  function getSteps(t){var e=steps[keyOf(t)];return (e&&e.s)?e.s:genSteps(t);}
+  function matSteps(t){
+    var k=keyOf(t);
+    if(!steps[k]||!steps[k].s) steps[k]={s:genSteps(t)};
+    return steps[k].s;
+  }
+  function nextIdx(arr){for(var i=0;i<arr.length;i++){if(!arr[i].d) return i;}return -1;}
+  function stat(arr){var d=0,left=0;arr.forEach(function(x){if(x.d) d++; else left+=(x.m||0);});return {done:d,total:arr.length,left:left,all:d===arr.length&&arr.length>0};}
+  function minsTxt(n){return n<=0?'':(n<=1?'1 min':'about '+n+' min');}
+  function findTaskByKey(key){
+    var arr=D.eff[viewing]||[];
+    for(var i=0;i<arr.length;i++){if(keyOf(arr[i])===key) return {t:arr[i],i:i};}
+    return null;
+  }
+  function doingNow(){
+    if(!doing||doing.d!==viewing) return null;
+    var f=findTaskByKey(doing.key);
+    if(!f) return null;
+    var oc=outcomes[viewing]||[];
+    if(oc[f.i]) return null;
+    return doing.key;
+  }
+  /* The first undone step, or for a task pushed twice, only the very first step. */
+  function shrunk(t){return (pushes[keyOf(t)]||0)>=2;}
+  function firstReal(arr){for(var i=0;i<arr.length;i++){if(!arr[i].p) return i;}return -1;}
+  function shrunkDone(t,arr){var fr=firstReal(arr);return shrunk(t)&&fr>=0&&!!arr[fr].d;}
+  function startTask(i){
+    var t=(D.eff[viewing]||[])[i];if(!t) return;
+    var arr=matSteps(t);
+    if(!arr.length||!arr[0].p){arr.unshift({t:'Opened this card',m:0,d:1,p:1});}
+    doing={key:keyOf(t),d:viewing};
+    focusKey=keyOf(t);
+    persist();render();
+  }
+  function stopTask(){doing=null;focusKey=null;persist();render();}
+  function pushTask(i){
+    var t=(D.eff[viewing]||[])[i];if(!t) return;
+    var k=keyOf(t);
+    pushes[k]=(pushes[k]||0)+1;
+    if(doing&&doing.key===k) doing=null;
+    if(focusKey===k) focusKey=null;
+    setOutcome(viewing,i,'missed');
+  }
+  function finishTask(i){
+    var t=(D.eff[viewing]||[])[i];if(!t) return;
+    var k=keyOf(t);
+    if(doing&&doing.key===k) doing=null;
+    if(focusKey===k) focusKey=null;
+    delete pushes[k];
+    setOutcome(viewing,i,'done');
+  }
+  function tickStep(key,n){
+    var f=findTaskByKey(key);if(!f) return;
+    var arr=matSteps(f.t);
+    if(arr[n]) arr[n].d=arr[n].d?0:1;
+    persist();render();
+  }
+  function addStep(key,txt){
+    var f=findTaskByKey(key);txt=String(txt||'').trim().slice(0,140);
+    if(!f||!txt) return;
+    matSteps(f.t).push({t:txt,m:2,d:0});
+    persist();render();
+  }
+
+  function numbersStrip(){
+    var kids=[];
+    if(cd&&typeof cd.contacts==='number'){
+      var pct=Math.max(0,Math.min(100,Number(cd.pct)||0));
+      kids.push(h('div',{class:'ns-top'},[
+        h('span',{class:'ns-main'},[h('b',{text:fmtN(cd.reached||0)}),h('span',{text:' of '+fmtN(cd.contacts)+' reached'})]),
+        h('a',{class:'ns-link',href:'dashboard.html',text:'All numbers ›'})
+      ]));
+      kids.push(h('div',{class:'bar'},[h('i',{style:'width:'+pct+'%'})]));
+      kids.push(h('div',{class:'ns-chips'},[
+        h('div',{},[h('b',{text:String(cd.dueToday||0)}),h('span',{text:'due'})]),
+        h('div',{},[h('b',{text:String(cd.touchesToday||0)}),h('span',{text:'touches'})]),
+        h('div',{},[h('b',{text:String(cd.emailsToday||0)}),h('span',{text:'emails'})])
+      ]));
+    } else {
+      kids.push(h('div',{class:'ns-top'},[h('span',{class:'ns-main'},[h('span',{text:'Loading your numbers…'})]),h('a',{class:'ns-link',href:'dashboard.html',text:'All numbers ›'})]));
+    }
+    return h('div',{class:'card nstrip'},kids);
+  }
+
+  function tagRow(t,extra){
+    return h('div',{class:'kicker'},[
+      t.role?h('span',{class:'role',text:t.role}):null,
+      h('span',{class:'tag t-'+String(t.tag||'').toLowerCase().replace(/[^a-z]/g,''),text:t.tag}),
+      t.mins?h('span',{class:'mins',text:t.mins+' min'}):null,
+      t.moved?h('span',{class:'chip-mv',text:'Moved from '+R.shortDay(t.from)}):null,
+      extra||null
+    ]);
+  }
+  function stepsList(key,arr,editable){
+    var ul=h('ul',{class:'kc-steps'});
+    arr.forEach(function(x,n){
+      var b=h('button',{class:'kc-ck'+(x.d?' on':''),'data-act':'st-tog','data-key':key,'data-n':String(n),'aria-label':(x.d?'Mark not done: ':'Mark done: ')+x.t,'aria-pressed':x.d?'true':'false',html:x.d?CHECK:''});
+      if(!editable) b.disabled=true;
+      ul.appendChild(h('li',{class:x.d?'done':''},[b,h('span',{class:'kc-st'},[h('span',{text:x.t}),x.m?h('small',{text:x.m+' min'}):null])]));
+    });
+    return ul;
+  }
+  function addStepRow(key){
+    return h('div',{class:'ltadd'},[
+      h('input',{type:'text',maxlength:'140',placeholder:'Add a step',enterkeyhint:'done',autocomplete:'off','data-stin':key}),
+      h('button',{class:'lnk','data-act':'st-add','data-key':key,text:'Add'})
+    ]);
+  }
+  function progressBlock(arr){
+    var s=stat(arr);
+    var pctd=s.total?Math.round(s.done*100/s.total):0;
+    return h('div',{class:'kc-prog'},[
+      h('div',{class:'bar','aria-hidden':'true'},[h('i',{style:'width:'+pctd+'%'})]),
+      h('span',{class:'num',text:s.done+' of '+s.total+' steps'+(s.left>0?' · '+minsTxt(s.left)+' left':'')})
+    ]);
+  }
+
+  function cardEl(t,i,col){
+    var key=keyOf(t),x=tinfo(t.title),arr=getSteps(t),s=stat(arr),open=(stepOpen===key),pc=pushes[key]||0;
+    var nx=nextIdx(arr),kids=[];
+    kids.push(tagRow(t,pc>0?h('span',{class:'chip-push',text:'Pushed '+pc+'×'}):null));
+    kids.push(h('p',{class:'kc-title',text:x.head}));
+    if(col==='done'){
+      kids.push(h('div',{class:'stline'},[h('span',{class:'ok',text:'Done'}),h('button',{class:'lnk','data-act':'undo','data-i':String(i),text:'Undo'})]));
+      return h('li',{class:'kc done','data-key':key},kids);
+    }
+    if(shrunk(t)&&col!=='doing'&&!shrunkDone(t,arr)){
+      var fr0=firstReal(arr),m0=fr0>=0?arr[fr0].m:0;
+      kids.push(h('p',{class:'kc-shrink',text:'Pushed twice. Today, do only the first step'+(m0?' ('+m0+' min)':'')+'.'}));
+    }
+    var started=!!(arr.length&&arr[0].p);
+    if(started||s.done>0||col==='doing') kids.push(progressBlock(arr));
+    else kids.push(h('p',{class:'kc-meta',text:arr.length+' steps'+(s.left>0?' · '+minsTxt(s.left):'')}));
+    if(nx>=0&&!s.all){
+      kids.push(h('div',{class:'kc-next'},[h('span',{class:'kc-lbl',text:(started?'Next step':'First step')+(arr[nx].m?' · '+arr[nx].m+' min':'')}),h('span',{class:'kc-nt',text:arr[nx].t})]));
+    } else if(s.all){
+      kids.push(h('p',{class:'kc-allset',text:'All steps done. Finish it.'}));
+    }
+    var acts=h('div',{class:'kc-acts'});
+    if(col==='today'){
+      acts.appendChild(h('button',{class:'btnp','data-act':'bd-start','data-i':String(i),text:started?'Continue':'Start'}));
+    } else {
+      acts.appendChild(s.all?h('button',{class:'btnp','data-act':'bd-done','data-i':String(i),text:'Finish'}):h('button',{class:'btnp','data-act':'bd-focus','data-key':key,text:'Open step'}));
+    }
+    acts.appendChild(h('button',{class:'btng','data-act':'bd-open','data-key':key,'aria-expanded':open?'true':'false',text:open?'Hide steps':'Show steps'}));
+    kids.push(acts);
+    if(open){
+      kids.push(stepsList(key,arr,true));
+      kids.push(addStepRow(key));
+      var more=h('div',{class:'kc-more'});
+      if(x.desc&&x.desc!==x.head) more.appendChild(h('p',{class:'dtext',text:x.desc}));
+      if(t.where) more.appendChild(h('p',{class:'where',text:'Where: '+t.where}));
+      if(t.hint) more.appendChild(h('p',{class:'hint',text:t.hint}));
+      kids.push(more);
+      var sec=h('div',{class:'kc-sec'});
+      if(col==='doing') sec.appendChild(h('button',{class:'lnk','data-act':'bd-stop',text:'Back to Today'}));
+      if(!s.all&&(started||s.done>0)) sec.appendChild(h('button',{class:'lnk','data-act':'bd-done','data-i':String(i),text:'Mark the whole task done'}));
+      sec.appendChild(h('button',{class:'lnk warnl','data-act':'bd-push','data-i':String(i),text:'Not today'}));
+      kids.push(sec);
+    } else {
+      kids.push(h('div',{class:'kc-sec'},[h('button',{class:'lnk warnl','data-act':'bd-push','data-i':String(i),text:'Not today'})]));
+    }
+    return h('li',{class:'kc '+col+(shrunk(t)?' shr':''),'data-key':key},kids);
+  }
+
+  /* Backlog: everything that is not for this day. Pushed tasks, follow-ups due, the next days of the plan, and Later. */
+  function backlogCards(){
+    var out=[],n=0;
+    if(cd&&cd.dueToday>0){
+      out.push({g:'Follow-ups',el:h('li',{class:'bc people'},[
+        h('p',{class:'kc-title',text:fmtN(cd.dueToday)+' people are due for a follow-up'}),
+        h('p',{class:'meta',text:'Your reach tasks pick the first ones for you.'}),
+        h('a',{class:'btng',href:CD_URL+'#today',text:'Open Clients ›'})
+      ])});n++;
+    }
+    D.board.forEach(function(e){
+      var line=e.status==='placed'?'Moved to '+R.shortDay(e.to):(e.status==='absorbed'&&e.to?'Comes back '+R.shortDay(e.to):(e.status==='absorbed'?'No catch-up needed':'Needs Claude to place it'));
+      var kids=[h('p',{class:'kc-title',text:tinfo(e.title).head}),h('p',{class:'meta',text:'From '+R.shortDay(e.from)+(e.mins?' · '+e.mins+' min':'')+' · '+line}),h('p',{class:'why',text:e.why})];
+      if(e.to) kids.push(h('button',{class:'btng','data-act':'goto','data-d':e.to,text:'Open '+R.shortDay(e.to)+' ›'}));
+      out.push({g:'Pushed',el:h('li',{class:'bc pushed'},kids)});n++;
+    });
+    var up=nextTasks(),lim=upOpen?up.length:5;
+    up.slice(0,lim).forEach(function(u){
+      var key=keyOf(u.t),open=(stepOpen==='b:'+key),arr=getSteps(u.t),s=stat(arr);
+      var kids=[h('p',{class:'kc-title',text:tinfo(u.t.title).head}),
+        h('p',{class:'meta',text:R.shortDay(u.d)+' · '+u.t.tag+' · '+arr.length+' steps'+(s.left>0?' · '+minsTxt(s.left):'')})];
+      if(open){
+        kids.push(stepsList(key,arr,false));
+        if(u.t.where) kids.push(h('p',{class:'where',text:'Where: '+u.t.where}));
+      }
+      kids.push(h('div',{class:'kc-acts'},[
+        h('button',{class:'btng','data-act':'bd-bopen','data-key':'b:'+key,text:open?'Hide steps':'See steps'}),
+        h('button',{class:'btng','data-act':'goto','data-d':u.d,text:'Open day ›'})
+      ]));
+      out.push({g:'Coming up',el:h('li',{class:'bc up'},kids)});n++;
+    });
+    if(up.length>5){
+      out.push({g:'Coming up',el:h('li',{class:'bc'},[h('button',{class:'lnk','data-act':'bd-upmore',text:upOpen?'Show fewer':'Show '+(up.length-5)+' more days'})])});
+    }
+    later.filter(function(x){return !x.done;}).forEach(function(x){
+      out.push({g:'Later',el:h('li',{class:'bc later'},[
+        h('p',{class:'kc-title',text:x.title}),x.note?h('p',{class:'meta',text:x.note}):null,
+        h('div',{class:'kc-acts'},[h('button',{class:'btng','data-act':'later-tog','data-id':x.id,text:'Mark done'}),h('button',{class:'lnk','data-act':'later-del','data-id':x.id,text:delArm===x.id?'Tap again':'Remove'})])
+      ])});n++;
+    });
+    return {cards:out,count:n};
+  }
+  function backlogCol(){
+    var b=backlogCards(),ul=h('ul',{class:'kc-list'}),last='';
+    b.cards.forEach(function(c){
+      if(c.g!==last){ul.appendChild(h('li',{class:'kc-grp',text:c.g}));last=c.g;}
+      ul.appendChild(c.el);
+    });
+    if(!b.cards.length) ul.appendChild(h('li',{class:'kc-empty',text:'Nothing waiting.'}));
+    ul.appendChild(h('li',{class:'kc-grp',text:'Add to Later'}));
+    ul.appendChild(h('li',{class:'bc'},[h('div',{class:'ltadd'},[
+      h('input',{id:'bl-later-in',type:'text',maxlength:'140',placeholder:'Add something for later',enterkeyhint:'done',autocomplete:'off'}),
+      h('button',{class:'lnk','data-act':'later-add2',text:'Add'})
+    ])]));
+    ul.appendChild(h('li',{class:'bc'},[h('button',{class:'btng','data-act':'to-plan',text:'See the whole plan ›'})]));
+    return {el:ul,count:b.count};
+  }
+
+  function boardSection(){
+    var tasks=D.eff[viewing]||[],oc=outcomes[viewing]||[],dk=doingNow();
+    var td=[],dg=[],dn=[];
+    tasks.forEach(function(t,i){
+      var st=oc[i];
+      if(st==='done') dn.push([t,i]);
+      else if(st==='missed') return;
+      else if(dk&&keyOf(t)===dk) dg.push([t,i]);
+      else td.push([t,i]);
+    });
+    var bl=backlogCol();
+    function col(name,label,items,col2){
+      var ul=col2||h('ul',{class:'kc-list'});
+      if(!col2){
+        items.forEach(function(p){ul.appendChild(cardEl(p[0],p[1],name));});
+        if(!items.length){
+          var msg={today:oc.some(function(v){return v==='done';})&&!items.length?'Nothing left for today.':'Nothing here.',doing:'Tap Start on a card. One at a time.',done:'Finished cards land here.'}[name]||'Nothing here.';
+          ul.appendChild(h('li',{class:'kc-empty',text:msg}));
+        }
+      }
+      return h('section',{class:'kcol c-'+name,'data-col':name,'aria-label':label},[ul]);
+    }
+    var cols=[col('backlog','Backlog',[],bl.el),col('today','Today',td),col('doing','Doing',dg),col('done','Done',dn)];
+    var counts={backlog:bl.count,today:td.length,doing:dg.length,done:dn.length};
+    var chips=h('div',{class:'kb-chips',role:'tablist'},[['backlog','Backlog'],['today','Today'],['doing','Doing'],['done','Done']].map(function(c){
+      return h('button',{class:'kb-chip'+(colSel===c[0]?' on':''),type:'button','data-act':'kb-col','data-col':c[0],role:'tab','aria-selected':colSel===c[0]?'true':'false'},[h('span',{text:c[1]}),h('b',{class:'num',text:String(counts[c[0]])})]);
+    }));
+    var kb=h('div',{class:'kb',id:'kb'},cols);
+    return h('section',{class:'grp kbwrap'},[chips,kb]);
+  }
+  function kbPad(kb){return parseFloat(window.getComputedStyle(kb).paddingLeft)||0;}
+  function kbPos(kb,c){return c.offsetLeft-kb.offsetLeft-kbPad(kb);}
+  function kbScroll(){
+    var kb=document.getElementById('kb');if(!kb) return;
+    if(kb.scrollWidth<=kb.clientWidth+2) return;
+    var c=kb.querySelector('.kcol[data-col="'+colSel+'"]');
+    if(c) kb.scrollLeft=(kbLeft!==null?kbLeft:kbPos(kb,c));
+  }
+  function kbPick(name,smooth){
+    colSel=name;kbLeft=null;
+    var chips=document.querySelectorAll('.kb-chip');
+    for(var i=0;i<chips.length;i++){var on=chips[i].getAttribute('data-col')===name;chips[i].classList.toggle('on',on);chips[i].setAttribute('aria-selected',on?'true':'false');}
+    var kb=document.getElementById('kb'),c=kb&&kb.querySelector('.kcol[data-col="'+name+'"]');
+    if(kb&&c&&kb.scrollWidth>kb.clientWidth+2){try{kb.scrollTo({left:kbPos(kb,c),behavior:smooth?'smooth':'auto'});}catch(e){kb.scrollLeft=kbPos(kb,c);}}
+  }
+
+  /* ---------- focus screen: one step at a time ---------- */
+  var foTimer=null,foTick=null;
+  function foStop(){if(foTick){clearInterval(foTick);foTick=null;}foTimer=null;}
+  function foClock(){
+    var el=document.getElementById('fo-clock');if(!el||!foTimer) return;
+    var left=Math.max(0,Math.round((foTimer.end-Date.now())/1000));
+    var m=Math.floor(left/60),s=left%60;
+    el.textContent=left>0?(m+':'+(s<10?'0':'')+s):'Time. Done, or keep going.';
+    if(left<=0&&foTick){clearInterval(foTick);foTick=null;}
+  }
+  function renderFocus(){
+    var old=document.getElementById('focus');
+    if(old) old.remove();
+    document.body.classList.remove('fo-open');
+    if(!focusKey) {foStop();return;}
+    var f=findTaskByKey(focusKey);
+    if(!f){focusKey=null;foStop();return;}
+    var t=f.t,arr=getSteps(t),s=stat(arr),n=nextIdx(arr),sh=shrunk(t),fr=firstReal(arr);
+    var x=tinfo(t.title);
+    var box=h('div',{class:'fo-box'});
+    box.appendChild(h('div',{class:'fo-top'},[
+      h('p',{class:'fo-kick',text:t.tag+' · '+x.head}),
+      h('button',{class:'lnk','data-fo':'close',text:'Close'})
+    ]));
+    var dots=h('div',{class:'fo-dots','aria-hidden':'true'});
+    arr.forEach(function(st,k){if(sh&&k>fr) return;dots.appendChild(h('i',{class:st.d?'on':(k===n?'cur':'')}));});
+    box.appendChild(dots);
+    if(s.all){
+      box.appendChild(h('p',{class:'fo-step',text:'All steps done.'}));
+      box.appendChild(h('button',{class:'btnp big','data-fo':'finish',text:'Finish this task'}));
+    } else if(sh&&shrunkDone(t,arr)){
+      box.appendChild(h('p',{class:'fo-step',text:'That is enough for now.'}));
+      box.appendChild(h('p',{class:'fo-m',text:'You did the small version. That is real progress.'}));
+      box.appendChild(h('button',{class:'btnp big','data-fo':'keep',text:'Keep going ('+(arr.length-fr-1)+' more)'}));
+      box.appendChild(h('button',{class:'btng big','data-fo':'later',text:'Stop here, back to Today'}));
+    } else {
+      var idx=(sh&&fr>=0&&n>=0&&n<fr)?fr:n;
+      box.appendChild(h('p',{class:'fo-count',text:sh?'Just this one':'Step '+(idx+1)+' of '+arr.length}));
+      box.appendChild(h('p',{class:'fo-step',text:arr[idx].t}));
+      if(sh) box.appendChild(h('p',{class:'fo-m',text:'Pushed twice, so only this step for now.'}));
+      else if(arr[idx].m) box.appendChild(h('p',{class:'fo-m',text:'About '+arr[idx].m+' min'}));
+      box.appendChild(h('p',{class:'fo-clock',id:'fo-clock','aria-live':'polite',text:''}));
+      box.appendChild(h('button',{class:'btnp big','data-fo':'done',text:(idx===arr.length-1)?'Done. Finish':'Done. Next step'}));
+      var row=h('div',{class:'fo-row'});
+      row.appendChild(h('button',{class:'btng','data-fo':'timer',text:foTimer?'Restart timer':(arr[idx].m>=2?'Start a '+Math.min(arr[idx].m,5)+'-minute timer':'Start a 1-minute timer')}));
+      if(!sh&&arr.length-n>1) row.appendChild(h('button',{class:'btng','data-fo':'skip',text:'Skip this step'}));
+      box.appendChild(row);
+    }
+    box.appendChild(h('button',{class:'lnk warnl fo-push','data-fo':'push',text:'Not today'}));
+    var ov=h('div',{id:'focus',class:'fo',role:'dialog','aria-modal':'true','aria-label':'Focus: '+x.head},[box]);
+    document.body.appendChild(ov);
+    document.body.classList.add('fo-open');
+    foClock();
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('#focus [data-fo]');
+    if(!b||!focusKey) return;
+    var a=b.getAttribute('data-fo'),f=findTaskByKey(focusKey);
+    if(!f){focusKey=null;renderFocus();return;}
+    var arr=matSteps(f.t),n=nextIdx(arr);
+    if(shrunk(f.t)){var fr2=firstReal(arr);if(fr2>=0&&n>=0&&n<fr2) n=fr2;}
+    if(a==='close'){foStop();focusKey=null;renderFocus();return;}
+    if(a==='done'){if(n>=0) arr[n].d=1;foStop();persist();render();return;}
+    if(a==='skip'){if(n>=0){var sk=arr.splice(n,1)[0];arr.push(sk);}foStop();persist();render();return;}
+    if(a==='timer'){var mm=(n>=0&&arr[n].m>=2)?Math.min(arr[n].m,5):1;foStop();foTimer={end:Date.now()+mm*60000};foTick=setInterval(foClock,1000);foClock();renderFocus();return;}
+    if(a==='finish'){foStop();finishTask(f.i);return;}
+    if(a==='keep'){delete pushes[keyOf(f.t)];foStop();persist();render();return;}
+    if(a==='later'){foStop();doing=null;focusKey=null;persist();render();return;}
+    if(a==='push'){foStop();pushTask(f.i);return;}
+  });
+
+
   /* ---------- notes: what you did that was not on the list ---------- */
-  function noteFocused(){var a=document.activeElement;return listening||!!(a&&(a.id==='note-in'||a.id==='later-in'||(a.hasAttribute&&a.hasAttribute('data-askbox'))));}
+  function noteFocused(){var a=document.activeElement;return listening||!!(a&&(a.id==='note-in'||a.id==='later-in'||a.id==='bl-later-in'||(a.hasAttribute&&(a.hasAttribute('data-askbox')||a.hasAttribute('data-stin')))));}
   function noteTime(n){
     if(n.src==='chat') return 'Added from your chat with Claude';
     try{return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Edmonton',hour:'numeric',minute:'2-digit'}).format(new Date(n.ts));}catch(e){return '';}
@@ -828,8 +1178,8 @@
     return out;
   }
   /* Later: things parked for the future. They are not part of the daily 3. */
-  function laterAdd(){
-    var el=document.getElementById('later-in');
+  function laterAdd(id){
+    var el=document.getElementById(id||'later-in');
     var txt=String(el?el.value:'').trim().slice(0,140);
     if(!txt) return;
     later.unshift({id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),title:txt,note:'',ts:new Date().toISOString(),done:false});
@@ -1137,6 +1487,8 @@
 
   app.addEventListener('keydown',function(e){
     if(e.target&&e.target.id==='later-in'&&e.key==='Enter'){e.preventDefault();laterAdd();return;}
+    if(e.target&&e.target.id==='bl-later-in'&&e.key==='Enter'){e.preventDefault();laterAdd('bl-later-in');return;}
+    if(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-stin')&&e.key==='Enter'){e.preventDefault();addStep(e.target.getAttribute('data-stin'),e.target.value);return;}
     var front=e.target.closest&&e.target.closest('.front');
     if(!front||e.target!==front) return;
     var i=Number(front.parentNode.getAttribute('data-i'));
@@ -1153,7 +1505,7 @@
     else if(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-askbox')){askDraft[e.target.getAttribute('data-id')]=e.target.value;}
   });
   app.addEventListener('focusout',function(e){
-    if(e.target&&(e.target.id==='note-in'||e.target.id==='later-in'||(e.target.hasAttribute&&e.target.hasAttribute('data-askbox')))){
+    if(e.target&&(e.target.id==='note-in'||e.target.id==='later-in'||e.target.id==='bl-later-in'||(e.target.hasAttribute&&(e.target.hasAttribute('data-askbox')||e.target.hasAttribute('data-stin'))))){
       setTimeout(function(){if(pendingRender&&!noteFocused()&&!drag){pendingRender=false;render();}},400);
     }
   });
@@ -1175,7 +1527,21 @@
     var bt=t.closest&&t.closest('button');
     if(!bt) return;
     var act=bt.getAttribute('data-act');
-    if(act==='note-mic'){micClick();}
+    if(bt.closest&&bt.closest('.subnav')){setTab(bt.getAttribute('data-tab'));return;}
+    if(act==='kb-col'){kbPick(bt.getAttribute('data-col'),true);}
+    else if(act==='bd-start'){startTask(Number(bt.getAttribute('data-i')));}
+    else if(act==='bd-focus'){focusKey=bt.getAttribute('data-key');renderFocus();}
+    else if(act==='bd-open'){var ok=bt.getAttribute('data-key');stepOpen=(stepOpen===ok)?null:ok;render();}
+    else if(act==='bd-bopen'){var bk=bt.getAttribute('data-key');stepOpen=(stepOpen===bk)?null:bk;render();}
+    else if(act==='bd-stop'){stopTask();}
+    else if(act==='bd-done'){finishTask(Number(bt.getAttribute('data-i')));}
+    else if(act==='bd-push'){pushTask(Number(bt.getAttribute('data-i')));}
+    else if(act==='bd-upmore'){upOpen=!upOpen;render();}
+    else if(act==='st-tog'){tickStep(bt.getAttribute('data-key'),Number(bt.getAttribute('data-n')));}
+    else if(act==='st-add'){var sk=bt.getAttribute('data-key'),si=bt.parentNode.querySelector('input');addStep(sk,si?si.value:'');}
+    else if(act==='later-add2'){laterAdd('bl-later-in');}
+    else if(act==='to-plan'){setTab('plan');}
+    else if(act==='note-mic'){micClick();}
     else if(act==='note-save'){
       if(listening&&dict){try{Promise.resolve(dict.stop()).then(saveNote,saveNote);}catch(e){saveNote();}}
       else{saveNote();}
@@ -1243,6 +1609,21 @@
       }catch(err){bt.textContent='Type it instead';}
     }
   });
+
+  var kbT=null;
+  app.addEventListener('scroll',function(e){
+    var kb=e.target;if(!kb||kb.id!=='kb') return;
+    kbLeft=kb.scrollLeft;
+    clearTimeout(kbT);
+    kbT=setTimeout(function(){
+      var cols=kb.querySelectorAll('.kcol'),best=null,bd=1e9;
+      for(var i=0;i<cols.length;i++){var d=Math.abs(kbPos(kb,cols[i])-kb.scrollLeft);if(d<bd){bd=d;best=cols[i];}}
+      if(best){colSel=best.getAttribute('data-col');
+        var chips=document.querySelectorAll('.kb-chip');
+        for(var j=0;j<chips.length;j++){var on=chips[j].getAttribute('data-col')===colSel;chips[j].classList.toggle('on',on);chips[j].setAttribute('aria-selected',on?'true':'false');}}
+    },90);
+  },true);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&focusKey){foStop();focusKey=null;renderFocus();}});
 
   document.addEventListener('visibilitychange',function(){
     if(document.hidden||pinned) return;

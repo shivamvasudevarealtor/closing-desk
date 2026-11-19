@@ -123,14 +123,14 @@
     else {
       var td = edmToday();
       var up = list.filter(function (p) { return p && p.date && p.date >= td; }).sort(function (a, b) { return (a.date + (a.time || "99")) < (b.date + (b.time || "99")) ? -1 : 1; });
-      if (!up.length) kids.push(h("p", { class: "note", text: "Nothing scheduled yet. Log a post in Win the Day and it shows up here." }));
+      if (!up.length) kids.push(h("p", { class: "note", text: "Nothing scheduled yet. Log a post on the Board, in Ideas, and it shows up here." }));
       up.slice(0, 4).forEach(function (p) {
         var when = [dayName(p.date), timeText(p.time), p.kind].filter(Boolean).join(" · ");
         kids.push(h("div", { class: "post" }, [h("span", { class: "pw", text: when }), h("span", { class: "pt", text: p.title || p.kind || "Post" })]));
       });
       if (up.length > 4) kids.push(h("p", { class: "fine", text: (up.length - 4) + " more scheduled." }));
     }
-    return card("", "Content scheduled", chip("From Win the Day", "plan"), kids);
+    return card("", "Content scheduled", chip("From the Board", "plan"), kids);
   }
   function licenceCard(td) {
     var t, p;
@@ -171,7 +171,7 @@
     }
     var s = S.stats;
     [heroCard(s, td), todayCard(s), reachCard(s), goalsCard(S.goals), contentCard(), licenceCard(edmToday()), repliesCard(),
-      h("div", { class: "links" }, [h("a", { class: "lnk", href: "./#today", text: "Open Today list" }), h("a", { class: "lnk ghost", href: "tasks.html", text: "Open Win the Day" })])
+      h("div", { class: "links" }, [h("a", { class: "lnk", href: "tasks.html#board", text: "Open the Board" }), h("a", { class: "lnk ghost", href: "./#today", text: "Open Clients" })])
     ].forEach(function (el) { cardsEl.appendChild(el); });
   }
 
@@ -221,11 +221,7 @@
   function buildChrome() {
     var strip = h("div", { class: "strip" }, [
       h("span", { class: "logo", "aria-hidden": "true", html: '<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M9 15l2.2 2.2L15 12.8"/></svg>' }),
-      h("div", { class: "seg2", role: "group", "aria-label": "Switch app" }, [
-        h("a", { class: "s", href: "tasks.html", "aria-label": "Win the Day", text: "Win" }),
-        h("a", { class: "s", href: "./", text: "Clients" }),
-        h("span", { class: "s on", "aria-current": "page", "aria-label": "Dashboard", text: "Dash" })
-      ]),
+      h("span", { class: "brand", text: "Closing Desk" }),
       h("span", { class: "sp" }),
       h("button", { class: "ib", id: "themeBtn", type: "button", "aria-label": "Switch to light mode", html: '<svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg><svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>' })
     ]);

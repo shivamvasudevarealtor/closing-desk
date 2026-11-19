@@ -33,6 +33,13 @@ More > **Restore a backup** > choose your `closing-desk-backup-....json`. Goals 
 - If the connection drops, you see your last saved copy. Changes don't save until it's back, and the app tells you.
 - More > **Download backup** after any big session. Keep that file somewhere private. It includes your notes.
 
+## Board and navigation (v1.11)
+- **One bottom bar on every page:** Board, Clients, Pipeline, Email, More. Clients has two views: *Due today* and *Everyone* (the old Lists).
+- **Board** (`tasks.html`) is the home screen: Backlog | Today | Doing | Done. Plan, Ideas and Notes are the chips at the top. The numbers page is `dashboard.html` (Board > All numbers, or More).
+- Each card has small steps (about 2 minutes). Start opens one step at a time. Only one card can be Doing. Pushing the same task twice shrinks it to its first step.
+- Steps live in `tasks-steps.js`: hand-written for the vague tasks, otherwise taken from the task's own sentences. Reach tasks list the people due in Clients, using the contacts and phone numbers you saved. Nothing is invented.
+- Steps, Doing and push counts are saved in the same `os_docs` row (`main`) as the rest of Win the Day, so no new SQL is needed.
+
 ## Email setup (v1.5, about 20 minutes, once)
 
 **What it does.** You write one email, pick who gets it, and Closing Desk sends it from your own Gmail, one person at a time, at a safe speed. It never uses a BCC list. It stops by itself if Gmail says to slow down.

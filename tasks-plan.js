@@ -19,7 +19,7 @@ window.ROS = (function(){
   function T(role,tag,title,mins,where,hint){return {role:role,tag:tag,title:title,mins:mins,where:where||'',hint:hint||''};}
 
   var DESK='Closing Desk';
-  var TODAY_TAB=DESK+' › Today tab';
+  var TODAY_TAB=DESK+' › Clients';
 
   var REACH_EARLY=T('REACH','CRM','Call or WhatsApp your 5 warmest people.',15,TODAY_TAB);
   var REACH={
@@ -34,8 +34,8 @@ window.ROS = (function(){
   var LAST2=T('REACH','CRM','Last mile 2/2. Message the rest, only people it is OK to message.',null,TODAY_TAB);
 
   var S={
-    '2026-11-14':['CRM','Count your contacts. In the Lists tab, write down total contacts and how many have email, phone and consent. Tell Claude.',5],
-    '2026-11-16':['CRM','Mark Client consent on past clients: Lists › Select › Email consent.',20],
+    '2026-11-14':['CRM','Count your contacts. In Clients › Everyone, write down total contacts and how many have email, phone and consent. Tell Claude.',5],
+    '2026-11-16':['CRM','Mark Client consent on past clients: Clients › Everyone › Select › Email consent.',20],
     '2026-11-17':['CRM','Mark Said yes or Asked me consent on people who agreed or contacted you. Skip anyone you are unsure about.',20],
     '2026-11-18':['CRM','Gmail setup 1/2. Make the Google Cloud project and turn on the Gmail API (README, Email setup step 2). If it is already connected, say done.',20],
     '2026-11-19':['CRM','Gmail setup 2/2. Paste the Client ID in the Email tab, test the unsubscribe link, then Connect Gmail.',15],
@@ -57,12 +57,12 @@ window.ROS = (function(){
     '2026-12-16':['CRM','Offers library 1/2. Pre-construction offer #1. You supply builder, community, price, deposit and possession. Claude drafts and flags gaps.',20],
     '2026-12-17':['CRM','Offers library 2/2. Three MLS investor picks and a custom-home guide outline, same rule.',20],
     '2026-12-18':['CRM','Year-end message. Claude drafts the email and the WhatsApp, you approve.',15],
-    '2026-12-19':['DASH','Regression test: tap every button once. Then build the last-mile list in Lists by filtering people not yet reached.',20],
+    '2026-12-19':['DASH','Regression test: tap every button once. Then build the last-mile list in Clients › Everyone by filtering people not yet reached.',20],
     '2026-12-21':['CRM','Send the year-end email campaign.',15],
-    '2026-12-22':['CRM','Send the year-end WhatsApp to Tier A from Today.',20],
+    '2026-12-22':['CRM','Send the year-end WhatsApp to Tier A from Clients.',20],
     '2026-12-23':['ADMIN','More › Download backup. Save it somewhere private.',5],
     '2026-12-28':['CRM','Log an outcome on every contact you touched this month so the counter is true.',20],
-    '2026-12-29':['CRM','Set January follow-up dates for everyone: Lists › Select.',15],
+    '2026-12-29':['CRM','Set January follow-up dates for everyone: Clients › Everyone › Select.',15],
     '2026-12-30':['DASH','Year-end review with Claude. Replies by channel, listings x/20, buyers x/30, plan January.',20],
     '2026-12-31':['DASH','Finish line. Read the final reached count, download a backup, celebrate.',10]
   };
@@ -102,7 +102,7 @@ window.ROS = (function(){
     '2026-11-23':['Reply to Instagram DMs.',5],
     '2026-11-24':['Call one warm contact.',5],
     '2026-11-25':['Reply to emails.',5],
-    '2026-11-26':['Send 3 WhatsApps from Today. Relationship contacts only.',5],
+    '2026-11-26':['Send 3 WhatsApps from Clients. Relationship contacts only.',5],
     '2026-11-27':['Reply to anything still open.',5],
     '2026-11-28':['Call one hot lead.',5],
     '2026-11-29':['Glance at messages and reply to hot ones only.',3]

@@ -21,9 +21,9 @@
   var BPRE = ["Not started", "In progress", "Approved"];
   var FAMRELS = ["Spouse", "Partner", "Son", "Daughter", "Parent", "Sibling", "Uncle", "Aunt", "Grandparent", "Friend", "Family", "Other"];
   var TABS = ["today", "pipeline", "lists", "email", "more"];
-  var TITLES = { today: "Today", pipeline: "Pipeline", lists: "Lists", email: "Email", more: "More" };
+  var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.10.4";
+  var APP_VERSION = "1.11.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,15 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.11.0", date: "2026-11-18", title: "The Board, and one bar to get around", items: [
+      "New home screen: the Board. Your tasks are cards in four columns: Backlog, Today, Doing, Done. Swipe sideways or tap the column names.",
+      "Every card has small steps, about 2 minutes each. Tap Start and you see one step at a time, with an optional timer. The progress bar starts partly filled because opening the card counts.",
+      "Only one card can be Doing. If you tap Not today on the same task twice, it shrinks to its first step, so it stops being a big thing you keep dodging.",
+      "Reach tasks now name the people: the first people due in Clients, with the phone number you saved.",
+      "Backlog holds everything not for today: pushed tasks, how many follow-ups are due, the next days of the plan, and your Later list. You can add to Later there.",
+      "One bottom bar on every page: Board, Clients, Pipeline, Email, More. The Win | Clients | Dash switch at the top is gone. Clients has a Due today | Everyone switch (Everyone is the old Lists).",
+      "Plan, Ideas and Notes are chips at the top of the Board. Your full numbers page is under Board (All numbers) and More. Nothing was deleted.",
+      "Open the app twice to get the update."] },
     { v: "1.10.4", date: "2026-11-15", title: "Later list and icon fix", items: [
       "New Later list on the Plan tab (inside Win the Day) for things you want to do in the future. Your first one is added: a 6-digit code for your login.",
       "The logo at the top of the app now matches the new gold-and-green icon.",
@@ -267,7 +276,8 @@
     var due = dueList().length;
     $("#subtitle").textContent = new Date().toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric" }) + "";
     var badge = $("#dueBadge"); badge.hidden = !due; badge.textContent = due > 99 ? "99+" : due;
-    document.querySelectorAll(".tabs button").forEach(function (b) { if (b.dataset.tab === S.tab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+    var navTab = S.tab === "lists" ? "today" : S.tab;
+    document.querySelectorAll(".tabs button").forEach(function (b) { if (b.dataset.tab === navTab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     $("#warnBar").innerHTML = S.offline ? '<div class="warn">Can\'t reach the server right now. ' + (S.contacts.size ? 'You are looking at your last saved copy, and changes will not save until the connection is back.' : 'Your contacts will show up here as soon as it is back.') + (S.loadError ? ' <span class="muted">(' + esc(S.loadError) + ')</span>' : '') + ' <button class="lnk" type="button" data-act="refresh">Try again</button></div>' : (S.connectNote && !S.loaded ? '<div class="warn">Still connecting to your database...</div>' : "");
     renderBulk();
     if (window.CDTellUI) window.CDTellUI.render();
@@ -395,7 +405,7 @@
   var TASKS_URL = "tasks.html";
   var OS_DOC_URL = "https://claude.ai/artifact/D9aSgJEv7WZWE8t2JUXfaw";
   function osLinksCard() {
-    return '<div class="card stack" style="margin-bottom:12px"><h2>Real Estate OS</h2><p class="note" style="margin:0">Closing Desk, Win the Day (your daily 3) and the Dashboard are one app. Use the switch at the top to move between them. The page that explains how it all connects is one tap away.</p><div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Win the Day</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+    return '<div class="card stack" style="margin-bottom:12px"><h2>Your day</h2><p class="note" style="margin:0">The Board has today\'s tasks as cards with small steps. These open the other parts of it.</p><div class="row"><a class="lnk" href="' + TASKS_URL + '#board">Board</a><a class="lnk ghost" href="' + TASKS_URL + '#plan">Plan</a><a class="lnk ghost" href="' + TASKS_URL + '#ideas">Ideas</a><a class="lnk ghost" href="' + TASKS_URL + '#notes">Notes</a></div><div class="row"><a class="lnk ghost" href="dashboard.html">All numbers</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
   }
   function osStats() {
     var s = window.CDStats.compute(all(), today());
@@ -416,7 +426,7 @@
       '<text x="50" y="57">' + s.pct + '%</text></svg>';
     return '<div class="card os" style="margin-bottom:12px"><div class="hero-top">' + gauge + '<div class="hero-txt"><div class="lbl">Reached at least once</div><div class="big num">' + n(s.reached) + ' <small>of ' + n(s.contacts) + '</small></div><div class="hsub">' + n(s.left) + ' still to reach</div></div></div>' +
       '<div class="tiles"><div><b class="num">' + s.touchesToday + '</b><span>touches today</span></div><div><b class="num">' + s.emailsToday + '</b><span>emails today</span></div><div><b class="num">' + s.dueToday + '</b><span>follow-ups due</span></div></div>' +
-      '<div class="row"><a class="lnk" href="' + TASKS_URL + '">Open Win the Day</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+      '<div class="row"><a class="lnk" href="' + TASKS_URL + '#board">Open the Board</a><a class="lnk ghost" href="dashboard.html">All numbers</a></div></div>';
   }
   function weekCard() {
     var w = weekStats();
@@ -563,11 +573,13 @@
     return '<article class="card due"><button class="due-head" type="button" data-open="' + esc(c.id) + '">' + avatar(c) + '<span class="dh-txt"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + "</span><span>" + dueText(c) + "</span>" + (c.kind ? "<span>" + esc(c.kind) + "</span>" : "") + "</span></span></button>" +
       '<div class="reach">' + reachRow(c) + '</div><div class="outcomes"><button type="button" data-act="talked" data-id="' + esc(c.id) + '">Talked</button><button type="button" data-act="messaged" data-id="' + esc(c.id) + '">Messaged</button><button type="button" data-act="noanswer" data-id="' + esc(c.id) + '">No answer</button><button type="button" data-act="later" data-id="' + esc(c.id) + '">Later</button></div></article>';
   }
+  /* Clients has two views: who is due today, and everyone. */
+  function clientsSeg(cur) {
+    return '<div class="clseg" role="group" aria-label="Clients view"><button type="button" data-act="gotab" data-v="today" aria-pressed="' + (cur === "today") + '">Due today</button><button type="button" data-act="gotab" data-v="lists" aria-pressed="' + (cur === "lists") + '">Everyone</button></div>';
+  }
   function renderToday() {
-    var due = dueList(), cap = S.settings.dailyCap || 15, shown = S.showAllDue ? due : due.slice(0, cap), h = "";
-    h += osCard();
-    h += '<div class="score">' + scoreCard(S.settings.goalYear + " listings", dealCount("listing"), S.settings.listingsGoal) + scoreCard(S.settings.goalYear + " buyers", dealCount("buyer"), S.settings.buyersGoal) + "</div>";
-    h += weekCard() + momentsCard();
+    var due = dueList(), cap = S.settings.dailyCap || 15, shown = S.showAllDue ? due : due.slice(0, cap), h = clientsSeg("today");
+    h += momentsCard();
     if (due.length) {
       h += '<div class="sec"><h2>Reach out today</h2><span class="meta num">' + shown.length + " of " + due.length + " due</span></div><div class=\"stack\">" + shown.map(dueCard).join("") + "</div>";
       if (due.length > shown.length) h += '<p class="more"><button type="button" data-act="showall">Show all ' + due.length + " due</button> (your daily list is capped at " + cap + ")</p>";
@@ -576,6 +588,11 @@
       h += '<div class="card empty"><h2>Nothing due today</h2><p>Your next follow-ups are below. They appear here on their date.</p></div>';
       if (up.length) h += '<div class="sec"><h2>Coming up</h2><span class="meta">next ' + up.length + "</span></div><div>" + up.map(function (c) { return listRow(c, false); }).join("") + "</div>";
     }
+    /* Numbers go under the list. The Board shows them first. */
+    h += '<div class="sec" style="margin-top:18px"><h2>Your numbers</h2><a class="lnk ghost" href="tasks.html#board">Open the Board</a></div>';
+    h += osCard();
+    h += '<div class="score">' + scoreCard(S.settings.goalYear + " listings", dealCount("listing"), S.settings.listingsGoal) + scoreCard(S.settings.goalYear + " buyers", dealCount("buyer"), S.settings.buyersGoal) + "</div>";
+    h += weekCard();
     $("#view").innerHTML = h;
   }
 
@@ -705,7 +722,7 @@
     if (listsShellFor !== "on" || !$("#listResults")) {
       var provs = PROVS.filter(function (p) { return all().some(function (c) { return c.province === p; }); });
       var srcs = Array.from(new Set(all().map(function (c) { return c.source; }).filter(Boolean))).sort();
-      $("#view").innerHTML = '<div class="filters"><input class="field wide" id="fq" type="search" placeholder="Search name, phone, email, tag" value="' + esc(S.f.q) + '" aria-label="Search">' +
+      $("#view").innerHTML = clientsSeg("lists") + '<div class="filters"><input class="field wide" id="fq" type="search" placeholder="Search name, phone, email, tag" value="' + esc(S.f.q) + '" aria-label="Search">' +
         '<select class="field" id="fprov" aria-label="Province">' + opt(provs, S.f.prov, "All provinces") + '</select><select class="field" id="ftemp" aria-label="Temperature">' + opt(TEMPS, S.f.temp, "Any temperature") + "</select>" +
         '<select class="field" id="fstage" aria-label="Stage">' + opt(ALL_STAGES, S.f.stage, "Any stage") + '</select><select class="field" id="fkind" aria-label="Type">' + opt(KINDS, S.f.kind, "Any type") + "</select>" +
         '<select class="field" id="fsource" aria-label="Source">' + opt(srcs, S.f.source, "Any source") + '</select><select class="field" id="fconsent" aria-label="Email consent"><option value="">Any email consent</option><option value="none"' + (S.f.consent === "none" ? " selected" : "") + '>No consent recorded</option><option value="yes"' + (S.f.consent === "yes" ? " selected" : "") + '>Has consent</option></select><input class="field" id="ftag" type="text" placeholder="Tag contains" value="' + esc(S.f.tag) + '" aria-label="Tag contains">' +
@@ -967,6 +984,7 @@
     else if (a === "restorecancel") { S.pendingRestore = null; S.restoreError = ""; render(); }
     else if (a === "refresh") { toast("Refreshing..."); reload().then(function () { if (!S.offline) toast("Up to date"); }); }
     else if (a === "signout") signOutNow();
+    else if (a === "gotab") setTab(el.dataset.v);
     else if (a === "copy") { var v2 = el.dataset.v; var done = function () { toast("Copied " + v2); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v2).then(done, function () { toast(v2); }); else toast(v2); }
     else if (a === "copymsg") { var mv = ($("#shMsg") || {}).value || ""; if (!mv.trim()) { toast("Nothing to copy"); return; } if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(mv).then(function () { toast("Message copied"); }, function () { toast("Select the text and copy it"); }); else toast("Select the text and copy it"); }
     else if (a === "talked" || a === "messaged" || a === "noanswer") touch(id2, a);

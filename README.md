@@ -132,6 +132,15 @@ The card in app.js (`osStats`) and the SQL are tested to give identical numbers 
 ## Updating the app
 Change files in the repo, commit to `main`. Open the app twice (it updates in the background). If a phone seems stuck on an old version, close the app fully and reopen it.
 
+## Vacation week (v1.12)
+- `vacation.html` is a workspace for the Nov 18 to 29, 2026 plan: 12 day cards, 114 subtasks. Views: **Today** (default on a phone), **Board** (default on a laptop), **List**. Filters: category, status, text.
+- Plan text lives in `vacation-data.js` (IDs `VW-01` to `VW-12`, subtasks `VW-xx.n`, labelled "Entered by Shivam"). `vacation-core.js` holds the logic (Edmonton time, Next up, saving). `vacation.js` and `vacation.css` are the page.
+- Saving: one JSON document in the existing `os_docs` table, row id `vacation`. No new SQL. Seeding only adds missing IDs, so ticks and notes are never overwritten. "Check the plan data" at the bottom of the page re-runs it safely.
+- Fri Nov 27 (`VW-10`) is a protected family day: it is left out of progress and "not done".
+- The Board page and the Dashboard show a read-only "Today's plan" card (`VW.todaySummary`). They never write the vacation document.
+- Dashboard (v1.12) is simpler: go-to buttons, two headline cards, today's plan, and the rest under a collapsed "More detail".
+- `BACKLOG.md` is the canonical backlog (PLN-001, PLN-002).
+
 ## Files
 | File | What it is |
 |---|---|
@@ -142,6 +151,7 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `unsub.html`, `unsub.js` | The page a recipient opens from the unsubscribe link |
 | `config.js` | Your Supabase URL and public key |
 | `tasks.html`, `tasks.css`, `tasks.js`, `tasks-plan.js` | Win the Day (your daily 3 wins, notes, ideas, posts, and the Later list on the Plan tab for future tasks, saved as `later` in the os_docs document) |
+| `vacation.html`, `vacation.css`, `vacation.js`, `vacation-core.js`, `vacation-data.js` | Vacation week workspace (v1.12) |
 | `dashboard.html`, `dashboard.css`, `dashboard.js` | Dashboard (v1.10): read-only page with reached, today, who you can reach, goals, scheduled posts and licence dates |
 | `launch.js` | Opens Win the Day first on a fresh launch (v1.10.1); every later switch goes where it is told |
 | `osstats.js` | The one place the Reached numbers are counted, used by Today, Win the Day and the Dashboard |

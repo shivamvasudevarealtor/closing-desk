@@ -339,6 +339,43 @@
   function footText(){
     return (synced?'Synced across your devices. ':'Saved on this device. ')+'Dates follow Edmonton time. A day turns green when all 3 are done. Pull down to refresh.';
   }
+  /* ---- Today's plan card (Vacation week). Read only: it never writes the vacation document. ---- */
+  var vwDoc=null,vwAt=0;
+  function vwRefresh(){
+    if(!window.VW||!window.VW.peek) return;
+    vwAt=Date.now();
+    try{window.VW.peek(function(d){vwDoc=d;vwPaint();});}catch(e){}
+  }
+  function vwCard(){return h('a',{class:'card vwcard',href:'vacation.html#today','data-vwcard':'1'});}
+  function vwPaint(){
+    var el=document.querySelector('[data-vwcard]');
+    if(!el||!window.VW) return;
+    if(!vwDoc){vwRefresh();return;}
+    var V=window.VW,sm=V.todaySummary(vwDoc,V.tzNow());
+    el.textContent='';
+    el.appendChild(h('span',{class:'vwk',text:"Today's plan \u00b7 Vacation week"}));
+    if(sm.kind==='none'){
+      el.setAttribute('href','vacation.html#board');
+      el.appendChild(h('strong',{class:'vwh',text:'No plan for today'}));
+      el.appendChild(h('span',{class:'vwm',text:'The vacation week runs Nov 18 to 29. Open the board.'}));
+      return;
+    }
+    el.setAttribute('href','vacation.html#today');
+    if(sm.kind==='family'){
+      el.appendChild(h('strong',{class:'vwh',text:'Family day, nothing scheduled'}));
+      el.appendChild(h('span',{class:'vwm',text:sm.title}));
+      return;
+    }
+    var pc=sm.total?Math.round(sm.done*100/sm.total):0,nx=sm.next;
+    el.appendChild(h('strong',{class:'vwh',text:sm.title}));
+    el.appendChild(h('span',{class:'vwm'},[h('b',{class:'vwn',text:sm.done+' of '+sm.total+' done'})]));
+    el.appendChild(h('span',{class:'vwbar',role:'progressbar','aria-label':'Today\u2019s progress','aria-valuemin':'0','aria-valuemax':String(sm.total),'aria-valuenow':String(sm.done)},[h('i',{style:'width:'+pc+'%'})]));
+    if(nx) el.appendChild(h('span',{class:'vwx'},[h('span',{class:'vwpill',text:'Next up'}),h('span',{class:'vwxt',text:V.fmtRange(nx)+' \u00b7 '+nx.title})]));
+    else el.appendChild(h('span',{class:'vwx'},[h('span',{class:'vwxt',text:sm.done===sm.total?'Everything planned for today is done.':'Nothing left to do right now.'})]));
+  }
+  setInterval(vwPaint,60000);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&Date.now()-vwAt>60000) vwRefresh();});
+
   function renderFoot(){if(footEl) footEl.textContent=footText();}
 
   /* ---------- page tabs: Today, Plan, Ideas, Notes ---------- */
@@ -411,6 +448,7 @@
       ]),
       h('div',{class:'ring',html:ring(count)})
     ])));
+    wrap.appendChild(tabIn('today',vwCard()));vwPaint();
     wrap.appendChild(tabIn('plan',tabHead('Plan','Next 10 days and the full calendar')));
     wrap.appendChild(tabIn('ideas',tabHead('Ideas','Content to make and post')));
     wrap.appendChild(tabIn('notes',tabHead('Notes','Capture a thought')));

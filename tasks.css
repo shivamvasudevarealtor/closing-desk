@@ -537,3 +537,17 @@ body[data-tab="today"] .foot{order:30}
 }
 /* very narrow phones (360px and under): the four column chips must fit without widening the page */
 @media (max-width:380px){.kb-chips{gap:4px}.kb-chip{min-width:0;padding:0 4px;gap:4px;font-size:12px}.kb-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kb-chip b{padding:1px 5px}}
+
+/* Today's plan card (Vacation week). Orange is used only for "Next up". */
+.vwcard{display:flex;flex-direction:column;gap:6px;text-decoration:none;color:inherit;border:1px solid var(--line);min-width:0}
+.vwcard:hover{border-color:var(--line2)}
+.vwcard:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.vwk{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.vwh{font-family:var(--disp);font-size:18px;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+.vwm{font-size:13px;color:var(--muted)}
+.vwn{color:var(--ink);font-variant-numeric:tabular-nums}
+.vwbar{display:block;height:8px;border-radius:999px;background:var(--line);overflow:hidden}
+.vwbar i{display:block;height:100%;border-radius:999px;background:var(--accent)}
+.vwx{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;font-size:14px;font-weight:600}
+.vwpill{display:inline-flex;padding:2px 9px;border-radius:999px;background:#FF7151;color:#2A0E05;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.6}
+.vwxt{min-width:0;overflow-wrap:anywhere}

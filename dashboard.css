@@ -104,3 +104,20 @@ h1{margin:0;font-family:var(--disp);font-size:34px;font-weight:700;letter-spacin
 .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 /* the shared bottom bar (nav.css styles its items; this page needs the bar itself) */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:0 max(8px,env(safe-area-inset-left,0px)) env(safe-area-inset-bottom,0px)}
+
+/* simple dashboard: go-to buttons, vacation card, collapsed detail */
+.qgo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.qgo a{min-height:52px;display:flex;align-items:center;justify-content:center;border-radius:14px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);font-size:15px;font-weight:600;text-decoration:none}
+.qgo a:first-child{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+a.card.vcard{text-decoration:none;color:inherit}
+.vcard .nx{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-weight:600}
+.pill-next{display:inline-flex;padding:2px 9px;border-radius:999px;background:#FF7151;color:#2A0E05;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.6}
+.more{border:1px solid var(--line);border-radius:20px;background:var(--surface)}
+.more>summary{min-height:52px;display:flex;align-items:center;padding:0 16px;font-size:15px;font-weight:600;cursor:pointer;list-style:none}
+.more>summary::-webkit-details-marker{display:none}
+.more>summary::after{content:"Show";margin-left:auto;font-size:13px;font-weight:600;color:var(--muted)}
+.more[open]>summary::after{content:"Hide"}
+.more .morebody{display:flex;flex-direction:column;gap:12px;padding:0 12px 12px}
+.more .card{box-shadow:none;background:var(--surface2)}
+.more .card .bar{background:var(--line2)}
+.more .card.todo{background:transparent}

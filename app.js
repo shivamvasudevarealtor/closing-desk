@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.11.1";
+  var APP_VERSION = "1.12.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,14 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.12.0", date: "2026-11-19", title: "Vacation week, and a simpler Dashboard", items: [
+      "New: Vacation week, Nov 18 to 29. It is in the menu as Vacation. Board view: one column per day, sideways scroll. Today view: just today, with the next thing to do marked Next up. List view: everything in a table.",
+      "Tick a task and it is saved. Open Details on any task to read more or add a note. The time you finished it is kept.",
+      "Fri Nov 27 is a family day. It says so, looks different, and is left out of your progress.",
+      "The Board has a small Today's plan card: how far along you are and what is next. Tap it to open Today.",
+      "Dashboard is simpler: four buttons at the top (Vacation week, Board, Clients, Pipeline), your two headline cards, today's plan, and everything else under More detail.",
+      "Nothing in Clients, Pipeline or Email changed. The bottom bar now has 6 items.",
+    ] },
     { v: "1.11.1", date: "2026-11-18", title: "Made for laptops and tablets", items: [
       "On a laptop the app now uses the whole screen. The bottom bar becomes a menu down the left side, with the Closing Desk name when there is room.",
       "Board: all four columns sit side by side on a laptop or a tablet on its side. Each column scrolls on its own, and your numbers sit under them.",

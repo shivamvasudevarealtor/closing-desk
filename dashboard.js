@@ -65,9 +65,9 @@
 
   /* ---------- card pieces ---------- */
   function chip(text, kind) { return h("span", { class: "chip" + (kind ? " " + kind : ""), text: text }); }
-  function liveChip() { return S.saved ? chip("Saved copy", "warn") : chip("Live from Closing Desk"); }
+  function liveChip() { return null; }
   function card(cls, label, chipEl, kids) {
-    return h("section", { class: "card" + (cls ? " " + cls : "") }, [h("div", { class: "ct" }, [h("span", { class: "lbl", text: label }), chipEl])].concat(kids));
+    return h("section", { class: "card" + (cls ? " " + cls : "") }, [h("div", { class: "ct" }, [h("span", { class: "lbl", text: label }), chipEl || null])].concat(kids));
   }
   function row(label, valueText, w, extra) {
     return h("div", { class: "row" }, [
@@ -80,16 +80,9 @@
   function paceKids(s, td) {
     if (!s.contacts) return [h("p", { class: "note", text: "Add contacts in Closing Desk and your numbers show up here." })];
     if (s.left === 0) return [h("p", { class: "note", text: "Everyone has been reached at least once. Well done." })];
-    var days = outreachDaysLeft(td);
-    var kids = [n(s.left) + (s.left === 1 ? " person" : " people") + " still to reach. "];
-    var out = [];
-    if (days) {
-      var per = Math.ceil(s.left / days);
-      kids.push("Reaching everyone by Dec 31 is ", h("b", { text: "about " + per + " a day" }), ". ", per > 15 ? "Your plan asks for 10 to 15." : "That fits inside your plan of 10 to 15 a day.");
-    }
-    out.push(h("p", { class: "note" }, kids));
-    if (days) out.push(h("p", { class: "fine", text: "Counted Mon to Sat from Nov 30, without Dec 25 and 26. Study week (Nov 21 to 29) has no outreach." }));
-    return out;
+    var days = outreachDaysLeft(td), txt = n(s.left) + (s.left === 1 ? " person" : " people") + " still to reach";
+    if (days) txt += " · about " + Math.ceil(s.left / days) + " a day to finish by Dec 31";
+    return [h("p", { class: "note", text: txt })];
   }
 
   function heroCard(s, td) {
@@ -130,7 +123,7 @@
       });
       if (up.length > 4) kids.push(h("p", { class: "fine", text: (up.length - 4) + " more scheduled." }));
     }
-    return card("", "Content scheduled", chip("From the Board", "plan"), kids);
+    return card("", "Content scheduled", null, kids);
   }
   function licenceCard(td) {
     var t, p;
@@ -145,13 +138,43 @@
       t = "Study block finished";
       p = "Exam planned for December. The exam date is not tracked here yet.";
     }
-    return card("", "Commercial licence", chip("From your plan", "plan"), [h("div", { class: "big2", text: t }), h("p", { class: "note", text: p })]);
+    return card("", "Commercial licence", null, [h("div", { class: "big2", text: t }), h("p", { class: "note", text: p })]);
   }
   function repliesCard() {
-    return card("todo", "Replies", chip("Not tracked yet", "warn"), [
+    return card("todo", "Replies", null, [
       h("div", { class: "big" }, [h("b", { text: "–" }), h("span", { text: "people who replied" })]),
       h("p", { class: "fine", text: "Closing Desk has no one-tap Replied button yet. Adding one would let this card count replies." })
     ]);
+  }
+
+  var vwDoc = null, moreOpen = false;
+  function vwLoad() {
+    if (!window.VW || !window.VW.peek) return;
+    try { window.VW.peek(function (doc) { vwDoc = doc; if (S.stats) render(); }); } catch (e) {}
+  }
+  function vacCard() {
+    if (!window.VW || !vwDoc) return null;
+    var V = window.VW, sm = V.todaySummary(vwDoc, V.tzNow()), kids = [h("span", { class: "lbl", text: "Today's plan \u00b7 Vacation week" })], href = "vacation.html#today";
+    if (sm.kind === "none") { href = "vacation.html#board"; kids.push(h("div", { class: "big2", text: "No plan for today" }), h("p", { class: "note", text: "The vacation week runs Nov 18 to 29." })); }
+    else if (sm.kind === "family") kids.push(h("div", { class: "big2", text: "Family day, nothing scheduled" }));
+    else {
+      kids.push(h("div", { class: "big2", text: sm.title }), row("Done", sm.done + " of " + sm.total, fillW(sm.done, sm.total)));
+      kids.push(sm.next ? h("p", { class: "note nx" }, [h("span", { class: "pill-next", text: "Next up" }), " " + V.fmtRange(sm.next) + " \u00b7 " + sm.next.title]) : h("p", { class: "note", text: sm.done === sm.total ? "Everything planned for today is done." : "Nothing left to do right now." }));
+    }
+    return h("a", { class: "card vcard", href: href }, kids);
+  }
+  function goRow() {
+    function a(t, href) { return h("a", { href: href, text: t }); }
+    return h("nav", { class: "qgo", "aria-label": "Go to" }, [a("Vacation week", "vacation.html#today"), a("Board", "tasks.html#board"), a("Clients", "./#today"), a("Pipeline", "./#pipeline")]);
+  }
+  function moreBlock(s, td) {
+    var det = h("details", { class: "more" }, [
+      h("summary", { text: "More detail" }),
+      h("div", { class: "morebody" }, [reachCard(s), goalsCard(S.goals), contentCard(), licenceCard(edmToday()), repliesCard()])
+    ]);
+    if (moreOpen) det.setAttribute("open", "");
+    det.addEventListener("toggle", function () { moreOpen = det.open; });
+    return det;
   }
 
   /* ---------- page ---------- */
@@ -170,9 +193,8 @@
       return;
     }
     var s = S.stats;
-    [heroCard(s, td), todayCard(s), reachCard(s), goalsCard(S.goals), contentCard(), licenceCard(edmToday()), repliesCard(),
-      h("div", { class: "links" }, [h("a", { class: "lnk", href: "tasks.html#board", text: "Open the Board" }), h("a", { class: "lnk ghost", href: "./#today", text: "Open Clients" })])
-    ].forEach(function (el) { cardsEl.appendChild(el); });
+    [goRow(), heroCard(s, td), todayCard(s), vacCard(), moreBlock(s, td)
+    ].forEach(function (el) { if (el) cardsEl.appendChild(el); });
   }
 
   function spin(on) { if (rfBtn) rfBtn.classList.toggle("spin", !!on); }
@@ -205,7 +227,7 @@
       };
       S.content = r[1].ok ? (r[1].d && Array.isArray(r[1].d.content) ? r[1].d.content : []) : null;
       S.at = new Date().toISOString(); S.status = "ok"; S.saved = false;
-      busy = false; spin(false); saveCache(); render();
+      busy = false; spin(false); saveCache(); render(); vwLoad();
     }, function () {
       busy = false; spin(false); S.status = "err"; render();
     });

@@ -348,9 +348,12 @@
   }
   function vwCard(){return h('a',{class:'card vwcard',href:'vacation.html#today','data-vwcard':'1'});}
   function vwPaint(){
-    var el=document.querySelector('[data-vwcard]');
-    if(!el||!window.VW) return;
+    var els=document.querySelectorAll('[data-vwcard]');
+    if(!els.length||!window.VW) return;
     if(!vwDoc){vwRefresh();return;}
+    for(var q=0;q<els.length;q++) vwPaintOne(els[q]);
+  }
+  function vwPaintOne(el){
     var V=window.VW,sm=V.todaySummary(vwDoc,V.tzNow());
     el.textContent='';
     el.appendChild(h('span',{class:'vwk',text:"Today's plan \u00b7 Vacation week"}));
@@ -376,10 +379,22 @@
   setInterval(vwPaint,60000);
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&Date.now()-vwAt>60000) vwRefresh();});
 
+  /* Today tab: the plan tasks for the real today, with their state on the Board. Read only here. */
+  function dayPlan(){
+    var td=todayEdm();
+    if(td<R.START||td>R.END) return [];
+    var arr=D.eff[td]||[],oc=outcomes[td]||[],dk=doingNow(),out=[];
+    arr.forEach(function(t,i){
+      var st=oc[i];
+      if(st==='missed') return;
+      out.push({title:tinfo(t.title).head,state:st==='done'?'done':(dk&&keyOf(t)===dk?'doing':'todo')});
+    });
+    return out;
+  }
   function renderFoot(){if(footEl) footEl.textContent=footText();}
 
   /* ---------- page tabs: Today, Plan, Ideas, Notes ---------- */
-  var TABS=['today','plan','ideas','notes'];
+  var TABS=['today','day','plan','ideas','notes'];
   var curTab='today';
   function tabIn(name,el){if(el&&el.setAttribute) el.setAttribute('data-sec',name);return el;}
   function emptyCard(t,p){return h('div',{class:'card empty'},[h('h2',{text:t}),h('p',{text:p})]);}
@@ -400,7 +415,7 @@
     var m=document.querySelector('meta[name="theme-color"]');if(m) m.setAttribute('content',t==='light'?'#F3F6FB':'#0B1220');
     var b=document.getElementById('themeBtn');if(b) b.setAttribute('aria-label',t==='light'?'Switch to dark mode':'Switch to light mode');
   }
-  var HASHES={today:'board',plan:'plan',ideas:'ideas',notes:'notes'};
+  var HASHES={today:'board',day:'today',plan:'plan',ideas:'ideas',notes:'notes'};
   function tabFromHash(){var h0=String(location.hash||'').replace('#','');for(var k in HASHES){if(HASHES[k]===h0) return k;}return 'today';}
   function buildChrome(){
     var strip=h('div',{class:'strip'},[
@@ -437,7 +452,7 @@
 
     var wrap=h('div',{class:'wrap'});
     app.appendChild(wrap);
-    wrap.appendChild(h('div',{class:'subnav',role:'tablist','aria-label':'Board sections'},[['today','Board'],['plan','Plan'],['ideas','Ideas'],['notes','Notes']].map(function(c){
+    wrap.appendChild(h('div',{class:'subnav',role:'tablist','aria-label':'Board sections'},[['today','Board'],['day','Today'],['plan','Plan'],['ideas','Ideas'],['notes','Notes']].map(function(c){
       return h('button',{type:'button',role:'tab','data-tab':c[0],'aria-pressed':curTab===c[0]?'true':'false',class:curTab===c[0]?'on':'',text:c[1]});
     })));
 
@@ -448,7 +463,9 @@
       ]),
       h('div',{class:'ring',html:ring(count)})
     ])));
-    wrap.appendChild(tabIn('today',vwCard()));vwPaint();
+    wrap.appendChild(tabIn('today',vwCard()));
+    wrap.appendChild(tabIn('day',window.TDAY?window.TDAY.view({plan:dayPlan(),openBoard:function(){setTab('today');render();},vwEl:vwCard(),afterPaint:vwPaint}):h('div')));
+    vwPaint();
     wrap.appendChild(tabIn('plan',tabHead('Plan','Next 10 days and the full calendar')));
     wrap.appendChild(tabIn('ideas',tabHead('Ideas','Content to make and post')));
     wrap.appendChild(tabIn('notes',tabHead('Notes','Capture a thought')));

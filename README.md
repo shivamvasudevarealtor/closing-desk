@@ -141,6 +141,12 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 - Dashboard (v1.12) is simpler: go-to buttons, two headline cards, today's plan, and the rest under a collapsed "More detail".
 - `BACKLOG.md` is the canonical backlog (PLN-001, PLN-002).
 
+## Today tab and Apple Calendar (v1.13)
+- The Board page has a **Today** tab (`tasks-today.js`, hash `#today`). One list for today: Apple Calendar events (labelled Calendar), tasks you add (Added by you), and today's plan tasks from the Board (From Claude). Unfinished tasks from earlier days carry over with their date.
+- Your tasks and the calendar link are saved in one `os_docs` row, id `today` (no new SQL). Calendar events themselves are never saved, only fetched.
+- **Apple Calendar** has no sign-in for web apps, so it uses an iCloud *Public Calendar* link: Calendar > Calendars > (i) > Public Calendar > Share Link. Paste it on the Today tab. Anyone with the link can read that calendar.
+- The link is read by the Supabase Edge Function `calendar-feed` (`supabase/functions/calendar-feed/`). It needs a signed-in user (JWT on), only talks to `*.icloud.com` over https, handles repeating, moved and cancelled events and all-day events, and returns just today's events in Edmonton time. Deploy: `supabase functions deploy calendar-feed`. No secrets needed.
+
 ## Files
 | File | What it is |
 |---|---|
@@ -151,6 +157,8 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `unsub.html`, `unsub.js` | The page a recipient opens from the unsubscribe link |
 | `config.js` | Your Supabase URL and public key |
 | `tasks.html`, `tasks.css`, `tasks.js`, `tasks-plan.js` | Win the Day (your daily 3 wins, notes, ideas, posts, and the Later list on the Plan tab for future tasks, saved as `later` in the os_docs document) |
+| `tasks-today.js` | The Today tab (v1.13): your tasks, plan tasks and the calendar list |
+| `supabase/functions/calendar-feed/` | Reads an iCloud calendar link and returns today's events (v1.13) |
 | `vacation.html`, `vacation.css`, `vacation.js`, `vacation-core.js`, `vacation-data.js` | Vacation week workspace (v1.12) |
 | `dashboard.html`, `dashboard.css`, `dashboard.js` | Dashboard (v1.10): read-only page with reached, today, who you can reach, goals, scheduled posts and licence dates |
 | `launch.js` | Opens Win the Day first on a fresh launch (v1.10.1); every later switch goes where it is told |

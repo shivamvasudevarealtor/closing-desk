@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.12.0";
+  var APP_VERSION = "1.13.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,13 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.13.0", date: "2026-11-19", title: "A Today tab with your calendar", items: [
+      "New Today tab on the Board page (Board, Today, Plan, Ideas, Notes). It is one list for today: your Apple Calendar events, tasks you add, and today's tasks from me.",
+      "Add a task at the top, with an optional time. Tick it when done. Tasks with a time sit in Scheduled between your calendar events. Tasks you did not finish yesterday carry over and say which day they are from.",
+      "Apple Calendar: on your iPhone open Calendar, tap Calendars, tap the (i) next to a calendar, turn on Public Calendar, copy the Share Link and paste it on the Today tab. Anyone with that link can read that calendar, so pick one you are fine sharing.",
+      "Calendar events are read each time you open the tab and every 5 minutes. They are not copied into your database, only the link is saved (private to your account).",
+      "Today's plan tasks from the Board show as From Claude. Tap Open to work on them in the Board.",
+    ] },
     { v: "1.12.0", date: "2026-11-19", title: "Vacation week, and a simpler Dashboard", items: [
       "New: Vacation week, Nov 18 to 29. It is in the menu as Vacation. Board view: one column per day, sideways scroll. Today view: just today, with the next thing to do marked Next up. List view: everything in a table.",
       "Tick a task and it is saved. Open Details on any task to read more or add a note. The time you finished it is kept.",

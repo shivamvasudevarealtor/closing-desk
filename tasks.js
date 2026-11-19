@@ -1,4 +1,4 @@
-/* Tasks page for Closing Desk: Today, Plan, Ideas, Notes. Data lives in the os_docs table; numbers come from your contacts. */
+/* Tasks page for Realtor OS: Today, Plan, Ideas, Notes. Data lives in the os_docs table; numbers come from your contacts. */
 (function(){
   var R=window.ROS;
   var app=document.getElementById('app');
@@ -126,7 +126,7 @@
     if(!v||typeof v!=='object') return null;
     try{return JSON.parse(JSON.stringify(v));}catch(e){return null;}
   }
-  /* The page keeps one JSON document (notes, ideas, content, outcomes) in the Closing Desk database, table os_docs, row "main".
+  /* The page keeps one JSON document (notes, ideas, content, outcomes) in the Realtor OS database, table os_docs, row "main".
      This adapter gives it the small set/get/onSnapshot surface the rest of the code already uses. */
   function snapOf(v){return {exists:!!v,data:function(){return v;},metadata:{fromCache:false}};}
   function makeRef(){
@@ -191,7 +191,7 @@
       };
       dbRef.onSnapshot(onData,function(){synced=false;renderFoot();});
   }
-  /* Closing Desk numbers are worked out here from the same contacts, with the same rules as the Today page there. */
+  /* Realtor OS numbers are worked out here from the same contacts, with the same rules as the Today page there. */
   function localToday(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
   /* People due today, in the same order as the Clients list, with a phone number you saved. Used to name the steps of a reach task. */
   var TEMPS=['hot','warm','cold','stale'];
@@ -277,7 +277,7 @@
     line.appendChild(h('button',{class:'lnk','data-act':'undo','data-i':String(i),text:'Undo'}));
     return line;
   }
-  var TI={"Call or WhatsApp your 5 warmest people.": {"head": "Reach your 5 warmest people", "desc": "Open Closing Desk › Clients and start with the people you know best. A call or a WhatsApp both count. Keep it a friendly check-in, not a pitch."}, "Count your contacts. In Clients › Everyone, write down total contacts and how many have email, phone and consent. Tell Claude.": {"head": "Count your contacts", "desc": "In Clients › Everyone, write down total contacts and how many have email, phone and consent. Then tell Claude the numbers."}, "Schedule next Saturday’s 9am Reel and reply to comments.": {"head": "Schedule Saturday's 9am Reel", "desc": "Schedule next Saturday's 9am Reel, then reply to the comments."}, "Read your reached number (or how many people you contacted this week) to Claude.": {"head": "Tell Claude your reached number", "desc": "Read your reached number to Claude. If you do not have one yet, tell Claude how many people you contacted this week."}, "Pick 3 Reel ideas for the week.": {"head": "Pick 3 Reel ideas", "desc": "Pick 3 Reel ideas for the week. Type each one in the notes box below starting with RI and it lands in Content ideas."}, "Do something that is not work. It counts as a task.": {"head": "Take a real break", "desc": "Do something that is not work. It counts as a task, so tick it without guilt."}, "Mark Client consent on past clients: Clients › Everyone › Select › Email consent.": {"head": "Mark client consent", "desc": "Mark Client consent on your past clients: Clients › Everyone › Select › Email consent."}, "Pick your commercial course. Claude’s pick for fast AI study is Haskayne ($699). Confirm total hours first.": {"head": "Pick your commercial course", "desc": "Claude's pick for fast AI study is Haskayne ($699). Confirm the total course hours first, then choose."}, "Mark Said yes or Asked me consent on people who agreed or contacted you. Skip anyone you are unsure about.": {"head": "Mark who said yes", "desc": "Mark Said yes or Asked me consent on people who agreed or contacted you. Skip anyone you are unsure about."}, "Enrol and pay for the course and save the login. Haskayne can take up to 72 hours to unlock. Order the HP 10bII+ calculator too.": {"head": "Enrol and pay for the course", "desc": "Enrol, pay and save the login. Haskayne can take up to 72 hours to unlock. Order the HP 10bII+ calculator too."}, "Gmail setup 1/2. Make the Google Cloud project and turn on the Gmail API (README, Email setup step 2). If it is already connected, say done.": {"head": "Gmail setup, part 1 of 2", "desc": "Make the Google Cloud project and turn on the Gmail API (README, Email setup step 2). If it is already connected, say done."}, "Film 2 Reels in one sitting and send the raw clips to the editor so posts go out while you study.": {"head": "Film 2 Reels in one sitting", "desc": "Film 2 Reels in one sitting and send the raw clips to the editor so posts go out while you study."}, "Gmail setup 2/2. Paste the Client ID in the Email tab, test the unsubscribe link, then Connect Gmail.": {"head": "Gmail setup, part 2 of 2", "desc": "Paste the Client ID in the Email tab, test the unsubscribe link, then Connect Gmail."}, "Check the course has unlocked and skim the outline. Your 9-day plan is already on the calendar.": {"head": "Check your course unlocked", "desc": "Check the course has unlocked and skim the outline. Your 9-day plan is already on the calendar."}, "Email #1. Pick a starter, send a test to yourself, check your inbox and your spam folder.": {"head": "Send your first test email", "desc": "Email #1. Pick a starter, send a test to yourself, then check your inbox and your spam folder."}, "Schedule the banked Reels for Nov 21–29.": {"head": "Schedule the banked Reels", "desc": "Schedule the banked Reels for Nov 21–29."}, "Log in and skim the outline. Read the RECA exam blueprint. Domains 1–2 units, then a time-value-of-money drill on the HP 10bII+.": {"head": "Study day 1: outline and blueprint", "desc": "Log in and skim the outline. Read the RECA exam blueprint. Cover the Domains 1–2 units, then do a time-value-of-money drill on the HP 10bII+."}, "Reply to WhatsApp messages.": {"head": "Reply to WhatsApp", "desc": "Reply to your WhatsApp messages."}, "Domain 3, Prospecting and Marketing (14%). Course units, then ask Claude to quiz you on 3.1–3.4.": {"head": "Study day 2: Domain 3", "desc": "Domain 3, Prospecting and Marketing (14%). Do the course units, then ask Claude to quiz you on 3.1–3.4."}, "Send one thinking-of-you WhatsApp to a favourite past client.": {"head": "Thinking-of-you WhatsApp", "desc": "Send one thinking-of-you WhatsApp to a favourite past client."}, "Domain 4, part 1 (48% of the exam). Units for 4.1–4.2, then rent drills: base, additional and percentage rent, rentable and usable.": {"head": "Study day 3: Domain 4, part 1", "desc": "Domain 4 is 48% of the exam. Do the units for 4.1–4.2, then rent drills: base, additional and percentage rent, rentable and usable."}, "Reply to Instagram DMs.": {"head": "Reply to Instagram DMs", "desc": "Reply to your Instagram DMs."}, "Domain 4, part 2. Valuation 4.3: gross income, NOI, cap rates, then DCF, NPV and IRR on the calculator.": {"head": "Study day 4: Domain 4, part 2", "desc": "Valuation 4.3: gross income, NOI and cap rates, then DCF, NPV and IRR on the calculator."}, "Call one warm contact.": {"head": "Call one warm contact", "desc": "Call one warm contact."}, "Domain 4, part 3. Financing 4.4: mortgage payments and balances, loan-to-value, debt coverage, net effective rent.": {"head": "Study day 5: Domain 4, part 3", "desc": "Financing 4.4: mortgage payments and balances, loan-to-value, debt coverage and net effective rent."}, "Reply to emails.": {"head": "Reply to emails", "desc": "Reply to your emails."}, "Domain 5, part 1, Negotiating and Closing (28%). Units for 5.1–5.3, then ask Claude to quiz you.": {"head": "Study day 6: Domain 5, part 1", "desc": "Domain 5, Negotiating and Closing (28%). Do the units for 5.1–5.3, then ask Claude to quiz you."}, "Send 3 WhatsApps from Clients. Relationship contacts only.": {"head": "Send 3 WhatsApps", "desc": "Send 3 WhatsApps from Clients. Relationship contacts only."}, "Domain 5, part 2. Units for 5.4–5.5, then finish any course units you have not opened.": {"head": "Study day 7: Domain 5, part 2", "desc": "Do the units for 5.4–5.5, then finish any course units you have not opened."}, "Reply to anything still open.": {"head": "Reply to anything still open", "desc": "Reply to anything still open."}, "Mixed practice exam with Claude, weighted 48% Domain 4, 28% Domain 5, 14% Domain 3. Redo your weakest topics.": {"head": "Study day 8: practice exam", "desc": "Mixed practice exam with Claude, weighted 48% Domain 4, 28% Domain 5 and 14% Domain 3. Redo your weakest topics."}, "Call one hot lead.": {"head": "Call one hot lead", "desc": "Call one hot lead."}, "Ask your provider to mark you Ready for Exam in myRECA. Look up the exam fee and date on reca.ca, book it, then do a light review.": {"head": "Study day 9: book the exam", "desc": "Ask your provider to mark you Ready for Exam in myRECA. Look up the exam fee and date on reca.ca, book it, then do a light review."}, "Glance at messages and reply to hot ones only.": {"head": "Quick message check", "desc": "Glance at your messages and reply to the hot ones only."}, "Call 10 people, Tier A first. Leave a 15-second voicemail if there is no answer.": {"head": "Call 10 people", "desc": "Call 10 people, Tier A first. Leave a 15-second voicemail if there is no answer."}, "Start campaign #1 to consented Clients: Email › New campaign › Start. Keep the laptop open.": {"head": "Start campaign #1", "desc": "Start campaign #1 to consented Clients: Email › New campaign › Start. Keep the laptop open."}, "Answer every unanswered message on WhatsApp, Instagram and email.": {"head": "Clear your inboxes", "desc": "Answer every unanswered message on WhatsApp, Instagram and email."}, "Email day. Keep the email campaign running with the laptop open and answer replies.": {"head": "Email day", "desc": "Keep the email campaign running with the laptop open and answer replies."}, "Claude builds a reached counter (X of N reached) into Closing Desk. You test it on one contact.": {"head": "Reached counter", "desc": "Claude builds a reached counter (X of N reached) into Closing Desk. You test it on one contact."}, "Pick this week’s Reel idea and hook with the caption-generator skill.": {"head": "Pick this week's Reel idea", "desc": "Pick this week's Reel idea and its hook with the caption-generator skill."}, "WhatsApp 15 people with a template.": {"head": "WhatsApp 15 people", "desc": "Send a template WhatsApp to 15 people."}, "WhatsApp. Set Tier A/B/C labels in the WhatsApp Business app and decide click-to-chat or continuing API registration.": {"head": "WhatsApp setup", "desc": "Set Tier A/B/C labels in the WhatsApp Business app and decide between click-to-chat or continuing the API registration."}, "Film one Reel in one take, or hand the raw clip to the editor.": {"head": "Film one Reel", "desc": "Film one Reel in one take, or hand the raw clip to the editor."}, "Call 10 people, then call back anyone who replied.": {"head": "Call 10, then call back", "desc": "Call 10 people, then call back anyone who replied."}, "Follow-up sequences. Claude builds Day 3, 7 and 21 reminders. You approve the wording.": {"head": "Follow-up sequences", "desc": "Claude builds Day 3, 7 and 21 reminders. You approve the wording."}, "Message one builder or past client and ask what is new, using the builder-inquiry skill.": {"head": "Message one builder", "desc": "Message one builder or past client and ask what is new, using the builder-inquiry skill."}, "Answer every reply, then message the No-answer people.": {"head": "Answer replies, chase no-answers", "desc": "Answer every reply, then message the No-answer people."}, "Claude builds the weekly scorecard: reached, replies, appointments, listings x/20, buyers x/30. You check it.": {"head": "Weekly scorecard", "desc": "Claude builds the weekly scorecard: reached, replies, appointments, listings x/20 and buyers x/30. You check it."}, "5-minute scoreboard. Tell Claude reached, replies and appointments this week.": {"head": "5-minute scoreboard", "desc": "Tell Claude how many people you reached, how many replied and how many appointments you have this week."}, "Send 10 Instagram DMs to people who watched, commented or replied. No cold pitches.": {"head": "Send 10 Instagram DMs", "desc": "Send 10 Instagram DMs to people who watched, commented or replied. No cold pitches."}, "Facebook Marketplace auto-reply. Claude writes it, you paste it in.": {"head": "Marketplace auto-reply", "desc": "Claude writes the Facebook Marketplace auto-reply and you paste it in."}, "Email health check: bounces and unsubscribes. If it is clean, raise the daily cap in Email settings.": {"head": "Email health check", "desc": "Check bounces and unsubscribes. If it is clean, raise the daily cap in Email settings."}, "Lead capture. Claude builds a form link that drops leads into Closing Desk. You put it in your Instagram bio.": {"head": "Lead capture form", "desc": "Claude builds a form link that drops leads into Closing Desk. You put it in your Instagram bio."}, "Editing check. Send the videographer brief, count Reels edited vs waiting, and remove the one bottleneck.": {"head": "Editing check", "desc": "Send the videographer brief, count Reels edited vs waiting, and remove the one bottleneck."}, "Turn on Tell Claude. Put the Anthropic key in the Supabase secret and set tellClaude to true. About 2–5 cents per note.": {"head": "Turn on Tell Claude", "desc": "Put the Anthropic key in the Supabase secret and set tellClaude to true. It costs about 2–5 cents per note."}, "Full test. Send yourself one email, one WhatsApp, one call and one DM. Note what annoys you.": {"head": "Full test", "desc": "Send yourself one email, one WhatsApp, one call and one DM. Note what annoys you."}, "Claude fixes the top 3 annoyances. You retest.": {"head": "Fix the top 3 annoyances", "desc": "Claude fixes the top 3 annoyances from your test. You retest."}, "Pace check. Reached vs target. Claude resets your daily number.": {"head": "Pace check", "desc": "Compare reached vs target. Claude resets your daily number."}, "Hot replies. Set the next step and move cards on Pipeline.": {"head": "Hot replies", "desc": "Set the next step on each hot reply and move the cards on Pipeline."}, "Offers library 1/2. Pre-construction offer #1. You supply builder, community, price, deposit and possession. Claude drafts and flags gaps.": {"head": "Offers library, part 1 of 2", "desc": "Pre-construction offer #1. You supply builder, community, price, deposit and possession. Claude drafts it and flags gaps."}, "Offers library 2/2. Three MLS investor picks and a custom-home guide outline, same rule.": {"head": "Offers library, part 2 of 2", "desc": "Three MLS investor picks and a custom-home guide outline, same rule: you supply the details and Claude flags gaps."}, "Year-end message. Claude drafts the email and the WhatsApp, you approve.": {"head": "Year-end message", "desc": "Claude drafts the year-end email and the WhatsApp. You approve them."}, "Regression test: tap every button once. Then build the last-mile list in Clients › Everyone by filtering people not yet reached.": {"head": "Regression test", "desc": "Tap every button once. Then build the last-mile list in Clients › Everyone by filtering people not yet reached."}, "Send the year-end email campaign.": {"head": "Send the year-end email", "desc": "Send the year-end email campaign."}, "Send the year-end WhatsApp to Tier A from Clients.": {"head": "Send the year-end WhatsApp", "desc": "Send the year-end WhatsApp to Tier A from Clients."}, "More › Download backup. Save it somewhere private.": {"head": "Download a backup", "desc": "More › Download backup. Save it somewhere private."}, "Send 5 personal holiday WhatsApps to favourite past clients.": {"head": "Send 5 holiday WhatsApps", "desc": "Send 5 personal holiday WhatsApps to favourite past clients."}, "More › Download backup.": {"head": "Download a backup", "desc": "More › Download backup."}, "Close the laptop. It counts as a task.": {"head": "Close the laptop", "desc": "Close the laptop. It counts as a task."}, "Last mile 1/2. Call everyone still unreached. 10 dials.": {"head": "Last mile, part 1 of 2", "desc": "Call everyone still unreached. 10 dials."}, "Log an outcome on every contact you touched this month so the counter is true.": {"head": "Log every outcome", "desc": "Log an outcome on every contact you touched this month so the counter is true."}, "Last mile 2/2. Message the rest, only people it is OK to message.": {"head": "Last mile, part 2 of 2", "desc": "Message the rest, only people it is OK to message."}, "Set January follow-up dates for everyone: Clients › Everyone › Select.": {"head": "Set January follow-ups", "desc": "Set January follow-up dates for everyone: Clients › Everyone › Select."}, "Year-end review with Claude. Replies by channel, listings x/20, buyers x/30, plan January.": {"head": "Year-end review", "desc": "Review with Claude: replies by channel, listings x/20, buyers x/30, then plan January."}, "Finish line. Read the final reached count, download a backup, celebrate.": {"head": "Finish line", "desc": "Read the final reached count, download a backup, celebrate."}};
+  var TI=window.TASK_INFO||{};
   function tinfo(title){
     var x=TI[title];
     if(x) return x;
@@ -303,7 +303,7 @@
         h('p',{class:'dtext',text:x.desc}),
         t.where?h('p',{class:'where',text:'Where: '+t.where}):null,
         t.hint?h('p',{class:'hint',text:t.hint}):null,
-        (t.tag==='CRM'||t.tag==='DASH')?h('a',{class:'cdlink',href:CD_URL,text:'Open Closing Desk ›'}):null
+        (t.tag==='CRM'||t.tag==='DASH')?h('a',{class:'cdlink',href:CD_URL,text:'Open Realtor OS ›'}):null
       ]));
     }
     if(st==='done') kids.push(h('div',{class:'stline'},[h('span',{class:'ok',text:'Done'}),h('button',{class:'lnk','data-act':'undo','data-i':String(i),text:'Undo'})]));
@@ -395,12 +395,12 @@
 
   /* ---------- page tabs: Today, Plan, Ideas, Notes ---------- */
   var TABS=['today','day','plan','ideas','notes'];
-  var curTab='today';
+  var curTab='day';
   function tabIn(name,el){if(el&&el.setAttribute) el.setAttribute('data-sec',name);return el;}
   function emptyCard(t,p){return h('div',{class:'card empty'},[h('h2',{text:t}),h('p',{text:p})]);}
   function tabHead(title,sub){return h('header',{class:'title-row'},[h('div',{},[h('h1',{text:title}),h('p',{class:'sub',text:sub})])]);}
   function setTab(name,keepScroll){
-    if(TABS.indexOf(name)<0) name='today';
+    if(TABS.indexOf(name)<0) name='day';
     curTab=name;
     document.body.setAttribute('data-tab',name);
     var bs=document.querySelectorAll('.subnav button');
@@ -412,17 +412,18 @@
   function setTheme(t){
     document.documentElement.setAttribute('data-theme',t);
     try{localStorage.setItem('cd.theme',t);}catch(e){}
-    var m=document.querySelector('meta[name="theme-color"]');if(m) m.setAttribute('content',t==='light'?'#F3F6FB':'#0B1220');
+    var m=document.querySelector('meta[name="theme-color"]');if(m) m.setAttribute('content',t==='light'?'#F5F3EE':'#0A0D14');
     var b=document.getElementById('themeBtn');if(b) b.setAttribute('aria-label',t==='light'?'Switch to dark mode':'Switch to light mode');
   }
   var HASHES={today:'board',day:'today',plan:'plan',ideas:'ideas',notes:'notes'};
-  function tabFromHash(){var h0=String(location.hash||'').replace('#','');for(var k in HASHES){if(HASHES[k]===h0) return k;}return 'today';}
+  function tabFromHash(){var h0=String(location.hash||'').replace('#','');for(var k in HASHES){if(HASHES[k]===h0) return k;}return 'day';}
   function buildChrome(){
     var strip=h('div',{class:'strip'},[
       h('span',{class:'logo','aria-hidden':'true',html:'<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M9 15l2.2 2.2L15 12.8"/></svg>'}),
-      h('span',{class:'brand',text:'Closing Desk'}),
+      h('span',{class:'brand',text:'Realtor OS'}),
       h('span',{class:'sp'}),
-      h('button',{class:'ib',id:'themeBtn',type:'button','aria-label':'Switch to light mode',html:'<svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg><svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>'})
+      h('button',{class:'ib',id:'themeBtn',type:'button','aria-label':'Switch to light mode',html:'<svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg><svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>'}),
+      h('a',{class:'ib more-gear',href:'index.html#more','aria-label':'Settings',html:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>'})
     ]);
     app.parentNode.insertBefore(strip,app);
     document.getElementById('themeBtn').addEventListener('click',function(){setTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light');});
@@ -452,7 +453,7 @@
 
     var wrap=h('div',{class:'wrap'});
     app.appendChild(wrap);
-    wrap.appendChild(h('div',{class:'subnav',role:'tablist','aria-label':'Board sections'},[['today','Board'],['day','Today'],['plan','Plan'],['ideas','Ideas'],['notes','Notes']].map(function(c){
+    wrap.appendChild(h('div',{class:'subnav',role:'tablist','aria-label':'Task sections'},[['day','Today'],['today','Board'],['plan','Plan'],['ideas','Ideas'],['notes','Notes']].map(function(c){
       return h('button',{type:'button',role:'tab','data-tab':c[0],'aria-pressed':curTab===c[0]?'true':'false',class:curTab===c[0]?'on':'',text:c[1]});
     })));
 
@@ -624,7 +625,7 @@
       var pct=Math.max(0,Math.min(100,Number(cd.pct)||0));
       kids.push(h('div',{class:'ns-top'},[
         h('span',{class:'ns-main'},[h('b',{text:fmtN(cd.reached||0)}),h('span',{text:' of '+fmtN(cd.contacts)+' reached'})]),
-        h('a',{class:'ns-link',href:'dashboard.html',text:'All numbers ›'})
+        h('a',{class:'ns-link',href:'home.html',text:'All numbers ›'})
       ]));
       kids.push(h('div',{class:'bar'},[h('i',{style:'width:'+pct+'%'})]));
       kids.push(h('div',{class:'ns-chips'},[
@@ -633,7 +634,7 @@
         h('div',{},[h('b',{text:String(cd.emailsToday||0)}),h('span',{text:'emails'})])
       ]));
     } else {
-      kids.push(h('div',{class:'ns-top'},[h('span',{class:'ns-main'},[h('span',{text:'Loading your numbers…'})]),h('a',{class:'ns-link',href:'dashboard.html',text:'All numbers ›'})]));
+      kids.push(h('div',{class:'ns-top'},[h('span',{class:'ns-main'},[h('span',{text:'Loading your numbers…'})]),h('a',{class:'ns-link',href:'home.html',text:'All numbers ›'})]));
     }
     return h('div',{class:'card nstrip'},kids);
   }
@@ -1153,7 +1154,7 @@
     }
     return grp('Notes',h('div',{class:'card note-card'},kids));
   }
-  /* ---------- Closing Desk numbers (read-only copy made by Claude) ---------- */
+  /* ---------- Realtor OS numbers (read-only copy made by Claude) ---------- */
   function fmtN(n){try{return Number(n).toLocaleString('en-CA');}catch(e){return String(n);}}
   function cdWhen(iso){
     var t=Date.parse(iso);if(!t) return '';
@@ -1182,21 +1183,21 @@
           h('div',{},[h('b',{text:String(cd.emailsToday||0)}),h('span',{text:'emails today'})]),
           h('div',{},[h('b',{text:String(cd.dueToday||0)}),h('span',{text:'follow-ups due'})])
         ]),
-        h('p',{class:'cdnote',text:cd.asOf?'Live from Closing Desk · '+cdWhen(cd.asOf):''})
+        h('p',{class:'cdnote',text:cd.asOf?'Live from Realtor OS · '+cdWhen(cd.asOf):''})
       ];
     } else {
       body=[
-        h('p',{class:'cdline',text:'Loading your Closing Desk numbers…'})
+        h('p',{class:'cdline',text:'Loading your Realtor OS numbers…'})
       ];
     }
     body.push(h('div',{class:'cdlinks'},[
-      h('a',{class:'cdlink',href:CD_URL,text:'Open Closing Desk'}),
+      h('a',{class:'cdlink',href:CD_URL,text:'Open Realtor OS'}),
       h('a',{class:'cdlink',href:CD_URL+'#more',text:'Scorecard'}),
       h('a',{class:'cdlink',href:OS_DOC_URL,target:'_blank',rel:'noopener',text:'How it connects'})
     ]));
-    return grp('Closing Desk',h('div',{class:'card cd-card'},body));
+    return grp('Realtor OS',h('div',{class:'card cd-card'},body));
   }
-  /* ---------- Task 1 ticks itself when Closing Desk shows the calls and messages were logged ---------- */
+  /* ---------- Task 1 ticks itself when Realtor OS shows the calls and messages were logged ---------- */
   function edmDay(iso){
     var t=Date.parse(iso);if(!t) return '';
     try{return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Edmonton',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t));}catch(e){return '';}
@@ -1217,9 +1218,9 @@
       if(findNote(id)) return;
       putOutcome(d,i,'done');
       var nowIso=new Date().toISOString();
-      notes.push({id:id,date:d,text:'Closing Desk shows '+cd.touchesToday+' calls and messages logged today.',ts:nowIso,src:'cd',st:'done',by:'cd',readAt:nowIso,doneAt:nowIso,arch:true,
-        ai:{summary:'Ticked from Closing Desk',scoreboard:'',applied:[{date:d,slot:i+1,title:String(t.title||'').slice(0,90),prev:null}],suggested:[],
-            receipt:['Ticked done: '+shortTitle(tinfo(t.title).head)+'. Closing Desk logged '+cd.touchesToday+' calls and messages today; the task needs '+N+'.']}});
+      notes.push({id:id,date:d,text:'Realtor OS shows '+cd.touchesToday+' calls and messages logged today.',ts:nowIso,src:'cd',st:'done',by:'cd',readAt:nowIso,doneAt:nowIso,arch:true,
+        ai:{summary:'Ticked from Realtor OS',scoreboard:'',applied:[{date:d,slot:i+1,title:String(t.title||'').slice(0,90),prev:null}],suggested:[],
+            receipt:['Ticked done: '+shortTitle(tinfo(t.title).head)+'. Realtor OS logged '+cd.touchesToday+' calls and messages today; the task needs '+N+'.']}});
       changed=true;
     });
     if(changed){persist();render();}

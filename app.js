@@ -21,9 +21,9 @@
   var BPRE = ["Not started", "In progress", "Approved"];
   var FAMRELS = ["Spouse", "Partner", "Son", "Daughter", "Parent", "Sibling", "Uncle", "Aunt", "Grandparent", "Friend", "Family", "Other"];
   var TABS = ["today", "pipeline", "lists", "email", "more"];
-  var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "More" };
+  var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "1.13.0";
+  var APP_VERSION = "2.0.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,15 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.0.0", date: "2026-11-19", title: "Realtor OS: a new Home and a new look", items: [
+      "New Home page. It is the first screen when you open the app. One screen, top to bottom: Do this next, People to reach, My day, Must work on, Deals in motion. Your numbers are folded at the bottom.",
+      "People to reach shows your 5 most important follow-ups, the same people in the same order as Clients > Due today. Call, WhatsApp or Email in one tap. Tap a name to log Talked, Messaged, No answer or Later. Undo is on the message for 7 seconds.",
+      "Tasks has Today as its first tab (Today, Board, Plan, Ideas, Notes). Filter it by All, Calendar, Mine or Claude. Calendar events, tasks you add and tasks I suggest are in one list, each with its own label and color.",
+      "The bottom bar is now 5 buttons: Home, Tasks, Clients, Pipeline, Email. Settings is the sliders button at the top right (on a laptop, at the bottom of the left menu). Vacation week opens from the card on Home and from Tasks.",
+      "New look on every page: dark by default with a gold accent, bigger text and clearer contrast. The sun and moon button switches to light.",
+      "The app is now called Realtor OS (it was Closing Desk). If your phone still shows the old name or icon label, close the app and open it again once. To change the Home Screen name, remove the icon and add it again.",
+      "The old Dashboard address now opens Home.",
+    ] },
     { v: "1.13.0", date: "2026-11-19", title: "A Today tab with your calendar", items: [
       "New Today tab on the Board page (Board, Today, Plan, Ideas, Notes). It is one list for today: your Apple Calendar events, tasks you add, and today's tasks from me.",
       "Add a task at the top, with an optional time. Tick it when done. Tasks with a time sit in Scheduled between your calendar events. Tasks you did not finish yesterday carry over and say which day they are from.",
@@ -171,7 +180,7 @@
       "Nothing in Clients, Pipeline or Email changed. The bottom bar now has 6 items.",
     ] },
     { v: "1.11.1", date: "2026-11-18", title: "Made for laptops and tablets", items: [
-      "On a laptop the app now uses the whole screen. The bottom bar becomes a menu down the left side, with the Closing Desk name when there is room.",
+      "On a laptop the app now uses the whole screen. The bottom bar becomes a menu down the left side, with the Realtor OS name when there is room.",
       "Board: all four columns sit side by side on a laptop or a tablet on its side. Each column scrolls on its own, and your numbers sit under them.",
       "Clients: your due list on the left, your numbers in a panel on the right. Everyone shows two contacts across. More and Email use two columns. Plan puts the calendar beside your lists.",
       "Galaxy Tab S7 FE: on its side you get the slim left menu and four Board columns. Held upright you keep the bottom bar, with the Board as a 2 by 2 grid and due cards two across.",
@@ -192,7 +201,7 @@
       "Home Screen icon files have new names so iOS picks up the new one. Delete the old icon, then Add to Home Screen again."] },
     { v: "1.10.3", date: "2026-11-15", title: "Luxury icon in deep midnight green", items: [
       "New app icon: deep midnight green with a champagne-gold house and check.",
-      "To see it on your iPhone: delete the Closing Desk icon, open the link in Safari, then Share > Add to Home Screen. Sign in once more.",
+      "To see it on your iPhone: delete the Realtor OS icon, open the link in Safari, then Share > Add to Home Screen. Sign in once more.",
       "Opening splash colour now matches the Midnight look."] },
     { v: "1.10.1", date: "2026-11-15", title: "Opens on Win the Day", items: [
       "When you open the app fresh, from the Home Screen icon or the main link, it now starts on Win the Day.",
@@ -201,12 +210,12 @@
     { v: "1.10.0", date: "2026-11-15", title: "New: Dashboard", items: [
       "Tap Dash at the top to see all your numbers on one page: how many people you have reached, today's calls and messages, who you can reach, your 2027 goals, scheduled posts and your commercial licence dates.",
       "Everything is live from your contacts and uses the same counting as Today and Win the Day, so the numbers always agree.",
-      "The Replies card says Not tracked yet. Closing Desk has no one-tap Replied button, so it does not guess.",
+      "The Replies card says Not tracked yet. Realtor OS has no one-tap Replied button, so it does not guess.",
       "Open the app twice to get the update."] },
     { v: "1.9.1", date: "2026-11-15", title: "Tasks is now Win the Day", items: [
       "Your daily 3 now has a new name: Win the Day. The switch at the top says Win | Clients, and your three tasks sit under Today's 3 wins.",
       "Nothing else changed. Your plan, notes, ideas and posts are exactly as they were. Open the app twice to get the update."] },
-    { v: "1.9.0", date: "2026-11-15", title: "Tasks now lives inside Closing Desk", items: [
+    { v: "1.9.0", date: "2026-11-15", title: "Tasks now lives inside Realtor OS", items: [
       "Your Daily 3 Tasks page is now part of this app. Tap Tasks at the top and you stay in the same app: no new window, no second login.",
       "Tasks has the same four tabs as before (Today, Plan, Ideas, Notes), and the Reached numbers on it are always live from your contacts.",
       "One dark and light switch for both. Your notes, ideas and posts moved over untouched.",
@@ -265,7 +274,7 @@
       "Buyer profile on each contact, and Lists, Match buyers to find who fits a home.",
       "Scorecard in More: leads, meetings, deals and ad spend by source.",
       "New WhatsApp templates: flyer, anniversary, birthday, listing match and check-in."] },
-    { v: "1.0.0", title: "Closing Desk", items: ["Your private, synced CRM: Today list, Pipeline, Lists, WhatsApp click-to-chat, backups."] }
+    { v: "1.0.0", title: "Realtor OS", items: ["Your private, synced CRM: Today list, Pipeline, Lists, WhatsApp click-to-chat, backups."] }
   ];
   function seenVer() { try { return localStorage.getItem("cd.seen") || NEWS_BASELINE; } catch (e) { return NEWS_BASELINE; } }
   function unseenCount() { for (var i = 0; i < RELEASES.length; i++) if (RELEASES[i].v === seenVer()) return i; return 0; }
@@ -342,7 +351,7 @@
           render(); return;
         }
         var rows = Array.isArray(j) ? j : (j && Array.isArray(j.contacts) ? j.contacts : null);
-        if (!rows) throw new Error("This does not look like a Closing Desk backup.");
+        if (!rows) throw new Error("This does not look like a Realtor OS backup.");
         rows = rows.filter(function (r) { return r && typeof r === "object" && typeof r.id === "string" && r.id; });
         if (!rows.length) throw new Error("No contacts found in that file.");
         var ids = {}; rows = rows.filter(function (r) { if (ids[r.id]) return false; ids[r.id] = 1; return true; });
@@ -427,7 +436,7 @@
   var TASKS_URL = "tasks.html";
   var OS_DOC_URL = "https://claude.ai/artifact/D9aSgJEv7WZWE8t2JUXfaw";
   function osLinksCard() {
-    return '<div class="card stack" style="margin-bottom:12px"><h2>Your day</h2><p class="note" style="margin:0">The Board has today\'s tasks as cards with small steps. These open the other parts of it.</p><div class="row"><a class="lnk" href="' + TASKS_URL + '#board">Board</a><a class="lnk ghost" href="' + TASKS_URL + '#plan">Plan</a><a class="lnk ghost" href="' + TASKS_URL + '#ideas">Ideas</a><a class="lnk ghost" href="' + TASKS_URL + '#notes">Notes</a></div><div class="row"><a class="lnk ghost" href="dashboard.html">All numbers</a><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
+    return '<div class="card stack" style="margin-bottom:12px"><h2>Your day</h2><p class="note" style="margin:0">Home is your whole day on one screen. Tasks has Today, Board, Plan, Ideas and Notes.</p><div class="row"><a class="lnk" href="home.html">Home</a><a class="lnk ghost" href="' + TASKS_URL + '#today">Today</a><a class="lnk ghost" href="' + TASKS_URL + '#board">Board</a><a class="lnk ghost" href="' + TASKS_URL + '#plan">Plan</a><a class="lnk ghost" href="' + TASKS_URL + '#ideas">Ideas</a><a class="lnk ghost" href="' + TASKS_URL + '#notes">Notes</a></div><div class="row"><a class="lnk ghost" href="' + OS_DOC_URL + '" target="_blank" rel="noopener">How it connects</a></div></div>';
   }
   function osStats() {
     var s = window.CDStats.compute(all(), today());
@@ -437,7 +446,7 @@
   }
   function osText(s) {
     var n = function (x) { return Number(x).toLocaleString("en-CA"); };
-    return "Closing Desk numbers (" + fdate(today()) + "): " + n(s.reached) + " of " + n(s.contacts) + " contacts reached (" + s.pct + "%), " + n(s.left) + " left. Today: " + s.touchesToday + " calls or messages, " + s.emailsToday + " mass emails sent, " + s.dueToday + " due. Consent recorded: " + n(s.consented) + ". " + s.goalYear + ": listings " + s.dealsListings + " of " + s.goalListings + ", buyers " + s.dealsBuyers + " of " + s.goalBuyers + ".";
+    return "Realtor OS numbers (" + fdate(today()) + "): " + n(s.reached) + " of " + n(s.contacts) + " contacts reached (" + s.pct + "%), " + n(s.left) + " left. Today: " + s.touchesToday + " calls or messages, " + s.emailsToday + " mass emails sent, " + s.dueToday + " due. Consent recorded: " + n(s.consented) + ". " + s.goalYear + ": listings " + s.dealsListings + " of " + s.goalListings + ", buyers " + s.dealsBuyers + " of " + s.goalBuyers + ".";
   }
   function osCard() {
     var s = osStats();
@@ -448,7 +457,7 @@
       '<text x="50" y="57">' + s.pct + '%</text></svg>';
     return '<div class="card os" style="margin-bottom:12px"><div class="hero-top">' + gauge + '<div class="hero-txt"><div class="lbl">Reached at least once</div><div class="big num">' + n(s.reached) + ' <small>of ' + n(s.contacts) + '</small></div><div class="hsub">' + n(s.left) + ' still to reach</div></div></div>' +
       '<div class="tiles"><div><b class="num">' + s.touchesToday + '</b><span>touches today</span></div><div><b class="num">' + s.emailsToday + '</b><span>emails today</span></div><div><b class="num">' + s.dueToday + '</b><span>follow-ups due</span></div></div>' +
-      '<div class="row"><a class="lnk" href="' + TASKS_URL + '#board">Open the Board</a><a class="lnk ghost" href="dashboard.html">All numbers</a></div></div>';
+      '<div class="row"><a class="lnk" href="' + TASKS_URL + '#today">Open Today</a><a class="lnk ghost" href="home.html">Home</a></div></div>';
   }
   function weekCard() {
     var w = weekStats();
@@ -614,7 +623,7 @@
     }
     /* Numbers go under the list (a side panel on a wide screen). The Board shows them first. */
     h += '</div><aside class="tdside">';
-    h += '<div class="sec" style="margin-top:18px"><h2>Your numbers</h2><a class="lnk ghost" href="tasks.html#board">Open the Board</a></div>';
+    h += '<div class="sec" style="margin-top:18px"><h2>Your numbers</h2><a class="lnk ghost" href="home.html">Open Home</a></div>';
     h += osCard();
     h += '<div class="score">' + scoreCard(S.settings.goalYear + " listings", dealCount("listing"), S.settings.listingsGoal) + scoreCard(S.settings.goalYear + " buyers", dealCount("buyer"), S.settings.buyersGoal) + "</div>";
     h += weekCard();
@@ -1095,7 +1104,7 @@
   function setTheme(t) {
     document.documentElement.setAttribute("data-theme", t);
     try { localStorage.setItem("cd.theme", t); } catch (e) {}
-    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", t === "light" ? "#F3F6FB" : "#0B1220");
+    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", t === "light" ? "#F5F3EE" : "#0A0D14");
     var b = $("#themeBtn"); if (b) b.setAttribute("aria-label", t === "light" ? "Switch to dark mode" : "Switch to light mode");
   }
   $("#themeBtn").addEventListener("click", function () { setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"); });
@@ -1108,8 +1117,8 @@
   function showAuth(msg, setup) {
     document.body.classList.add("locked");
     var h = $("#authHost");
-    if (setup) { h.innerHTML = '<div class="auth"><div class="card stack"><h1>Closing Desk</h1><p style="margin:0">This copy is not connected to a database yet.</p><p class="note" style="margin:0">Open <b>config.js</b> and fill in your Supabase project URL and anon key, then reload. The README lists the steps.</p></div></div>'; return; }
-    if (!$("#loginForm")) h.innerHTML = '<div class="auth"><form class="card stack" id="loginForm" autocomplete="on"><h1>Closing Desk</h1><p class="note" style="margin:0">Private. Sign in to open your contacts.</p><label>Email<input class="field" id="lEmail" name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" required></label><label>Password<input class="field" id="lPass" name="password" type="password" autocomplete="current-password" required></label><div class="late" id="lErr" role="alert"></div><button class="btn primary" type="submit" id="lBtn">Sign in</button></form></div>';
+    if (setup) { h.innerHTML = '<div class="auth"><div class="card stack"><h1>Realtor OS</h1><p style="margin:0">This copy is not connected to a database yet.</p><p class="note" style="margin:0">Open <b>config.js</b> and fill in your Supabase project URL and anon key, then reload. The README lists the steps.</p></div></div>'; return; }
+    if (!$("#loginForm")) h.innerHTML = '<div class="auth"><form class="card stack" id="loginForm" autocomplete="on"><h1>Realtor OS</h1><p class="note" style="margin:0">Private. Sign in to open your contacts.</p><label>Email<input class="field" id="lEmail" name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" required></label><label>Password<input class="field" id="lPass" name="password" type="password" autocomplete="current-password" required></label><div class="late" id="lErr" role="alert"></div><button class="btn primary" type="submit" id="lBtn">Sign in</button></form></div>';
     var err = $("#lErr"); if (err) err.textContent = msg || "";
   }
   function hideAuth() { document.body.classList.remove("locked"); $("#authHost").innerHTML = ""; }

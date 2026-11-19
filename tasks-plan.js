@@ -18,7 +18,7 @@ window.ROS = (function(){
 
   function T(role,tag,title,mins,where,hint){return {role:role,tag:tag,title:title,mins:mins,where:where||'',hint:hint||''};}
 
-  var DESK='Closing Desk';
+  var DESK='Realtor OS';
   var TODAY_TAB=DESK+' › Clients';
 
   var REACH_EARLY=T('REACH','CRM','Call or WhatsApp your 5 warmest people.',15,TODAY_TAB);
@@ -41,13 +41,13 @@ window.ROS = (function(){
     '2026-11-19':['CRM','Gmail setup 2/2. Paste the Client ID in the Email tab, test the unsubscribe link, then Connect Gmail.',15],
     '2026-11-20':['CRM','Email #1. Pick a starter, send a test to yourself, check your inbox and your spam folder.',15],
     '2026-11-30':['CRM','Start campaign #1 to consented Clients: Email › New campaign › Start. Keep the laptop open.',15],
-    '2026-12-01':['DASH','Claude builds a reached counter (X of N reached) into Closing Desk. You test it on one contact.',10],
+    '2026-12-01':['DASH','Claude builds a reached counter (X of N reached) into Realtor OS. You test it on one contact.',10],
     '2026-12-02':['CRM','WhatsApp. Set Tier A/B/C labels in the WhatsApp Business app and decide click-to-chat or continuing API registration.',20],
     '2026-12-03':['CRM','Follow-up sequences. Claude builds Day 3, 7 and 21 reminders. You approve the wording.',15],
     '2026-12-04':['DASH','Claude builds the weekly scorecard: reached, replies, appointments, listings x/20, buyers x/30. You check it.',10],
     '2026-12-05':['ADMIN','Facebook Marketplace auto-reply. Claude writes it, you paste it in.',15],
     '2026-12-07':['CRM','Email health check: bounces and unsubscribes. If it is clean, raise the daily cap in Email settings.',10],
-    '2026-12-08':['CRM','Lead capture. Claude builds a form link that drops leads into Closing Desk. You put it in your Instagram bio.',15],
+    '2026-12-08':['CRM','Lead capture. Claude builds a form link that drops leads into Realtor OS. You put it in your Instagram bio.',15],
     '2026-12-09':['EDIT','Editing check. Send the videographer brief, count Reels edited vs waiting, and remove the one bottleneck.',15],
     '2026-12-10':['CRM','Turn on Tell Claude. Put the Anthropic key in the Supabase secret and set tellClaude to true. About 2–5 cents per note.',20],
     '2026-12-11':['CRM','Full test. Send yourself one email, one WhatsApp, one call and one DM. Note what annoys you.',20],

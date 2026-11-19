@@ -291,15 +291,16 @@
   function setTheme(t) {
     document.documentElement.setAttribute("data-theme", t);
     try { localStorage.setItem("cd.theme", t); } catch (e) {}
-    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", t === "light" ? "#F3F6FB" : "#0B1220");
+    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", t === "light" ? "#F5F3EE" : "#0A0D14");
     if (themeBtn) themeBtn.setAttribute("aria-label", t === "light" ? "Switch to dark mode" : "Switch to light mode");
   }
   function build() {
     var strip = h("div", { class: "strip" }, [
       h("span", { class: "logo", "aria-hidden": "true", html: '<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M9 15l2.2 2.2L15 12.8"/></svg>' }),
-      h("span", { class: "brand", text: "Closing Desk" }),
+      h("span", { class: "brand", text: "Realtor OS" }),
       h("span", { class: "sp" }),
-      h("button", { class: "ib", id: "themeBtn", type: "button", "aria-label": "Switch to light mode", html: '<svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg><svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>' })
+      h("button", { class: "ib", id: "themeBtn", type: "button", "aria-label": "Switch to light mode", html: '<svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg><svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>' }),
+      h("a", { class: "ib more-gear", href: "index.html#more", "aria-label": "Settings", html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>' })
     ]);
     app.parentNode.insertBefore(strip, app);
     themeBtn = document.getElementById("themeBtn");
@@ -323,7 +324,7 @@
     filtEl = h("section", { class: "vw-filters", "aria-label": "Filters" });
     bodyEl = h("div", { id: "vwBody" });
     var foot = h("footer", { class: "vw-foot" }, [
-      h("p", { class: "fine", text: "Times are Edmonton time (America/Edmonton). Plan entered by Shivam. Your ticks and notes are saved to your Closing Desk account." }),
+      h("p", { class: "fine", text: "Times are Edmonton time (America/Edmonton). Plan entered by Shivam. Your ticks and notes are saved to your Realtor OS account." }),
       h("p", { class: "fine" }, [h("button", { type: "button", class: "lk", "data-seed": "1", text: "Check the plan data" }), h("span", { id: "seedMsg", "aria-live": "polite" })])
     ]);
     app.appendChild(h("div", { class: "wrap" }, [headEl, filtEl, bodyEl, foot]));

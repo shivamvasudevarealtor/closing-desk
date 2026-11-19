@@ -123,58 +123,94 @@
     }).then(function () { calBusy = false; cal.busy = false; emit("cal"); });
   }
 
-  /* ---------- view ---------- */
-  var opts = { plan: [], openBoard: null, vwEl: null, afterPaint: null }, root = null, formState = { title: "", time: "", url: "" }, confirmOff = false, confirmTimer = null;
+  /* ---------- the day as one list (this tab and Home both read it) ---------- */
+  var LBL = { cal: "Calendar", me: "Mine", cl: "Claude" };
+  function model(plan) {
+    var td = todayStr(), nm = nowMin(), d = load();
+    var own = Object.keys(d.tasks).map(function (k) { return d.tasks[k]; }).filter(function (t) { return t && !t.del && t.title; });
+    var todays = own.filter(function (t) { return t.date === td; });
+    var carried = own.filter(function (t) { return t.date < td && !t.done; });
+    var events = cal.date === td ? cal.events : [];
+    var items = [];
+    events.forEach(function (ev) {
+      var s = ev.allDay ? -1 : (mins(ev.start) || 0), e = ev.end ? mins(ev.end) : null;
+      items.push({ src: "cal", id: String(ev.id || ev.title + s), title: ev.title, allDay: !!ev.allDay, start: ev.start || "", end: ev.end || "", loc: ev.location || "", min: s, endMin: e, done: false });
+    });
+    todays.forEach(function (t) { items.push({ src: "me", id: t.id, title: t.title, start: t.time || "", end: "", min: t.time ? mins(t.time) : null, endMin: null, done: !!t.done, carried: "", u: t.u || 0 }); });
+    carried.forEach(function (t) { items.push({ src: "me", id: t.id, title: t.title, min: null, done: false, carried: t.date, u: t.u || 0 }); });
+    (plan || []).forEach(function (p, i) { items.push({ src: "cl", id: "pl" + i, title: p.title, min: null, done: p.state === "done", state: p.state, mins: p.mins || null, u: i }); });
+    var next = null;
+    items.forEach(function (it) {
+      it.timed = it.min != null;
+      if (it.timed && !it.allDay) {
+        var end = it.endMin != null ? it.endMin : it.min + 60;
+        it.past = it.endMin != null ? it.endMin <= nm : it.min < nm - 60;
+        it.now = it.min <= nm && nm < end && it.src === "cal";
+      } else { it.past = false; it.now = false; }
+    });
+    var sched = items.filter(function (it) { return it.timed; }).sort(function (a, b) { return a.min - b.min || (a.src === "cal" ? 0 : 1) - (b.src === "cal" ? 0 : 1); });
+    for (var i = 0; i < sched.length; i++) { var it = sched[i]; if (!it.allDay && !it.past && !it.done) { next = it; break; } }
+    var todo = items.filter(function (it) { return !it.timed; }).sort(function (a, b) {
+      var ra = a.carried ? 0 : a.src === "cl" ? 1 : 2, rb = b.carried ? 0 : b.src === "cl" ? 1 : 2;
+      return ra - rb || (a.carried && b.carried ? (a.carried < b.carried ? -1 : 1) : 0) || (a.u - b.u);
+    });
+    var c = { all: items.length, cal: 0, me: 0, cl: 0 };
+    items.forEach(function (it) { c[it.src]++; });
+    var tasks = items.filter(function (it) { return it.src !== "cal"; });
+    return { td: td, nm: nm, items: items, sched: sched, todo: todo, next: next, counts: c, total: tasks.length, done: tasks.filter(function (it) { return it.done; }).length,
+      connected: !!(d.cal && d.cal.url), calState: cal.state, calMsg: cal.msg, calAt: cal.at, status: status };
+  }
 
-  function label(text, cls) { return h("span", { class: "tdl " + (cls || ""), text: text }); }
-  function evRow(ev, nm, isToday) {
-    var past = isToday && !ev.allDay && ev.end ? mins(ev.end) <= nm : (isToday && !ev.allDay && ev.start ? mins(ev.start) < nm - 60 : false);
-    return h("li", { class: "tdr ev" + (past ? " past" : "") }, [
-      h("span", { class: "tdc dot", "aria-hidden": "true", text: "•" }),
-      h("div", { class: "tdb" }, [
-        h("span", { class: "tdt tn", text: ev.allDay ? "All day" : range(ev.start, ev.end) }),
-        h("span", { class: "tdn", text: ev.title }),
-        ev.location ? h("span", { class: "tdm", text: ev.location }) : null,
-        h("span", { class: "tdtag" }, [label("Calendar", "l-cal")])
-      ])
-    ]);
+  /* ---------- view ---------- */
+  var opts = { plan: [], openBoard: null, vwEl: null, afterPaint: null }, root = null, formState = { title: "", time: "", url: "" }, confirmOff = false, confirmTimer = null, flt = "all";
+  var SVG = {
+    check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    go: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+    cal: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+    spark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
+  };
+  function icon(name, cls) { var s = h("span", { class: cls || "tdic", "aria-hidden": "true" }); s.innerHTML = SVG[name]; return s; }
+  function chip(src) { return h("span", { class: "tdl l-" + src, text: LBL[src] }); }
+
+  function ctxText(it) {
+    if (it.src === "cal") return (it.now ? "Now · " : "") + (it.allDay ? "All day" : range(it.start, it.end));
+    if (it.timed) return fmt12(it.start);
+    if (it.carried) return "From " + dateLabel(it.carried, { weekday: "short", month: "short", day: "numeric" });
+    if (it.src === "cl") return it.state === "done" ? "Done" : it.state === "doing" ? "Doing now" : "To do" + (it.mins ? " · " + it.mins + " min" : "");
+    return "";
   }
-  function taskRow(t, carried) {
-    var id = "tk-" + t.id;
-    var cb = h("input", { type: "checkbox", id: id, "data-tk": t.id, "aria-label": t.title }); cb.checked = !!t.done;
-    return h("li", { class: "tdr tk" + (t.done ? " done" : "") }, [
-      h("span", { class: "tdc" }, [cb]),
-      h("label", { class: "tdb", "for": id }, [
-        t.time ? h("span", { class: "tdt tn", text: fmt12(t.time) }) : null,
-        h("span", { class: "tdn", text: t.title }),
-        h("span", { class: "tdtag" }, [label("Added by you", "l-me"), carried ? label("From " + dateLabel(t.date, { weekday: "short", month: "short", day: "numeric" }), "l-old") : null])
-      ]),
-      h("button", { type: "button", class: "tdx", "data-rm": t.id, "aria-label": "Remove " + t.title, text: "Remove" })
-    ]);
+  function row(it) {
+    var cls = "tdr " + it.src + (it.done ? " done" : "") + (it.past ? " past" : "") + (it.now ? " now" : "") + (it.carried ? " late" : "");
+    var left, right = null;
+    if (it.src === "me") {
+      var id = "tk-" + it.id, cb = h("input", { type: "checkbox", id: id, "data-tk": it.id, "aria-label": it.title }); cb.checked = !!it.done;
+      left = h("span", { class: "tdc" }, [cb, h("span", { class: "tdbox", "aria-hidden": "true" }, [icon("check", "tdck")])]);
+      right = h("button", { type: "button", class: "tdx", "data-rm": it.id, "aria-label": "Remove " + it.title }, [icon("x")]);
+    } else if (it.src === "cl") {
+      left = h("span", { class: "tdc dot" + (it.done ? " ok" : ""), "aria-hidden": "true" }, [icon(it.done ? "check" : "spark")]);
+      right = h("button", { type: "button", class: "tdx go", "data-openboard": "1", "aria-label": "Open " + it.title + " on the Board" }, [icon("go")]);
+    } else {
+      left = h("span", { class: "tdc dot", "aria-hidden": "true" }, [icon("cal")]);
+    }
+    var top = h("span", { class: "tdtop" }, [h("span", { class: "tdt tn", text: ctxText(it) }), chip(it.src)]);
+    var bodyKids = [top, h("span", { class: "tdn", text: it.title }), it.loc ? h("span", { class: "tdm", text: it.loc }) : null];
+    var body = it.src === "me" ? h("label", { class: "tdb", "for": "tk-" + it.id }, bodyKids) : h("div", { class: "tdb" }, bodyKids);
+    return h("li", { class: cls, "data-src": it.src }, [left, body, right]);
   }
-  function planRow(p) {
-    var word = p.state === "done" ? "Done" : p.state === "doing" ? "Doing now" : "To do";
-    return h("li", { class: "tdr pl" + (p.state === "done" ? " done" : "") }, [
-      h("span", { class: "tdc dot", "aria-hidden": "true", text: p.state === "done" ? "✓" : "•" }),
-      h("div", { class: "tdb" }, [
-        h("span", { class: "tdn", text: p.title }),
-        h("span", { class: "tdtag" }, [label("From Claude", "l-cl"), label(word, "l-st")])
-      ]),
-      h("button", { type: "button", class: "tdx", "data-openboard": "1", "aria-label": "Open " + p.title + " on the Board", text: "Open" })
-    ]);
-  }
-  function group(title, items, empty) {
+  function group(title, count, items, empty) {
     var ul = h("ul", { class: "tdlist" });
-    items.forEach(function (li) { ul.appendChild(li); });
+    items.forEach(function (it) { ul.appendChild(row(it)); });
     if (!items.length) ul.appendChild(h("li", { class: "tdempty", text: empty }));
-    return h("section", { class: "card tdg" }, [h("h2", { class: "tdh", text: title }), ul]);
+    return h("section", { class: "tdg" }, [h("h2", { class: "tdh" }, [title, h("span", { class: "tdhn tn", text: String(count) })]), ul]);
   }
-  function calCard() {
-    load();
-    var url = doc.cal && doc.cal.url, kids = [h("h2", { class: "tdh", text: "Apple Calendar" })];
-    if (!url) {
+  function calCard(M) {
+    var kids = [];
+    if (!M.connected) {
       kids.push(
-        h("p", { class: "tdnote", text: "Show your calendar events here. Apple does not allow a sign-in for web apps, so you share one calendar with a link." }),
+        h("h2", { class: "tdh" }, [icon("cal", "tdic big"), "Bring in your calendar"]),
+        h("p", { class: "tdnote", text: "Show your Apple Calendar events here. Apple does not allow a sign-in for web apps, so you share one calendar with a link." }),
         h("ol", { class: "tdsteps" }, [
           h("li", { text: "On your iPhone, open Calendar and tap Calendars at the bottom." }),
           h("li", { text: "Tap the (i) next to the calendar you want. Turn on Public Calendar." }),
@@ -185,66 +221,66 @@
           h("input", { id: "tdUrl", class: "tdin", type: "url", inputmode: "url", autocomplete: "off", autocapitalize: "off", spellcheck: "false", placeholder: "webcal://p12-caldav.icloud.com/…", value: formState.url }),
           h("button", { type: "submit", class: "tdbtn", text: "Connect" })
         ]),
-        h("p", { class: "tdfine", text: "Anyone who has this link can read that calendar. It is saved only in your private Closing Desk account. Use a calendar with events you are fine sharing." })
+        h("p", { class: "tdfine", text: "Anyone who has this link can read that calendar. It is saved only in your private Realtor OS account. Use a calendar with events you are fine sharing." })
       );
-      if (cal.msg) kids.push(h("p", { class: "tderr", role: "alert", text: cal.msg }));
+      if (M.calMsg) kids.push(h("p", { class: "tderr", role: "alert", text: M.calMsg }));
     } else {
-      var when = cal.at ? new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(cal.at)).replace(/\./g, "").toUpperCase() : "";
+      var when = M.calAt ? new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(M.calAt)).replace(/\./g, "").toUpperCase() : "";
       kids.push(
-        h("p", { class: "tdnote" }, [h("b", { text: "Connected. " }), cal.busy ? "Updating…" : (when ? "Updated " + when + "." : "Not updated yet.")]),
+        h("h2", { class: "tdh" }, [icon("cal", "tdic big"), "Apple Calendar"]),
+        h("p", { class: "tdnote" }, [h("b", { class: M.calState === "err" ? "" : "okt", text: "Connected. " }), cal.busy ? "Updating…" : (when ? "Updated " + when + "." : "Not updated yet.")]),
         h("div", { class: "tdrow" }, [
           h("button", { type: "button", class: "tdbtn ghost", "data-calrefresh": "1", text: "Refresh" }),
           h("button", { type: "button", class: "tdbtn ghost", "data-caloff": "1", text: confirmOff ? "Tap again to disconnect" : "Disconnect" })
         ])
       );
-      if (cal.state === "err" && cal.msg) kids.push(h("p", { class: "tderr", role: "alert", text: cal.msg }));
+      if (M.calState === "err" && M.calMsg) kids.push(h("p", { class: "tderr", role: "alert", text: M.calMsg }));
     }
-    return h("section", { class: "card tdg tdcal" }, kids);
+    return h("section", { class: "tdcard tdcal" + (M.connected ? " on" : "") }, kids);
   }
   function addForm() {
     var title = h("input", { id: "tdTitle", class: "tdin", type: "text", maxlength: "200", autocomplete: "off", placeholder: "Add a task for today", "aria-label": "Task for today" });
     title.value = formState.title;
     var time = h("input", { id: "tdTime", class: "tdin tdtime", type: "time", "aria-label": "Time (optional)" }); time.value = formState.time;
-    return h("form", { class: "card tdadd", "data-addform": "1", novalidate: true }, [title, time, h("button", { type: "submit", class: "tdbtn", text: "Add" })]);
+    return h("form", { class: "tdadd", "data-addform": "1", novalidate: true }, [title, time, h("button", { type: "submit", class: "tdbtn", "aria-label": "Add task" }, [icon("plus"), h("span", { text: "Add" })])]);
+  }
+  function ring(done, total) {
+    var R = 21, C = 2 * Math.PI * R, p = total ? Math.min(1, done / total) : 0;
+    var s = h("div", { class: "tdring" + (total && done >= total ? " full" : ""), role: "img", "aria-label": done + " of " + total + " done" });
+    s.innerHTML = '<svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="' + R + '" class="rt"/><circle cx="26" cy="26" r="' + R + '" class="rp" stroke-dasharray="' + (C * p).toFixed(1) + " " + C.toFixed(1) + '" transform="rotate(-90 26 26)"/></svg>';
+    s.appendChild(h("span", { class: "tn", text: done + "/" + total }));
+    return s;
+  }
+  function seg(M) {
+    var defs = [["all", "All"], ["cal", "Calendar"], ["me", "Mine"], ["cl", "Claude"]];
+    return h("div", { class: "tdseg", role: "group", "aria-label": "Show" }, defs.map(function (d) {
+      return h("button", { type: "button", class: "tdsb" + (flt === d[0] ? " on" : ""), "data-flt": d[0], "aria-pressed": flt === d[0] ? "true" : "false" }, [h("span", { text: d[1] }), h("b", { class: "tn", text: String(M.counts[d[0]]) })]);
+    }));
   }
 
   function paint() {
     if (!root || !root.isConnected) { root = document.querySelector("[data-tday]"); if (!root) return; }
-    var td = todayStr(), nm = nowMin(), d = load();
-    var own = Object.keys(d.tasks).map(function (k) { return d.tasks[k]; }).filter(function (t) { return t && !t.del && t.title; });
-    var todays = own.filter(function (t) { return t.date === td; });
-    var carried = own.filter(function (t) { return t.date < td && !t.done; });
-    var events = cal.date === td ? cal.events : [];
-    var timed = todays.filter(function (t) { return t.time; });
-    var sched = [];
-    events.forEach(function (ev) { sched.push({ k: ev.allDay ? -1 : (mins(ev.start) || 0), o: 0, el: evRow(ev, nm, true) }); });
-    timed.forEach(function (t) { sched.push({ k: mins(t.time), o: 1, el: taskRow(t, false) }); });
-    sched.sort(function (a, b) { return a.k - b.k || a.o - b.o; });
-    var todo = [];
-    carried.sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (t) { todo.push(taskRow(t, true)); });
-    todays.filter(function (t) { return !t.time; }).sort(function (a, b) { return (a.u || 0) - (b.u || 0); }).forEach(function (t) { todo.push(taskRow(t, false)); });
-    var plan = (opts.plan || []);
-    plan.forEach(function (p) { todo.push(planRow(p)); });
-    var all = todays.concat(carried), total = all.length + plan.length, done = all.filter(function (t) { return t.done; }).length + plan.filter(function (p) { return p.state === "done"; }).length;
-    var connected = !!(d.cal && d.cal.url);
-
-    var main = h("div", { class: "tdmain" }, [
-      addForm(), opts.vwEl || null,
-      group("Scheduled", sched.map(function (s) { return s.el; }), connected ? "Nothing scheduled today." : "Nothing scheduled. Add a time to a task, or connect your calendar."),
-      group("To do", todo, "Nothing to do yet. Add a task above.")
-    ]);
-    var side = h("div", { class: "tdside" }, [calCard()]);
-    var head = h("header", { class: "title-row tdhead" }, [
-      h("div", {}, [h("h1", { text: "Today" }), h("p", { class: "sub", text: dateLabel(td, { weekday: "long", month: "long", day: "numeric" }) })]),
-      h("div", { class: "tdcount", "aria-live": "polite" }, [h("b", { class: "tn", text: done + " of " + total }), h("span", { text: " done" })])
+    var M = model(opts.plan || []);
+    var sched = M.sched.filter(function (it) { return flt === "all" || it.src === flt; });
+    var todo = M.todo.filter(function (it) { return flt === "all" || it.src === flt; });
+    var emptyS = flt === "cal" ? (M.connected ? "No events today." : "Your calendar is not connected yet.") : flt === "cl" ? "Nothing timed from Claude." : flt === "me" ? "No timed tasks. Give a task a time and it lands here." : (M.connected ? "Nothing scheduled today." : "Nothing scheduled. Add a time to a task, or connect your calendar.");
+    var emptyT = flt === "cl" ? "Nothing from Claude today." : flt === "cal" ? "Calendar events are under Scheduled." : flt === "me" ? "No tasks yet. Add one above." : "Nothing to do yet. Add a task above.";
+    var kids = [];
+    if (flt === "all" && opts.vwEl) kids.push(opts.vwEl);
+    if (flt === "cal" || sched.length || (flt === "all" && M.connected)) kids.push(group("Scheduled", sched.length, sched, emptyS));
+    if (flt !== "cal") kids.push(group("To do", todo.length, todo, emptyT));
+    var main = h("div", { class: "tdmain" }, kids);
+    var side = h("div", { class: "tdside" }, [calCard(M)]);
+    var head = h("header", { class: "tdhead" }, [
+      h("div", { class: "tdht" }, [h("h1", { text: "Today" }), h("p", { class: "sub", text: dateLabel(M.td, { weekday: "long", month: "long", day: "numeric" }) })]),
+      ring(M.done, M.total)
     ]);
     var focusId = document.activeElement && document.activeElement.id, selS = null, selE = null;
     if (focusId === "tdTitle") { selS = document.activeElement.selectionStart; selE = document.activeElement.selectionEnd; }
     root.textContent = "";
-    root.appendChild(head);
-    var body = h("div", { class: "tdbody" + (connected ? " conn" : "") }, connected ? [main, side] : [side, main]);
-    root.appendChild(body);
-    var st = status === "offline" ? (pending ? "Not saved to the cloud yet. Kept on this device." : "Offline. Showing the copy on this device.") : status === "saving" ? "Saving…" : "";
+    root.appendChild(head); root.appendChild(seg(M)); root.appendChild(addForm());
+    root.appendChild(h("div", { class: "tdbody" + (M.connected ? " conn" : "") }, [main, side]));
+    var st = M.status === "offline" ? (pending ? "Not saved to the cloud yet. Kept on this device." : "Offline. Showing the copy on this device.") : M.status === "saving" ? "Saving…" : "";
     if (st) root.appendChild(h("p", { class: "tdfine tdst", role: "status", text: st }));
     if (focusId === "tdTitle") { var n = document.getElementById("tdTitle"); if (n) { n.focus(); try { n.setSelectionRange(selS, selE); } catch (e) {} } }
     if (opts.afterPaint) opts.afterPaint();
@@ -273,8 +309,9 @@
     var t = e.target; if (t && t.matches && t.matches("input[data-tk]")) toggle(t.getAttribute("data-tk"), t.checked);
   });
   document.addEventListener("click", function (e) {
-    var b = e.target.closest ? e.target.closest("[data-rm],[data-openboard],[data-calrefresh],[data-caloff]") : null;
+    var b = e.target.closest ? e.target.closest("[data-rm],[data-openboard],[data-calrefresh],[data-caloff],[data-flt]") : null;
     if (!b || !b.closest("[data-tday]")) return;
+    if (b.hasAttribute("data-flt")) { flt = b.getAttribute("data-flt"); paint(); return; }
     if (b.hasAttribute("data-rm")) removeTask(b.getAttribute("data-rm"));
     else if (b.hasAttribute("data-openboard")) { if (opts.openBoard) opts.openBoard(); }
     else if (b.hasAttribute("data-calrefresh")) refreshCal(true);
@@ -298,6 +335,11 @@
       setTimeout(function () { if (root && root.isConnected) { paint(); refreshCal(); } }, 0);
       return root;
     },
+    /* For Home: no screen here, just the data. start() loads and syncs, model(plan) is today's list, on(fn) hears every change. */
+    start: function () { load(); open(); refreshCal(); },
+    model: function (plan) { return model(plan || []); },
+    on: function (fn) { listeners.push(fn); },
+    toggle: toggle, add: addTask, refresh: refreshCal, fmt12: fmt12, range: range, dateLabel: dateLabel,
     paint: paint, todayStr: todayStr,
     _state: function () { return { doc: load(), cal: cal, status: status }; }
   };

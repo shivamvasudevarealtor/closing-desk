@@ -1,4 +1,4 @@
-/* Gmail layer for Closing Desk. Sign in with Google, build the email, send it through the Gmail API.
+/* Gmail layer for Realtor OS. Sign in with Google, build the email, send it through the Gmail API.
    Knows nothing about contacts or campaigns: app.js decides who gets what and when.
    Only two permissions are requested: send email as you (gmail.send) and read your own address (userinfo.email).
    The access token lives in memory only (never saved), so closing the tab signs Gmail out; tap Connect Gmail again. */
@@ -76,7 +76,7 @@
         client_id: clientId, scope: SCOPES,
         callback: function (r) {
           if (!r || r.error) { reject(new Error((r && (r.error_description || r.error)) || "Google sign-in failed.")); return; }
-          if (String(r.scope || "").indexOf("gmail.send") < 0) { reject(new Error("Gmail permission was not given. On the Google screen, tick the box that lets Closing Desk send email.")); return; }
+          if (String(r.scope || "").indexOf("gmail.send") < 0) { reject(new Error("Gmail permission was not given. On the Google screen, tick the box that lets Realtor OS send email.")); return; }
           st.token = r.access_token; st.exp = Date.now() + (Number(r.expires_in) || 3600) * 1000 - 120000; resolve();
         },
         error_callback: function (e) {

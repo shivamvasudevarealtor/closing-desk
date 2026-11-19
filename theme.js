@@ -4,5 +4,5 @@
   try { var v = localStorage.getItem("cd.theme"); if (v === "light" || v === "dark") t = v; } catch (e) {}
   document.documentElement.setAttribute("data-theme", t);
   var m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute("content", t === "light" ? "#F3F6FB" : "#0B1220");
+  if (m) m.setAttribute("content", t === "light" ? "#F5F3EE" : "#0A0D14");
 })();

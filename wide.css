@@ -1,4 +1,4 @@
-/* Closing Desk: laptop and tablet layouts. Loaded last on every page.
+/* Realtor OS: laptop and tablet layouts. Loaded last on every page.
    Every rule here sits inside a min-width media query, so the phone layout (under 700px) is untouched.
    700-1023px  tablet portrait (Galaxy Tab S7 FE upright): bottom bar stays, content gets wider, 2 columns where it helps
    1024-1359px tablet landscape and small laptops: slim left rail (icon over label), 4-column Board

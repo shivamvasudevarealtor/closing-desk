@@ -1,4 +1,4 @@
-/* Data layer for Closing Desk: login, rows, live sync. Talks to Supabase and nothing else.
+/* Data layer for Realtor OS: login, rows, live sync. Talks to Supabase and nothing else.
    The page only ever calls window.CDStore. Contacts and settings are stored as one JSON document per row
    (table columns: id, owner, data, updated_at), so the contact shape can grow without database changes. */
 (function () {

@@ -1,4 +1,4 @@
-/* Dashboard page for Closing Desk. Midnight look; the theme is set by theme.js on the html element (data-theme). */
+/* Dashboard page for Realtor OS. Midnight look; the theme is set by theme.js on the html element (data-theme). */
 :root{
   --bg:#0B1220;--surface:#121B2D;--surface2:#18233A;--ink:#EAF0FA;--muted:#9AA9C2;--line:#22304A;--line2:#2E3F61;
   --accent:#3DD6B0;--accent-ink:#04241C;--accent-soft:#12342F;
@@ -26,7 +26,7 @@ button{font-family:inherit;color:inherit}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-/* brand strip (same as Closing Desk and Win the Day) */
+/* brand strip (same as Realtor OS and Win the Day) */
 .strip{max-width:560px;margin:0 auto;padding:14px 14px 4px;display:flex;align-items:center;gap:10px}
 .logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(150deg,#0F4A39,#04170F);color:#EBCB82;box-shadow:inset 0 0 0 1px rgba(235,203,130,.55);display:grid;place-items:center;flex:none}
 .logo svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}

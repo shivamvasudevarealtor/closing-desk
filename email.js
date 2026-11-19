@@ -1,4 +1,4 @@
-/* Email tab for Closing Desk: who gets an email, what it says, and how fast it goes out so Gmail never blocks you.
+/* Email tab for Realtor OS: who gets an email, what it says, and how fast it goes out so Gmail never blocks you.
    gmail.js does the Google sign-in and sending. This file decides who, when and how many.
 
    The safety rules (all on by default, none can be turned off from the screen):
@@ -389,7 +389,7 @@
     var live = Mail.token();
     h += '<div class="card stack"><div class="row" style="justify-content:space-between"><h2>Gmail</h2>' + (live ? '<span class="pill cold">Connected</span>' : '<span class="pill stale">Not connected</span>') + "</div>" +
       (live ? "<div>Sending as <b>" + esc(Mail.email()) + '</b></div><div class="note" id="mailTok"></div><div class="row"><button class="btn small" type="button" data-act="mail-connect">Refresh sign-in</button><button class="btn small" type="button" data-act="mail-disconnect">Disconnect</button></div>' :
-        '<div class="note">Closing Desk only asks to send email as you. It cannot read your inbox.</div>' + (cfg.clientId ? '<button class="btn primary" type="button" data-act="mail-connect">Connect Gmail</button>' : '<button class="btn primary" type="button" data-act="mail-settings">Set up email</button>')) +
+        '<div class="note">Realtor OS only asks to send email as you. It cannot read your inbox.</div>' + (cfg.clientId ? '<button class="btn primary" type="button" data-act="mail-connect">Connect Gmail</button>' : '<button class="btn primary" type="button" data-act="mail-settings">Set up email</button>')) +
       '<button class="btn small" type="button" data-act="mail-settings" style="align-self:flex-start">Email settings</button></div>';
     h += '<div class="card stack" style="margin-top:12px"><div class="row" style="justify-content:space-between"><h2>Sent in the last 24 hours</h2><strong class="num">' + n + " of " + eff + '</strong></div><div class="bar"><i style="width:' + pct + '%"></i></div>' +
       '<div class="note">' + (priorDays(cfg) < RAMP.length ? "Warm-up day " + (priorDays(cfg) + 1) + " of " + RAMP.length + ": the limit grows each day you send. " : "") + "Gmail allows about " + GMAIL_LIMIT[cfg.account] + " a day for everything you send, so this app stays well under it.</div></div>";

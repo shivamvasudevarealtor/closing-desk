@@ -1,4 +1,4 @@
-# Closing Desk
+# Realtor OS
 
 Private follow-up CRM for The Modern Real Estate Group. Installs on iPhone and Mac like an app.
 
@@ -28,10 +28,19 @@ Repo > Settings > Pages > Source: **Deploy from a branch** > Branch: `main`, fol
 More > **Restore a backup** > choose your `closing-desk-backup-....json`. Goals and closed deals come back with it.
 
 ## Everyday use
-- Today shows who to reach out to. Tap Talked / Messaged / No answer to log it and set the next date.
+- Home shows who to reach out to. Tap a name, then Talked / Messaged / No answer / Later to log it and set the next date. Clients > Due today has the full list.
 - Phone and laptop stay in sync live.
 - If the connection drops, you see your last saved copy. Changes don't save until it's back, and the app tells you.
 - More > **Download backup** after any big session. Keep that file somewhere private. It includes your notes.
+
+## Home and the new look (v2.0)
+- **Home** (`home.html`) opens first on a fresh launch. Order, top to bottom: three tiles (events, tasks done, people to reach), **Do this next**, today's vacation-week card, **Reach out** (top 5 due), **My day** (calendar and timed tasks), **Must work on** (carried, Claude and your tasks, with an add box), **Deals in motion** (counts by stage), and **Your numbers** (folded).
+- Home reads the same data as the other pages and uses the same rules: `crm-core.js` has who is due, the order, and what Talked / Messaged / No answer saves (it mirrors `touch()` in `app.js`); `day-core.js` has today's plan tasks (it mirrors the Board's day plan); `tasks-today.js` has the one list of calendar events, your tasks and Claude's tasks that Home and Tasks > Today both draw.
+- Nothing new is stored. No new table, key or function. Logging a touch on Home saves through the same `patch_contact` call as Clients.
+- **Bottom bar (5):** Home, Tasks, Clients, Pipeline, Email. Settings is the sliders button in the page header (and the last item of the left menu on a laptop). Tasks has the sub-tabs Today, Board, Plan, Ideas, Notes; Vacation week opens from the cards.
+- **Look:** `ros.css` is loaded last on every page and only overrides the shared color names, so each page keeps its own layout. Dark is the default (ink-navy with a champagne gold accent); light is warm paper with a deep gold accent. Fonts are unchanged (Sora and DM Sans).
+- `dashboard.html` is now a redirect to Home. `dashboard.css` stays because the vacation page still uses it.
+- Not covered by tests here: a real iPhone or Galaxy Tab, the live GitHub Pages site, a real iCloud calendar and the live database. Everything else was run in a browser against a copy of the database.
 
 ## Board and navigation (v1.11)
 - **One bottom bar on every page:** Board, Clients, Pipeline, Email, More. Clients has two views: *Due today* and *Everyone* (the old Lists).
@@ -44,13 +53,13 @@ More > **Restore a backup** > choose your `closing-desk-backup-....json`. Goals 
 - One extra stylesheet, `wide.css`, loaded last on every page. Everything in it sits inside `min-width` media queries, so the phone layout (under 700px) is unchanged.
 - **700 to 1023px** (tablet held upright, such as the Galaxy Tab S7 FE): the bottom bar stays. Content gets wider, the Board is a 2 by 2 grid, due cards and Everyone rows go two across.
 - **1024 to 1359px** (tablet on its side, small laptops): the bottom bar becomes a slim left rail (icon over label). Four Board columns, each scrolling on its own.
-- **1360px and up** (laptops, desktops): a full left sidebar with the Closing Desk name.
+- **1360px and up** (laptops, desktops): a full left sidebar with the Realtor OS name.
 - Clients (Due today) has a `tdgrid` wrapper: the list on the left, the numbers panel on the right. On a phone it is just stacked, as before.
 - The nav markup has a `.sb` brand block that only shows on wide screens. Each page's `<body>` has a class (`pg-clients`, `pg-board`, `pg-dash`) so wide.css can place the top buttons beside each heading.
 
 ## Email setup (v1.5, about 20 minutes, once)
 
-**What it does.** You write one email, pick who gets it, and Closing Desk sends it from your own Gmail, one person at a time, at a safe speed. It never uses a BCC list. It stops by itself if Gmail says to slow down.
+**What it does.** You write one email, pick who gets it, and Realtor OS sends it from your own Gmail, one person at a time, at a safe speed. It never uses a BCC list. It stops by itself if Gmail says to slow down.
 
 ### The limits it follows
 | Rule | Free Gmail | Google Workspace (paid) |
@@ -69,7 +78,7 @@ Your normal Gmail use counts toward Gmail's limit too, which is why the app stay
 Supabase > SQL Editor > New query > paste all of `supabase/email.sql` > Run. This lets the unsubscribe page mark a contact as unsubscribed, and nothing else. (A fresh database set up with the current `schema.sql` already has it.)
 
 ### 2. Google Cloud (once)
-1. console.cloud.google.com > create a project (name it Closing Desk).
+1. console.cloud.google.com > create a project (name it Realtor OS).
 2. APIs & Services > Library > **Gmail API** > Enable.
 3. APIs & Services > OAuth consent screen (Google Auth Platform) > User type **External** > fill in the app name and your email. Publishing status stays **Testing**. Add your own Gmail address under **Test users**.
 4. Data access / Scopes: add `.../auth/gmail.send` and `.../auth/userinfo.email`. Nothing else.
@@ -78,7 +87,7 @@ Supabase > SQL Editor > New query > paste all of `supabase/email.sql` > Run. Thi
 ### 3. In the app
 1. Email tab > Set up email. Paste the Client ID. Fill in your name, brokerage line and **mailing address** (required by Canadian anti-spam law in every email).
 2. Tap **Test unsubscribe link**. It must say Working.
-3. Tap **Connect Gmail**. Google will say the app is not verified. That is expected for your own private app: Advanced > Go to Closing Desk (unsafe) > Continue, and tick the box that allows sending email.
+3. Tap **Connect Gmail**. Google will say the app is not verified. That is expected for your own private app: Advanced > Go to Realtor OS (unsafe) > Continue, and tick the box that allows sending email.
 4. Lists > Select > pick people > **Email consent** to record who agreed (see below).
 5. Email > New campaign. Pick a starter or write your own, choose who, **Send a test to me**, then Start sending.
 
@@ -107,7 +116,7 @@ Supabase > SQL Editor > New query > paste all of `supabase/tell-claude.sql` > Ru
 
 ### 2. Anthropic API key
 1. console.anthropic.com > sign in > Billing: add a small credit balance and set a monthly spend limit.
-2. API keys > Create key. Name it Closing Desk. Copy it (it starts with `sk-ant-`).
+2. API keys > Create key. Name it Realtor OS. Copy it (it starts with `sk-ant-`).
 3. Supabase > Edge Functions > Secrets > Add new secret. Name: `ANTHROPIC_API_KEY`. Value: the key. Save. Never put this key anywhere else.
 
 ### 3. The function
@@ -117,15 +126,15 @@ Supabase > Edge Functions > Deploy a new function > Via Editor. Name it exactly 
 Tell Claude ships switched **off** (no box, no calls, no cost). In `config.js`, change `tellClaude: false` to `tellClaude: true`, commit, and open the app twice so it updates.
 
 ### 5. Try it
-Open Closing Desk > Today > Tell Claude. The first note confirms everything works. If something is missing, the app says which step.
+Open Realtor OS > Today > Tell Claude. The first note confirms everything works. If something is missing, the app says which step.
 
 ## Real Estate OS connection (v1.7)
 
-Closing Desk is the source of truth for contacts, touches, consent, deals and the Reached counter. The Daily 3 Tasks page is the source of truth for the day's 3 tasks, notes, content ideas and the content calendar. They are linked two ways. Nothing here adds a server, a key or a database table.
+Realtor OS is the source of truth for contacts, touches, consent, deals and the Reached counter. The Daily 3 Tasks page is the source of truth for the day's 3 tasks, notes, content ideas and the content calendar. They are linked two ways. Nothing here adds a server, a key or a database table.
 
 **1. The Reached card (Today).** Shows how many contacts (not Dead) you have reached at least once, calls and messages today, mass emails today, and who is still to reach. Reached = a logged Talked, Sent a message, Call, Text, WhatsApp, Email, Meeting, Mass email, birthday wishes or home anniversary. No answer, Note and Added do not count. **Copy for Daily 3** copies one plain sentence of these numbers; paste it as a note in Daily 3 and Claude reads it as a scoreboard. **Open Daily 3** jumps to that page.
 
-**2. Automatic copy (needs the Supabase connector in Claude).** `supabase/os-snapshot.sql` is one read-only SELECT with the same definition as the card. Claude runs it against this project and copies the single result row into the Daily 3 page, where it shows as a small Closing Desk card and can tick Task 1 when your logged calls and messages reach the number in the task. It only reads. It never writes to your contacts.
+**2. Automatic copy (needs the Supabase connector in Claude).** `supabase/os-snapshot.sql` is one read-only SELECT with the same definition as the card. Claude runs it against this project and copies the single result row into the Daily 3 page, where it shows as a small Realtor OS card and can tick Task 1 when your logged calls and messages reach the number in the task. It only reads. It never writes to your contacts.
 
 The card in app.js (`osStats`) and the SQL are tested to give identical numbers on the same data. If you change one, change the other.
 
@@ -157,11 +166,14 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `unsub.html`, `unsub.js` | The page a recipient opens from the unsubscribe link |
 | `config.js` | Your Supabase URL and public key |
 | `tasks.html`, `tasks.css`, `tasks.js`, `tasks-plan.js` | Win the Day (your daily 3 wins, notes, ideas, posts, and the Later list on the Plan tab for future tasks, saved as `later` in the os_docs document) |
-| `tasks-today.js` | The Today tab (v1.13): your tasks, plan tasks and the calendar list |
+| `tasks-today.js` | The Today tab (v1.13, reworked in v2.0): your tasks, plan tasks and the calendar in one list, with All / Calendar / Mine / Claude |
 | `supabase/functions/calendar-feed/` | Reads an iCloud calendar link and returns today's events (v1.13) |
 | `vacation.html`, `vacation.css`, `vacation.js`, `vacation-core.js`, `vacation-data.js` | Vacation week workspace (v1.12) |
-| `dashboard.html`, `dashboard.css`, `dashboard.js` | Dashboard (v1.10): read-only page with reached, today, who you can reach, goals, scheduled posts and licence dates |
-| `launch.js` | Opens Win the Day first on a fresh launch (v1.10.1); every later switch goes where it is told |
+| `home.html`, `home.css`, `home.js` | Home (v2.0): the first screen |
+| `ros.css` | The Realtor OS look (colors, buttons, cards, bottom bar), loaded last on every page |
+| `crm-core.js`, `day-core.js`, `tasks-info.js` | Shared rules for Home: who is due and what a tap saves; today's plan tasks; plan task titles and descriptions |
+| `dashboard.html`, `dashboard.css` | `dashboard.html` redirects to Home; `dashboard.css` is still used by the vacation page |
+| `launch.js` | Opens Home first on a fresh launch; every later switch goes where it is told |
 | `osstats.js` | The one place the Reached numbers are counted, used by Today, Win the Day and the Dashboard |
 | `tell.js` | The Tell Claude box on Today: saves your note, asks the function, shows suggestions, applies what you tick |
 | `supabase/tell-claude.sql` | Tables for Tell Claude, run once |

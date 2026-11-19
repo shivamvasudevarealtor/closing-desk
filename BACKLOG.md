@@ -1,17 +1,18 @@
-# Closing Desk backlog
+# Realtor OS backlog
 
 This is the one place that tracks status for planned work. Do not copy status into other files.
 Status moves to **Review** only after the checks below pass, and to **Done** only after Shivam confirms.
 
 | ID | Story | Module | Priority | Milestone | Status |
 |---|---|---|---|---|---|
-| PLN-001 | Vacation week plan workspace | Closing Desk / Vacation week | P0 | Vacation week | Review |
-| PLN-002 | Simplify the Dashboard | Closing Desk / Dashboard | P1 | Vacation week | Review |
-| PLN-003 | Today tab with Apple Calendar | Closing Desk / Board | P0 | Vacation week | Review |
+| PLN-001 | Vacation week plan workspace | Realtor OS / Vacation week | P0 | Vacation week | Review |
+| PLN-002 | Simplify the Dashboard | Realtor OS / Dashboard | P1 | Vacation week | Review |
+| PLN-003 | Today tab with Apple Calendar | Realtor OS / Board | P0 | Vacation week | Review |
+| PLN-004 | Home page, new look, one Today list | Realtor OS / Home | P0 | v2.0 | Review |
 
 ## PLN-001: Vacation week plan workspace
 
-**Why:** The Nov 18 to 29, 2026 vacation plan (12 days, 114 subtasks) must be easy to see and tick off, in one place, without touching Closing Desk contacts.
+**Why:** The Nov 18 to 29, 2026 vacation plan (12 days, 114 subtasks) must be easy to see and tick off, in one place, without touching Realtor OS contacts.
 
 **Where:** `vacation.html` (open `https://shivamvasudevarealtor.github.io/closing-desk/vacation.html`), item "Vacation" in the main nav.
 
@@ -26,7 +27,7 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 8. Fri Nov 27 is a protected family day: labelled "Family day, nothing scheduled", styled differently, left out of progress and "not done" counts.
 9. Data is seeded once with stable IDs (VW-01 to VW-12, VW-xx.n). Seeding again never duplicates and never overwrites ticks or notes.
 10. Times show in 12-hour format. Plan is labelled "Entered by Shivam". No notifications, calendar sync or integrations.
-11. Existing Closing Desk pages, contacts, settings and follow-ups are unchanged.
+11. Existing Realtor OS pages, contacts, settings and follow-ups are unchanged.
 
 **Verification evidence (automated browser run, `t16`, 70 checks, 0 failed)**
 - Board: 12 columns, 12 parent cards, 114 subtasks (counted in the page).
@@ -69,3 +70,26 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 - Edge Function deployed to the closing-desk project (active, JWT required). Link checks: only https `*.icloud.com`, no credentials or ports, 12 sample links tested.
 
 **Not verified:** a real iCloud link (this sandbox cannot reach iCloud or Supabase); the deployed function end to end. First real test: paste your share link and tap Connect.
+
+## PLN-004: Home page, new look, one Today list
+
+**Why:** The app was hard to read at speed: four places to look, a six-button bar, and the numbers page buried. Shivam wants one screen that shows who to reach, his day, and what must get done, with tasks split by where they came from (calendar, his own, Claude's), in a look that reads as a finished product. Also: rename Closing Desk to Realtor OS.
+
+**Where:** `home.html` (first screen on a fresh launch), Tasks > Today (`tasks.html#today`), every page (look and bottom bar). Code: `home.js`, `home.css`, `ros.css`, `crm-core.js`, `day-core.js`, `tasks-info.js`, `tasks-today.js`.
+
+**Acceptance criteria**
+1. Home shows, in this order: three tiles, Do this next, vacation card, Reach out (top 5 due), My day, Must work on (with add box), Deals in motion, folded numbers. No horizontal scroll from 360px to 1920px.
+2. Reach out lists the same people in the same order as Clients > Due today. The count matches the Clients badge.
+3. Tapping a person gives Talked / Messaged / No answer / Later. It saves the same fields as Clients, shows what happened with Undo, and a refused save changes nothing and says so.
+4. Tasks > Today is the first Tasks tab. Filter All / Calendar / Mine / Claude with counts. Calendar events, tasks he adds and Claude's tasks are in one list with a label each. Home and Tasks show the same tasks, ticks and counts.
+5. Bottom bar has 5 buttons (Home, Tasks, Clients, Pipeline, Email). Settings stays reachable on every page. On laptops the left menu has the same items plus Settings.
+6. Dark and light themes on every page, text contrast at least 4.5:1 for the main text, muted, accent and status colors (checked by calculation).
+7. Name: Realtor OS in the page titles, headers, manifest and text. `dashboard.html` opens Home. A fresh launch opens Home. Signed out opens the sign-in page.
+8. Nothing new is stored. No database or server change.
+
+**Verification evidence** (browser runs against a copy of the database)
+- `t18` Home, 61 checks: first screen content and order, tiles, same top 5 as Clients, outcome logging and Undo saved exactly, Later, refused save rolls back, add/tick/persist/reload, shared with Tasks, calendar events and the "now" event, nobody-due state, signed-out redirect, old dashboard address, theme switch, Edmonton time at 11:30 PM with the browser in UTC, six screen sizes in both themes, tap targets at least 38px.
+- `t17` Tasks > Today, 48 checks (rewritten for the new list and filters). `t16` Vacation, 70. `t15` layouts at nine screen sizes, 74. `t14` Board and launch, 12. `t13` navigation and Board, 62. `t12` Email, 98.
+- Screens of every page in dark and light at 390 and 1440 wide were looked at, and fixes made from them (sidebar marker, calendar setup card order, nav width on Home).
+
+**Not verified:** a real iPhone or Galaxy Tab; the live GitHub Pages site after deploy; a real iCloud calendar; the live database write path. The new name only appears on a phone after the app is closed and reopened once; the Home Screen icon label changes only if the icon is removed and added again.

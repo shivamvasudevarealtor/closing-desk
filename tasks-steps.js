@@ -1,6 +1,6 @@
 /* Sub-steps for every task on the Board. Pure functions, no page access.
    Rule: a step is one small thing you can finish in about 2 minutes. Nothing here invents facts: steps come from the task's own
-   sentences, from the Closing Desk README, or from your own follow-up list (names and phone numbers you already saved). */
+   sentences, from the Realtor OS README, or from your own follow-up list (names and phone numbers you already saved). */
 window.ROSSTEPS = (function () {
   function S(t, m) { return { t: t, m: m == null ? 2 : m }; }
 
@@ -71,7 +71,7 @@ window.ROSSTEPS = (function () {
       S("Skim the outline", 8)]],
     [/^Gmail setup 1\/2/, [
       S("Open console.cloud.google.com and sign in with your Gmail", 1),
-      S("Create a project named Closing Desk", 2),
+      S("Create a project named Realtor OS", 2),
       S("APIs & Services › Library › search Gmail API › Enable", 2),
       S("OAuth consent screen › External › add your app name and email", 3),
       S("On that screen, add your own Gmail under Test users", 2),
@@ -85,7 +85,7 @@ window.ROSSTEPS = (function () {
       S("Fill in your name, brokerage line and mailing address", 3),
       S("Tap Test unsubscribe link. It must say Working", 2),
       S("Tap Connect Gmail", 1),
-      S("Google says not verified: Advanced › Go to Closing Desk › Continue", 2),
+      S("Google says not verified: Advanced › Go to Realtor OS › Continue", 2),
       S("Tick the box that allows sending email", 1)]],
     [/^Email #1/, [
       S("Open Email › New campaign", 1),
@@ -189,8 +189,8 @@ window.ROSSTEPS = (function () {
     }
     var s = sentences(title);
     var n = Math.max(1, s.length);
-    var per = Math.max(1, Math.round((t && t.mins ? t.mins : 8) / (n + (t && t.where && /^Closing Desk/.test(t.where) ? 1 : 0))));
-    if (t && t.where && /^Closing Desk/.test(t.where)) out.push(S("Open " + t.where, 1));
+    var per = Math.max(1, Math.round((t && t.mins ? t.mins : 8) / (n + (t && t.where && /^(Realtor OS|Closing Desk)/.test(t.where) ? 1 : 0))));
+    if (t && t.where && /^(Realtor OS|Closing Desk)/.test(t.where)) out.push(S("Open " + t.where, 1));
     s.forEach(function (x) { out.push(S(x, per)); });
     if (!s.length) out.push(S(title || "Do the task", per));
     return out;

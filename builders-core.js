@@ -313,6 +313,13 @@
       var v = m[1] ? +m[1].replace(/,/g, "") : Math.round(+m[2] * (/m/i.test(m[3]) ? 1e6 : 1e3));
       o.push({ v: v, at: m.index, raw: m[0] });
     }
+    /* A price written without a $ sign counts only right after a price cue ("for 899,000", "priced at 899k"), and never when a size or unit follows. */
+    var bare = /\b(?:for|at|priced(?:\s+at)?|price(?:\s+(?:is|of))?|asking|list(?:ed)?(?:\s+(?:at|for|price))?)\s+(\d{1,3}(?:,\d{3})+|\d{6,8}|\d{3}\s?[kK])\b(?!\s*(?:sq|sf|square|ft|feet|%|\/|bed|bath))/gi, b;
+    while ((b = bare.exec(t))) {
+      var raw = b[1], bv = /k$/i.test(raw) ? +raw.replace(/\D/g, "") * 1000 : +raw.replace(/,/g, ""), at = b.index + b[0].length - raw.length;
+      if (!o.some(function (x) { return Math.abs(x.at - at) < 12; })) o.push({ v: bv, at: at, raw: raw, bare: true });
+    }
+    o.sort(function (a, c) { return a.at - c.at; });
     return o;
   }
   function monthIdx(s) { var k = str(s).slice(0, 3).toLowerCase(), i; for (i = 0; i < 12; i++) if (MONTHS[i].slice(0, 3).toLowerCase() === k) return i + 1; return 0; }
@@ -345,6 +352,7 @@
     if ((m = /\b(spring|summer|fall|autumn|winter)\s+(20\d{2})\b/i.exec(t))) return { text: m[1][0].toUpperCase() + m[1].slice(1).toLowerCase() + " " + m[2], date: "" };
     return null;
   }
+  var RE_UPG = /\$?\s?(\d[\d,]*(?:\.\d+)?\s?[kK]?)\s+(?:in|of|worth of)\s+(upgrades?|extras|options|add-?ons)\b/i;
   var RE_INCENT = /(incentive|promo(?:tion)?|rebate|credit|bonus|buy-?down|rate (?:hold|buy|special)|\d(?:\.\d+)?\s?%\s*(?:rate|interest)|free\b|complimentary|\$[\d,]+\s*(?:off|in |towards|credit|bonus|savings)|upgrade|appliance|blinds|window coverings?|landscap|fence|deck|closing cost|gst (?:included|paid|rebate)|price (?:drop|reduc|improvement)|reduced)/i;
   var RE_COMM = /(commission|co-?op\b|referral fee|realtor (?:bonus|fee|incentive)|broker(?:age)? (?:bonus|fee)|bonus to (?:the )?(?:realtor|agent))/i;
   var RE_RELEASE = /(new release|phase\s?\d*|grand opening|launch|coming soon|pre-?sale|now (?:selling|open)|show ?home|opening)/i;
@@ -372,7 +380,7 @@
   /* Greetings, thanks, sign-offs and phone-only lines are not "unread" content. */
   function filler(blk) {
     var t = trim(blk), words = t.split(/\s+/).filter(Boolean).length;
-    return words < 4 || (words < 9 && /^(hi|hello|hey|dear|thanks|thank you|regards|best|kind regards|sincerely|cheers|sales team)\b/i.test(t)) || /^[\d\s().+\-]{7,}$/.test(t);
+    return words < 4 || (words < 9 && /^(hi|hello|hey|dear|thanks|thank you|regards|best|kind regards|sincerely|cheers|sales team)\b/i.test(t)) || /^[\d\s().+\-]{7,}$/.test(t) || /^(yes|yep|yeah|sure|we do|i do|we do have (?:one|some|a few|two|three))[\s.,!]*$/i.test(t);
   }
   /* Addresses a builder points us to ("please contact Priya at ..."). Only lines that read like a hand-off count, and the result is a suggestion, never saved on its own. */
   function redirectOf(text, selfEmails) {
@@ -416,7 +424,11 @@
       if (comm) d.commission = trim(c.lines.filter(function (x) { return RE_COMM.test(x); }).join(" ")).slice(0, 300);
       d.community = com; d.homeType = ht; d.beds = beds ? +beds[1] : null; d.baths = baths ? +baths[1] : null; d.sqft = sq ? +sq[1].replace(/,/g, "") : null;
       if (poss) { d.possession = poss.text; d.possessionDate = poss.date; }
-      d.incentives = c.lines.filter(function (x) { return RE_INCENT.test(x) && !RE_COMM.test(x); }).map(function (x) { return trim(x).slice(0, 220); });
+      d.incentives = c.lines.filter(function (x) { return RE_INCENT.test(x) && !RE_COMM.test(x); }).map(function (x) {
+        var homeLine = prices(x).some(function (p) { return p.v >= 100000; }) || RE_ADDR.test(x) || /\blot\s*\d+/i.test(x), u = homeLine ? RE_UPG.exec(x) : null;
+        if (u) { var amt = /k$/i.test(u[1]) ? +u[1].replace(/[^\d.]/g, "") * 1000 : +u[1].replace(/[^\d.]/g, ""); return "$" + Math.round(amt).toLocaleString("en-CA") + " in " + u[2].toLowerCase(); }
+        return trim(x).slice(0, 220);
+      });
       d.validUntil = lastDate(blk, ref);
       var ph = /\(?\b(\d{3})\)?[-. ]\s?(\d{3})[-. ](\d{4})\b/.exec(blk); if (ph) d.contactPhone = ph[1] + "-" + ph[2] + "-" + ph[3];
       var em = (blk.match(/[A-Za-z0-9._%+'\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/) || [])[0]; if (em) d.contactEmail = normEmail(em);

@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "2.0.0";
+  var APP_VERSION = "2.1.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,17 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.1.0", date: "2026-11-19", title: "Builders: a monthly check-in with every builder", items: [
+      "New Builders button, the 6th in the bottom bar. Five tabs: Overview, Directory, Deals, Replies, Settings. Home has a Builders card that shows when the monthly ask is ready, new deals and replies to review.",
+      "Directory: 31 builders sorted by community and city. Calgary communities also carry a quadrant (NW, NE, SW, SE). Airdrie, Chestermere and Cochrane have no quadrant. Cochrane was added by me, remove it if you do not want it.",
+      "Emails: 11 builders have a public address, each saved with the page it came from. 4 of those need you to confirm the source before they can be emailed. 20 builders publish a web form only, so they show Add an email. Nothing was guessed.",
+      "Checking an email tests its format and that the domain accepts mail. It cannot prove a mailbox exists. A bounce or a reply is the real proof, and the app records both.",
+      "Monthly ask: on your chosen day the app prepares the batch. You review it and tap Send once. It sends from your Gmail one at a time with short pauses, inside your sending hours, with a daily limit. Reply STOP is honoured automatically. The app must be open while it sends.",
+      "Replies: Check Gmail for replies reads what came back and splits it into separate fields (builder, community, city, quadrant, address or lot, type, home type, beds, baths, size, price, possession, offer end date). You can also paste a reply. Anything the rules cannot read is kept for you to read, never guessed.",
+      "Deals: a table you can filter by city, quadrant, community, builder, price, bedrooms, quick possession and offers ending soon. Edit any field. Your edits are kept when a reply is read again. Export to CSV.",
+      "Client PDF: one home or a shortlist, ready to send. It shows only what the builder said, the date, and a note to confirm in writing. Commission and your notes never appear in it.",
+      "Before the first send you need: your mailing address in Email settings (the law requires it in every email), and Google set to allow reading Gmail (README, Builders).",
+    ] },
     { v: "2.0.0", date: "2026-11-19", title: "Realtor OS: a new Home and a new look", items: [
       "New Home page. It is the first screen when you open the app. One screen, top to bottom: Do this next, People to reach, My day, Must work on, Deals in motion. Your numbers are folded at the bottom.",
       "People to reach shows your 5 most important follow-ups, the same people in the same order as Clients > Due today. Call, WhatsApp or Email in one tap. Tap a name to log Talked, Messaged, No answer or Later. Undo is on the message for 7 seconds.",

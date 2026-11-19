@@ -9,6 +9,7 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 | PLN-002 | Simplify the Dashboard | Realtor OS / Dashboard | P1 | Vacation week | Review |
 | PLN-003 | Today tab with Apple Calendar | Realtor OS / Board | P0 | Vacation week | Review |
 | PLN-004 | Home page, new look, one Today list | Realtor OS / Home | P0 | v2.0 | Review |
+| PLN-005 | Builders: directory, monthly ask, replies, deals, client PDF | Realtor OS / Builders | P0 | v2.1 | Review |
 
 ## PLN-001: Vacation week plan workspace
 
@@ -93,3 +94,25 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 - Screens of every page in dark and light at 390 and 1440 wide were looked at, and fixes made from them (sidebar marker, calendar setup card order, nav width on Home).
 
 **Not verified:** a real iPhone or Galaxy Tab; the live GitHub Pages site after deploy; a real iCloud calendar; the live database write path. The new name only appears on a phone after the app is closed and reopened once; the Home Screen icon label changes only if the icon is removed and added again.
+
+## PLN-005: Builders: directory, monthly ask, replies, deals, client PDF
+
+**Why:** Shivam wants every builder's email, sorted by community and Calgary quadrant, a monthly Gmail ask for deals, spec homes and quick possessions, the replies read into separate fields he can filter, and a client-ready PDF for any deal.
+
+**Where:** `builders.html` (6th bottom-bar button), Home card (`home.js`). Code: `builders-core.js` (rules, no browser needed), `builders-data.js` (saving, sending, reading), `builders-ui.js`, `builders.js`, `builders-views.js`, `builders-pdf.js`, `builders.css`, `gmail.js` (read scope added), `supabase/functions/parse-builder-reply/` (optional Claude reading, not deployed).
+
+**Acceptance criteria**
+1. Directory lists builders by community, city and quadrant (Calgary only). Airdrie, Chestermere and Cochrane have no quadrant. Filters: city, quadrant, community, email status. Each email shows its source.
+2. Email checks: format, no-reply and placeholder addresses, domain mail records, source confirmation, bounce and reply evidence. The screen says plainly that a mailbox cannot be proven without sending.
+3. Monthly ask is semi-automatic: prepared on the chosen day, sent only when Shivam taps Send, one at a time, inside sending hours, under a daily limit, never twice to the same address in a month, STOP honoured, a send that may have happened is marked "uncertain" and never resent automatically.
+4. Replies are read while the app is open (or pasted). Each deal has separate fields; commission stays internal; unreadable parts are kept, not guessed; Claude reading, when on, is checked against the email text and anything not in it is dropped.
+5. Deals filter by city, quadrant, community, builder, home type, price, bedrooms, possession, offer end, missing details. Edits survive re-reading. CSV export has one column per field and no commission.
+6. Client PDF: one home or a shortlist, only builder-stated facts, the date, brokerage details, a confirm-in-writing note. No commission, no builder email, no personal name unless switched on.
+7. Same data on two devices: changes merge, a refused save says so and can be retried.
+8. Phone, tablet and laptop layouts, dark and light, no horizontal scroll, labelled controls.
+
+**Verification evidence** (browser runs against a copy of the database, Gmail and DNS mocked)
+- `t19a` core rules, 187 checks. `t19b` directory, 38. `t19c` sending, 41 (19 failure and edge cases). `t19d` replies and deals, 48. `t19e` PDF, paste, Claude reading and fallbacks, 37. `t19f` settings, two devices, refused save, 21. `t19g` layouts and labels at five sizes. `t19h` Home card, 13.
+- Older suites updated for the 6th bottom-bar button: `t12` to `t18`.
+
+**Not verified:** a real Gmail send or read; a real mailbox check; real DNS lookups (mocked); Claude reading with a real key (function not deployed); the live database write path; a real iPhone or tablet. Google must be set to allow `gmail.readonly` (README).

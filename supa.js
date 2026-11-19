@@ -58,6 +58,10 @@
       return { contacts: out, settings: r.data ? r.data.data : null };
     });
   }
+  /* Just the settings row (Builders only needs the Email settings, not all contacts). */
+  function getSettings() {
+    return client().from("settings").select("data").eq("id", "main").maybeSingle().then(function (r) { if (r.error) fail(r.error); return r.data ? r.data.data : null; });
+  }
   function fetchOne(id) {
     return client().from("contacts").select("id,data").eq("id", id).maybeSingle().then(function (r) {
       if (r.error) fail(r.error);
@@ -180,6 +184,6 @@
     configured: configured, onAuth: onAuth, getSession: getSession, signIn: signIn, signOut: signOut,
     loadAll: loadAll, fetchOne: fetchOne, patch: patch, patchMany: patchMany, put: put, remove: remove, putSettings: putSettings, bulkPut: bulkPut,
     subscribe: subscribe, unsubscribe: unsubscribe, listDocs: listDocs, putDoc: putDoc, invoke: invoke,
-    getOsDoc: getOsDoc, putOsDoc: putOsDoc, subscribeOsDoc: subscribeOsDoc
+    getSettings: getSettings, getOsDoc: getOsDoc, putOsDoc: putOsDoc, subscribeOsDoc: subscribeOsDoc
   };
 })();

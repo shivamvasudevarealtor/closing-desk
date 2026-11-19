@@ -32,6 +32,7 @@
     plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
     refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg>',
     sun: '<svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg><svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>',
+    bld: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V5.5A1.5 1.5 0 0 1 6.5 4h7A1.5 1.5 0 0 1 15 5.5V20"/><path d="M15 20v-8h3.5a1.5 1.5 0 0 1 1.5 1.5V20"/><path d="M3.5 20h17"/><path d="M8.5 8h3M8.5 12h3M8.5 16h3"/></svg>',
     gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>',
     logo: '<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M9 15l2.2 2.2L15 12.8"/></svg>'
   };
@@ -81,7 +82,9 @@
       localStorage.setItem(CACHE, JSON.stringify({ td: CRM.today(), at: S.at, rows: S.rows.slice(0, 12).map(light), dueN: S.dueN, deals: S.deals, stats: S.stats, goals: S.goals, posts: S.posts, plan: S.plan, planTd: edmToday() }));
     } catch (e) {}
   }
+  function readBldCache() { try { var b = JSON.parse(localStorage.getItem("cd.bld.sum") || "null"); if (b && b.v === 1) S.bld = b; } catch (e) {} }
   function readCache() {
+    readBldCache();
     try {
       var c = JSON.parse(localStorage.getItem(CACHE) || "null");
       if (!c || c.td !== CRM.today()) return;
@@ -323,6 +326,27 @@
     });
     el.appendChild(g);
   }
+  /* Builders: one small summary row written by the Builders page. Home never downloads the directory. */
+  function bldView() {
+    var b = S.bld; if (!b || typeof b !== "object" || b.v !== 1) return null;
+    var td = edmToday(), same = b.month === td.slice(0, 7), due = +td.slice(8, 10) >= (+b.sendDay || 1), a;
+    if (same && b.queued > 0) a = { n: b.queued, l: "Monthly ask still to send", hot: true };
+    else if (same && b.sent > 0) a = { n: b.sent, l: "Monthly ask sent", hot: false };
+    else if (b.ready > 0 && due) a = { n: b.ready, l: "Ready for the monthly ask", hot: true };
+    else a = { n: 0, l: "Nothing to send", hot: false };
+    return { ask: a, deals: +b.newDeals || 0, replies: +b.newReplies || 0 };
+  }
+  function renderBld() {
+    var el = els.bld, v = bldView(); if (!v) { el.hidden = true; return; }
+    el.hidden = false; el.textContent = "";
+    var hot = v.ask.hot || v.replies > 0, cnt = (v.ask.hot ? 1 : 0) + (v.deals ? 1 : 0) + (v.replies ? 1 : 0);
+    el.appendChild(cardHead("bld", "bld", "Builders", cnt || null, hot, "builders.html", "Open Builders"));
+    var g = h("div", { class: "hm-deals three" });
+    [[v.ask.n, v.ask.l, "builders.html#overview"], [v.deals, "New deals", "builders.html#deals"], [v.replies, "Replies to review", "builders.html#replies"]].forEach(function (x) {
+      g.appendChild(h("a", { class: "hm-d" + (x[0] ? "" : " zero"), href: x[2] }, [h("span", { class: "hm-dn tn", text: String(x[0]) }), h("span", { class: "hm-dl", text: x[1] })]));
+    });
+    el.appendChild(g);
+  }
   function bar(label, text, x, total) { return h("div", { class: "hm-bar" }, [h("div", { class: "hm-bl" }, [h("span", { text: label }), h("b", { class: "tn", text: text })]), h("div", { class: "hm-tr", "aria-hidden": "true" }, [h("i", { style: "width:" + fill(x, total) + "%" })])]); }
   function renderProg() {
     var el = els.prog; if (!S.stats || !S.goals) { el.hidden = true; return; }
@@ -341,7 +365,7 @@
     raf = 0;
     var M = TD.model(S.plan);
     renderTop(); renderHello(M); renderWarn(); renderGlance(M); renderNext(M); renderVac();
-    renderReach(); renderDay(M); renderMust(M); renderDeals(); renderProg();
+    renderReach(); renderDay(M); renderMust(M); renderDeals(); renderBld(); renderProg();
   }
   function schedule() { if (!raf) raf = requestAnimationFrame(renderAll); }
 
@@ -381,10 +405,12 @@
     spin(true);
     Promise.all([
       Store.loadAll(),
-      Store.getOsDoc("main").then(function (d) { return { ok: true, d: d }; }, function () { return { ok: false }; })
+      Store.getOsDoc("main").then(function (d) { return { ok: true, d: d }; }, function () { return { ok: false }; }),
+      Store.getOsDoc("bld-sum").then(function (d) { return { ok: true, d: d }; }, function () { return { ok: false }; })
     ]).then(function (r) {
       var res = r[0]; S.contacts = res.contacts || []; S.settings = res.settings || {};
       if (r[1].ok) S.main = r[1].d || null;
+      if (r[2] && r[2].ok && r[2].d && r[2].d.v === 1) { S.bld = r[2].d; try { localStorage.setItem("cd.bld.sum", JSON.stringify(r[2].d)); } catch (e) {} }
       S.live = true; S.status = "ok"; S.saved = false; S.at = Date.now(); S.loadedAt = Date.now();
       derive(); derivePlan(); saveCache(); spin(false); renderAll(); vwLoad();
     }, function () { S.status = "err"; spin(false); renderAll(); });
@@ -405,11 +431,12 @@
     ]);
     els.must = h("section", { class: "hm-card", id: "hmMust", "aria-label": "Must work on" }, [els.mustHead, els.mustList, els.addForm]);
     els.deals = h("section", { class: "hm-card", "aria-label": "Deals in motion" });
+    els.bld = h("section", { class: "hm-card", "aria-label": "Builders", hidden: true });
     els.prog = h("details", { class: "hm-prog" });
     els.toast = h("div", { class: "hm-toast", role: "status", hidden: true });
     var left = h("div", { class: "hm-col" }, [els.reach]), right = h("div", { class: "hm-col" }, [els.day, els.must]);
     els.cols.className = "hm-cols"; els.cols.appendChild(left); els.cols.appendChild(right);
-    [els.top, els.hello, els.alert, els.glance, els.next, els.vac, els.cols, els.deals, els.prog].forEach(function (e) { app.appendChild(e); });
+    [els.top, els.hello, els.alert, els.glance, els.next, els.vac, els.cols, els.deals, els.bld, els.prog].forEach(function (e) { app.appendChild(e); });
     document.body.appendChild(els.toast);
   }
   function setTheme(t) {

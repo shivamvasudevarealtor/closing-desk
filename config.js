@@ -8,6 +8,9 @@ window.CD_CONFIG = {
   /* Feature switches. tellClaude: the Tell Claude box on Today. It calls Anthropic's paid API, so it stays off
      until the Anthropic key is added in Supabase (README, Tell Claude setup). Change to true to turn it on. */
   features: {
-    tellClaude: false
+    tellClaude: false,
+    /* builderParse: lets Builders read replies with Claude (supabase function parse-builder-reply, same Anthropic key).
+       Off = replies are read with simple rules and you review them. See README, Builders. */
+    builderParse: false
   }
 };

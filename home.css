@@ -89,6 +89,7 @@ html[data-theme="light"] .hm-next { background-image: radial-gradient(70% 140% a
 .hm-ci.day { background: var(--cal-bg); color: var(--cal); }
 .hm-ci.must { background: var(--hot-bg); color: var(--hot); }
 .hm-ci.deal { background: var(--ok-bg); color: var(--ok); }
+.hm-ci.bld { background: var(--accent-soft); color: var(--accent); }
 .hm-cn { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: var(--surface2); color: var(--muted); }
 .hm-cn.hot { background: var(--hot-bg); color: var(--hot); }
 .hm-more { margin-left: auto; font-size: 14px; font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 4px; }
@@ -184,6 +185,9 @@ html[data-theme="light"] .hm-next { background-image: radial-gradient(70% 140% a
 .hm-d:active { transform: scale(.98); }
 .hm-dn { font-family: var(--disp); font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.05; }
 .hm-d.zero .hm-dn { color: var(--faint); }
+.hm-deals.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hm-deals.three .hm-dn { font-size: 26px; }
+.hm-deals.three .hm-d { padding: 12px; }
 .hm-dl { font-size: 13px; color: var(--muted); }
 
 /* progress */
@@ -223,6 +227,7 @@ html[data-theme="light"] .hm-next { background-image: radial-gradient(70% 140% a
   .hm { max-width: 920px; padding-inline: 24px; gap: 20px; }
   .hm-hello h1 { font-size: 38px; }
   .hm-deals { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .hm-deals.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .hm-nt { font-size: 30px; }
 }
 @media (min-width: 1024px) {

@@ -37,7 +37,7 @@ More > **Restore a backup** > choose your `closing-desk-backup-....json`. Goals 
 - **Home** (`home.html`) opens first on a fresh launch. Order, top to bottom: three tiles (events, tasks done, people to reach), **Do this next**, today's vacation-week card, **Reach out** (top 5 due), **My day** (calendar and timed tasks), **Must work on** (carried, Claude and your tasks, with an add box), **Deals in motion** (counts by stage), and **Your numbers** (folded).
 - Home reads the same data as the other pages and uses the same rules: `crm-core.js` has who is due, the order, and what Talked / Messaged / No answer saves (it mirrors `touch()` in `app.js`); `day-core.js` has today's plan tasks (it mirrors the Board's day plan); `tasks-today.js` has the one list of calendar events, your tasks and Claude's tasks that Home and Tasks > Today both draw.
 - Nothing new is stored. No new table, key or function. Logging a touch on Home saves through the same `patch_contact` call as Clients.
-- **Bottom bar (5):** Home, Tasks, Clients, Pipeline, Email. Settings is the sliders button in the page header (and the last item of the left menu on a laptop). Tasks has the sub-tabs Today, Board, Plan, Ideas, Notes; Vacation week opens from the cards.
+- **Bottom bar (6, since v2.1):** Home, Tasks, Clients, Pipeline, Email, Builders. Settings is the sliders button in the page header (and the last item of the left menu on a laptop). Tasks has the sub-tabs Today, Board, Plan, Ideas, Notes; Vacation week opens from the cards.
 - **Look:** `ros.css` is loaded last on every page and only overrides the shared color names, so each page keeps its own layout. Dark is the default (ink-navy with a champagne gold accent); light is warm paper with a deep gold accent. Fonts are unchanged (Sora and DM Sans).
 - `dashboard.html` is now a redirect to Home. `dashboard.css` stays because the vacation page still uses it.
 - Not covered by tests here: a real iPhone or Galaxy Tab, the live GitHub Pages site, a real iCloud calendar and the live database. Everything else was run in a browser against a copy of the database.
@@ -156,6 +156,19 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 - **Apple Calendar** has no sign-in for web apps, so it uses an iCloud *Public Calendar* link: Calendar > Calendars > (i) > Public Calendar > Share Link. Paste it on the Today tab. Anyone with the link can read that calendar.
 - The link is read by the Supabase Edge Function `calendar-feed` (`supabase/functions/calendar-feed/`). It needs a signed-in user (JWT on), only talks to `*.icloud.com` over https, handles repeating, moved and cancelled events and all-day events, and returns just today's events in Edmonton time. Deploy: `supabase functions deploy calendar-feed`. No secrets needed.
 
+## Builders (v2.1)
+- **Builders** is the 6th bottom-bar button (`builders.html`). Tabs: Overview, Directory, Deals, Replies, Settings. Home shows a card when the monthly ask is ready or there is something to review.
+- **Data:** three rows in `os_docs`: `bld` (builders, emails with sources, communities, monthly runs, settings), `bld-deals` (replies and deals), `bld-sum` (a tiny summary for Home). No new table. Saves merge between devices.
+- **Email from Builders** uses the same Gmail sign-in and the same Email settings (name, brokerage, mailing address, phone, Google client ID). Builders never writes them. Nothing sends until you tap Send. Each email goes alone, with a random pause, inside your hours, under a daily limit.
+- **One-time setup before the first send**
+  1. Email settings: fill in your mailing address and phone (the law requires an address in every email). The Google client ID from the Email setup must be set.
+  2. Google Cloud (same project as Email): Data access, add the scope `https://www.googleapis.com/auth/gmail.readonly`. It is a restricted scope. For one user the app can stay in Testing with you as a test user. Then use Connect Gmail again and accept reading.
+  3. Reading replies and sending both need Gmail connected on the page you are on (the token is kept in memory only).
+- **Reading replies with Claude (optional, off by default).** Without it, replies are read with simple rules (addresses, prices, dates, bedrooms) and you review them. To switch it on: add `ANTHROPIC_API_KEY` as a Supabase secret (the Tell Claude setup already does this), deploy `supabase/functions/parse-builder-reply` (verify JWT on), then set `builderParse: true` in `config.js`. Every value Claude returns is checked against the email text and dropped if it is not there.
+- **Client PDF** is made on your phone or laptop with `vendor/jspdf.umd.min.js` (jsPDF 4.2.1, MIT). Nothing is uploaded.
+- **Limits:** a mailbox cannot be proven to exist without sending. The app marks an address healthy only after a reply, and bad after a bounce. Replies are kept with their text for 90 days, then only the extracted details stay.
+- Tested in a browser against a copy of the database with Gmail and DNS mocked. Not tested: a real Gmail send or read, real DNS, Claude reading with a real key, a real iPhone.
+
 ## Files
 | File | What it is |
 |---|---|
@@ -170,6 +183,9 @@ Change files in the repo, commit to `main`. Open the app twice (it updates in th
 | `supabase/functions/calendar-feed/` | Reads an iCloud calendar link and returns today's events (v1.13) |
 | `vacation.html`, `vacation.css`, `vacation.js`, `vacation-core.js`, `vacation-data.js` | Vacation week workspace (v1.12) |
 | `home.html`, `home.css`, `home.js` | Home (v2.0): the first screen |
+| `builders.html`, `builders.css`, `builders.js`, `builders-ui.js`, `builders-views.js`, `builders-data.js`, `builders-core.js`, `builders-pdf.js` | Builders (v2.1): directory, monthly ask, replies, deals, client PDF. `builders-core.js` holds the rules and has no browser code |
+| `supabase/functions/parse-builder-reply/` | Optional: reads a builder's reply with Claude (v2.1, off until deployed and `builderParse` is true) |
+| `vendor/jspdf.umd.min.js` | jsPDF 4.2.1 (MIT) for the client PDF |
 | `ros.css` | The Realtor OS look (colors, buttons, cards, bottom bar), loaded last on every page |
 | `crm-core.js`, `day-core.js`, `tasks-info.js` | Shared rules for Home: who is due and what a tap saves; today's plan tasks; plan task titles and descriptions |
 | `dashboard.html`, `dashboard.css` | `dashboard.html` redirects to Home; `dashboard.css` is still used by the vacation page |

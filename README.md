@@ -40,6 +40,14 @@ More > **Restore a backup** > choose your `closing-desk-backup-....json`. Goals 
 - Steps live in `tasks-steps.js`: hand-written for the vague tasks, otherwise taken from the task's own sentences. Reach tasks list the people due in Clients, using the contacts and phone numbers you saved. Nothing is invented.
 - Steps, Doing and push counts are saved in the same `os_docs` row (`main`) as the rest of Win the Day, so no new SQL is needed.
 
+## Laptop and tablet layout (v1.11.1)
+- One extra stylesheet, `wide.css`, loaded last on every page. Everything in it sits inside `min-width` media queries, so the phone layout (under 700px) is unchanged.
+- **700 to 1023px** (tablet held upright, such as the Galaxy Tab S7 FE): the bottom bar stays. Content gets wider, the Board is a 2 by 2 grid, due cards and Everyone rows go two across.
+- **1024 to 1359px** (tablet on its side, small laptops): the bottom bar becomes a slim left rail (icon over label). Four Board columns, each scrolling on its own.
+- **1360px and up** (laptops, desktops): a full left sidebar with the Closing Desk name.
+- Clients (Due today) has a `tdgrid` wrapper: the list on the left, the numbers panel on the right. On a phone it is just stacked, as before.
+- The nav markup has a `.sb` brand block that only shows on wide screens. Each page's `<body>` has a class (`pg-clients`, `pg-board`, `pg-dash`) so wide.css can place the top buttons beside each heading.
+
 ## Email setup (v1.5, about 20 minutes, once)
 
 **What it does.** You write one email, pick who gets it, and Closing Desk sends it from your own Gmail, one person at a time, at a safe speed. It never uses a BCC list. It stops by itself if Gmail says to slow down.

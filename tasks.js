@@ -479,7 +479,8 @@
       h('li',{},[h('b',{text:'Dec 21–31'}),h('span',{text:'Finish and year-end'})]),
       h('li',{},[h('b',{html:'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:6px;vertical-align:middle"></span>Dot'}),h('span',{text:'A task moved here from another day'})])
     ]);
-    wrap.appendChild(tabIn('plan',grp('The whole plan',h('div',{class:'cal-card'},[cal,legend]))));
+    var calG=grp('The whole plan',h('div',{class:'cal-card'},[cal,legend]));if(calG&&calG.classList) calG.classList.add('plan-cal');
+    wrap.appendChild(tabIn('plan',calG));
     footEl=h('p',{class:'foot',text:footText()});
     wrap.appendChild(tabIn('today notes',footEl));
     renderSync();

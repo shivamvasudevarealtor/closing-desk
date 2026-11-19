@@ -22,8 +22,9 @@
 <script src="launch.js"></script>
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="nav.css">
+<link rel="stylesheet" href="wide.css">
 </head>
-<body>
+<body class="pg-clients">
 
 <div class="app" id="app">
   <div class="strip">
@@ -50,6 +51,7 @@
 <div id="bulkHost"></div>
 <nav class="tabs" aria-label="Main">
   <div class="in">
+    <div class="sb" aria-hidden="true"><span class="lg"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M9 15l2.2 2.2L15 12.8"/></svg></span><span class="sbn">Closing Desk</span></div>
     <a href="tasks.html#board"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="9.5" y="4" width="5" height="10" rx="1.5"/><rect x="16" y="4" width="5" height="13" rx="1.5"/></svg>Board</a>
     <button type="button" data-tab="today" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.3 2.9-5 5.5-5s4.9 1.7 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c2.6-.3 4.4 1.2 5 4.3"/></svg>Clients<span class="badge" id="dueBadge" hidden></span></button>
     <button type="button" data-tab="pipeline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Pipeline</button>

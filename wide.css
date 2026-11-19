@@ -1,0 +1,130 @@
+/* Closing Desk: laptop and tablet layouts. Loaded last on every page.
+   Every rule here sits inside a min-width media query, so the phone layout (under 700px) is untouched.
+   700-1023px  tablet portrait (Galaxy Tab S7 FE upright): bottom bar stays, content gets wider, 2 columns where it helps
+   1024-1359px tablet landscape and small laptops: slim left rail (icon over label), 4-column Board
+   1360px+      laptop and desktop: full left sidebar with the brand */
+
+/* the rail/sidebar brand block exists in the markup but only shows on wide screens */
+.tabs .sb { display: none; }
+
+/* ---------------------------------------------------------------- 700px+ */
+@media (min-width: 700px) {
+  /* Clients, Everyone, Pipeline, Email, More (index.html) */
+  .app { max-width: 920px; padding-inline: 10px; }
+  .top h1 { font-size: 34px; }
+  .tdgrid .stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .filters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #listResults { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; align-items: stretch; }
+  #listResults > * { grid-column: 1 / -1; }
+  #listResults > .li { grid-column: auto; margin: 0; }
+  body[data-view="more"] #view { column-count: 2; column-gap: 16px; }
+  body[data-view="more"] #view > * { break-inside: avoid; }
+  .tabs .in { max-width: 680px; }
+
+  /* Board, Plan, Ideas, Notes (tasks.html) and the Dashboard */
+  .strip, .bar-in { max-width: 920px; }
+  .strip { padding-inline: 24px; }
+  .wrap { max-width: 920px; padding-inline: 24px; }
+  body[data-tab="today"] .wrap { max-width: 920px; }
+  .bar-in { max-width: 560px; }
+
+  /* Board: four columns as a 2 x 2 grid. No sideways swiping, so the chips go. */
+  .kb-chips { display: none; }
+  .kb { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; overflow: visible; margin: 0; padding: 0; scroll-snap-type: none; }
+  .kcol { flex: none; min-width: 0; scroll-snap-align: none; }
+  .kcol::before { content: attr(aria-label); display: block; font-family: var(--disp, var(--font-display, 'Sora', system-ui, sans-serif)); font-weight: 700; font-size: 15px; margin: 0 2px 10px; color: var(--ink); }
+  .nstrip .ns-main b { font-size: 24px; }
+
+  /* Dashboard: two cards across */
+  #cards { display: block !important; column-count: 2; column-gap: 14px; }
+  #cards > * { break-inside: avoid; margin-bottom: 14px; }
+  #cards > :first-child { column-span: all; }
+}
+
+/* --------------------------------------------------------------- 1024px+ */
+@media (min-width: 1024px) {
+  :root { --side: 88px; }
+  body { padding-left: var(--side); padding-right: 0; }
+  body.locked { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+  /* the bottom bar becomes a left rail */
+  .tabs { top: 0; right: auto; bottom: 0; left: 0; width: var(--side); border-top: 0; border-right: 1px solid var(--line); padding: 14px 8px max(14px, env(safe-area-inset-bottom, 0px)); overflow-y: auto; }
+  .tabs .in { display: flex; flex-direction: column; gap: 4px; max-width: none; margin: 0; }
+  .tabs .sb { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 4px 6px 16px; }
+  .tabs .sb .lg { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(150deg, #0F4A39, #04170F); color: #EBCB82; box-shadow: inset 0 0 0 1px rgba(235, 203, 130, .55); display: grid; place-items: center; flex: none; }
+  .tabs .sb .lg svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .tabs .sb .sbn { display: none; font-family: var(--disp, var(--font-display, 'Sora', system-ui, sans-serif)); font-weight: 700; font-size: 17px; color: var(--ink); white-space: nowrap; }
+  .tabs a, .tabs button { width: 100%; min-height: 66px; border-radius: 14px; transition: background .15s; }
+  .tabs a:hover, .tabs button:hover { background: var(--surface2); }
+  .tabs a[aria-current="page"], .tabs button[aria-current="page"] { background: var(--accent-soft); }
+  .tabs a[aria-current="page"]::before, .tabs button[aria-current="page"]::before { top: 14px; bottom: 14px; left: -8px; right: auto; width: 3px; height: auto; border-radius: 0 3px 3px 0; box-shadow: none; }
+  .tabs .badge { top: 8px; left: calc(50% + 8px); }
+
+  /* floating bits sit over the content area, not the rail */
+  .bulk { left: var(--side); bottom: 0; padding-inline: 32px; }
+  .bulk .in { max-width: 1360px; }
+  .toast { left: calc(50% + var(--side) / 2); bottom: 28px; }
+
+  /* top strip: the brand lives in the rail now, so only the buttons remain.
+     It takes no height of its own: the buttons float at the top right, beside each page's heading. */
+  .strip .logo, .strip .brand { display: none; }
+  .strip { height: 0; padding: 0 32px; align-items: flex-start; justify-content: flex-end; position: relative; z-index: 6; overflow: visible; }
+  .strip .ib { margin-top: 1px; }
+  .app .strip { padding: 0 128px 0 0; }
+  .app .strip .ib { margin-top: 20px; }
+  .pg-dash .strip { padding-right: calc(32px + 58px); }
+  .pg-dash .strip .ib { margin-top: 16px; }
+
+  /* index.html pages */
+  .app { max-width: 1360px; padding-inline: 32px; padding-block: 20px 48px; }
+  body[data-view="pipeline"] .app { max-width: 1640px; }
+  .tdgrid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 32px; align-items: start; }
+  .tdgrid .stack { display: flex; align-items: stretch; }
+  .tdside { position: sticky; top: 20px; }
+  .tdside > .sec:first-child { margin-top: 0 !important; }
+  .tdside > .sec .lnk { display: none; }
+  #tellHost { max-width: none; }
+
+  /* tasks.html and dashboard.html */
+  .strip { max-width: 1400px; }
+  .wrap, body[data-tab="today"] .wrap { max-width: 1400px; padding: 12px 32px 56px; }
+  .bar-in { max-width: 560px; }
+
+  /* Board: four columns, each scrolls on its own so the page does not grow with the backlog */
+  .kb { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .kcol { max-height: max(440px, calc(100vh - 330px)); overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
+
+  /* Pipeline: five stage columns fit beside the rail */
+  body[data-view="pipeline"] .col { min-width: 216px; }
+  /* Email: cards in two columns */
+  body[data-view="email"] #view { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  body[data-view="email"] #view > .card { margin: 0 !important; }
+
+  /* Plan: the lists on the left, the calendar on the right */
+  body[data-tab="plan"] .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 500px); grid-template-rows: auto auto auto auto 1fr; gap: 18px 28px; align-items: start; }
+  body[data-tab="plan"] .wrap > [data-sec~="plan"] { grid-column: 1; }
+  body[data-tab="plan"] .wrap > .subnav, body[data-tab="plan"] .wrap > .title-row { grid-column: 1 / -1; }
+  body[data-tab="plan"] .wrap > .plan-cal { grid-column: 2; grid-row: 3 / 6; }
+  /* Ideas and Notes: two columns of cards */
+  body[data-tab="ideas"] .wrap, body[data-tab="notes"] .wrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 28px; align-items: start; }
+  body[data-tab="ideas"] .wrap > .subnav, body[data-tab="ideas"] .wrap > .title-row, body[data-tab="ideas"] .wrap > .card.empty,
+  body[data-tab="notes"] .wrap > .subnav, body[data-tab="notes"] .wrap > .title-row, body[data-tab="notes"] .wrap > .compose-wrap, body[data-tab="notes"] .wrap > .foot, body[data-tab="notes"] .wrap > .card.empty { grid-column: 1 / -1; }
+
+}
+
+/* --------------------------------------------------------------- 1360px+ */
+@media (min-width: 1360px) {
+  :root { --side: 232px; }
+  .tabs { padding-inline: 14px; }
+  .tabs .sb { justify-content: flex-start; padding: 6px 12px 22px; }
+  .tabs .sb .sbn { display: inline; }
+  .tabs a, .tabs button { flex-direction: row; justify-content: flex-start; gap: 14px; min-height: 48px; padding: 0 16px; font-size: 15px; border-radius: 12px; }
+  .tabs a svg, .tabs button svg { width: 22px; height: 22px; flex: none; }
+  .tabs a[aria-current="page"]::before, .tabs button[aria-current="page"]::before { top: 10px; bottom: 10px; left: -14px; }
+  .tabs .badge { position: static; margin-left: auto; }
+}
+
+/* due cards two across once there is room beside the numbers panel */
+@media (min-width: 1500px) {
+  .tdgrid .stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

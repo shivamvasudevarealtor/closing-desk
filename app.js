@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "More" };
 
-  var APP_VERSION = "1.11.0";
+  var APP_VERSION = "1.11.1";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,13 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "1.11.1", date: "2026-11-18", title: "Made for laptops and tablets", items: [
+      "On a laptop the app now uses the whole screen. The bottom bar becomes a menu down the left side, with the Closing Desk name when there is room.",
+      "Board: all four columns sit side by side on a laptop or a tablet on its side. Each column scrolls on its own, and your numbers sit under them.",
+      "Clients: your due list on the left, your numbers in a panel on the right. Everyone shows two contacts across. More and Email use two columns. Plan puts the calendar beside your lists.",
+      "Galaxy Tab S7 FE: on its side you get the slim left menu and four Board columns. Held upright you keep the bottom bar, with the Board as a 2 by 2 grid and due cards two across.",
+      "Phones look exactly the same as before. Two small fixes: the Dashboard's bottom bar now stays on screen, and the four Board chips no longer push the page sideways on a 360 px phone.",
+    ] },
     { v: "1.11.0", date: "2026-11-18", title: "The Board, and one bar to get around", items: [
       "New home screen: the Board. Your tasks are cards in four columns: Backlog, Today, Doing, Done. Swipe sideways or tap the column names.",
       "Every card has small steps, about 2 minutes each. Tap Start and you see one step at a time, with an optional timer. The progress bar starts partly filled because opening the card counts.",
@@ -579,6 +586,8 @@
   }
   function renderToday() {
     var due = dueList(), cap = S.settings.dailyCap || 15, shown = S.showAllDue ? due : due.slice(0, cap), h = clientsSeg("today");
+    /* tdgrid: one column on a phone; the list and a numbers panel side by side on a laptop or tablet */
+    h += '<div class="tdgrid"><div class="tdmain">';
     h += momentsCard();
     if (due.length) {
       h += '<div class="sec"><h2>Reach out today</h2><span class="meta num">' + shown.length + " of " + due.length + " due</span></div><div class=\"stack\">" + shown.map(dueCard).join("") + "</div>";
@@ -588,11 +597,13 @@
       h += '<div class="card empty"><h2>Nothing due today</h2><p>Your next follow-ups are below. They appear here on their date.</p></div>';
       if (up.length) h += '<div class="sec"><h2>Coming up</h2><span class="meta">next ' + up.length + "</span></div><div>" + up.map(function (c) { return listRow(c, false); }).join("") + "</div>";
     }
-    /* Numbers go under the list. The Board shows them first. */
+    /* Numbers go under the list (a side panel on a wide screen). The Board shows them first. */
+    h += '</div><aside class="tdside">';
     h += '<div class="sec" style="margin-top:18px"><h2>Your numbers</h2><a class="lnk ghost" href="tasks.html#board">Open the Board</a></div>';
     h += osCard();
     h += '<div class="score">' + scoreCard(S.settings.goalYear + " listings", dealCount("listing"), S.settings.listingsGoal) + scoreCard(S.settings.goalYear + " buyers", dealCount("buyer"), S.settings.buyersGoal) + "</div>";
     h += weekCard();
+    h += "</aside></div>";
     $("#view").innerHTML = h;
   }
 

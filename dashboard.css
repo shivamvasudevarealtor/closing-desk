@@ -102,3 +102,5 @@ h1{margin:0;font-family:var(--disp);font-size:34px;font-weight:700;letter-spacin
 .skel{height:16px;border-radius:8px;background:var(--surface2)}
 @media (max-width:380px){.seg2 .s{padding:0 11px}}
 .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+/* the shared bottom bar (nav.css styles its items; this page needs the bar itself) */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:0 max(8px,env(safe-area-inset-left,0px)) env(safe-area-inset-bottom,0px)}

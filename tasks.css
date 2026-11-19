@@ -535,3 +535,5 @@ body[data-tab="today"] .foot{order:30}
 @media (min-width:900px){
   .kcol::before{content:attr(aria-label);display:block;font-family:var(--disp);font-weight:700;font-size:15px;margin:0 2px 10px;color:var(--ink)}
 }
+/* very narrow phones (360px and under): the four column chips must fit without widening the page */
+@media (max-width:380px){.kb-chips{gap:4px}.kb-chip{min-width:0;padding:0 4px;gap:4px;font-size:12px}.kb-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kb-chip b{padding:1px 5px}}

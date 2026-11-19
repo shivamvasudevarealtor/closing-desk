@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "2.1.0";
+  var APP_VERSION = "2.1.1";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,9 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.1.1", date: "2026-11-19", title: "Builders: reads \"detached\" as a home type", items: [
+      "When a builder replies with a plain \"detached\" or \"single family\" home, the Home type field now says Detached instead of staying blank. Found in the first live test with a reply to a NW Calgary detached 2,400+ sq ft question. Laned, front garage, duplex and the other types are read first, so nothing that worked before changes."
+    ] },
     { v: "2.1.0", date: "2026-11-19", title: "Builders: a monthly check-in with every builder", items: [
       "New Builders button, the 6th in the bottom bar. Five tabs: Overview, Directory, Deals, Replies, Settings. Home has a Builders card that shows when the monthly ask is ready, new deals and replies to review.",
       "Directory: 31 builders sorted by community and city. Calgary communities also carry a quadrant (NW, NE, SW, SE). Airdrie, Chestermere and Cochrane have no quadrant. Cochrane was added by me, remove it if you do not want it.",

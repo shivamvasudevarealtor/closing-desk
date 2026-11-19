@@ -19,7 +19,7 @@
   function dealForm(d, adding) {
     var F = {}, dir = S.dir;
     var dl = h("datalist", { id: "dlComm" }, Object.keys(dir.communities).sort().map(function (n) { return h("option", { value: n }); }));
-    var ht = h("datalist", { id: "dlHome" }, ["duplex", "laned", "front garage", "townhome", "bungalow", "estate", "condo", "single family"].map(function (n) { return h("option", { value: n }); }));
+    var ht = h("datalist", { id: "dlHome" }, ["duplex", "laned", "front garage", "townhome", "bungalow", "estate", "condo", "detached", "single family"].map(function (n) { return h("option", { value: n }); }));
     function f(k, label, o) { o = o || {}; o.value = o.value != null ? o.value : (d[k] == null ? "" : d[k]); F[k] = U.field(label, o); return F[k]; }
     var list = [];
     if (adding) list.push((F.builderId = U.field("Builder", { kind: "select", options: [["", "Choose…"]].concat(dir.builders.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).map(function (b) { return [b.id, b.name]; })), value: d.builderId || "" })));

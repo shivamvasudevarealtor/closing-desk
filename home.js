@@ -347,6 +347,47 @@
     });
     el.appendChild(g);
   }
+  /* Vacation week: the commercial licence study plan. Dates are fixed, so "Today" and the days left follow the clock; the card goes away after Nov 29. */
+  var VWK_END = "2026-11-29";
+  var VWK = [
+    ["2026-11-22", "Sun", "22", "Set up and find your gaps", "Book exam slot, order the HP 10bII+, take a prep exam cold."],
+    ["2026-11-23", "Mon", "23", "Markets and property types", ""],
+    ["2026-11-24", "Tue", "24", "Investment analysis", "The maths day, all on the HP 10bII+."],
+    ["2026-11-25", "Wed", "25", "Leasing principles", ""],
+    ["2026-11-26", "Thu", "26", "Rules, ethics and common errors", ""],
+    ["2026-11-27", "Fri", "27", "Fix weak spots, first practice exam", ""],
+    ["2026-11-28", "Sat", "28", "Full timed mock", "100 questions, 70% to pass. Review every miss."],
+    ["2026-11-29", "Sun", "29", "Light review, then rest", "Confirm ID, calculator, test centre."]
+  ];
+  function renderVwk() {
+    var el = els.vwk, td = edmToday();
+    if (td > VWK_END) { el.hidden = true; el.textContent = ""; return; }
+    el.hidden = false; el.textContent = "";
+    var left = VWK.filter(function (r) { return r[0] >= td; }).length;
+    var head = cardHead("vw", "cal", "Vacation week", null, false);
+    head.appendChild(h("span", { class: "hm-cn vp", text: "Proposed plan" }));
+    el.appendChild(head);
+    var top = h("div", { class: "hm-vwtop" }, [
+      h("h3", { class: "hm-vwt", text: "Commercial licence: " + left + " study day" + (left === 1 ? "" : "s") + " left" }),
+      h("p", { class: "hm-vws", text: "Sun Nov 22 to Sun Nov 29, then the exam in December." }),
+      h("ul", { class: "hm-vwc", "aria-label": "Daily loop" }, ["1 Learn it", "2 Get quizzed by Claude", "3 Calculator reps"].map(function (t) { return h("li", { text: t }); }))
+    ]);
+    var days = h("ol", { class: "hm-vwd", "aria-label": "Study days" });
+    VWK.forEach(function (r) {
+      var isToday = r[0] === td, past = r[0] < td;
+      var title = h("span", { class: "hm-vwn" }, [r[3]]);
+      var nameRow = h("div", { class: "hm-vwh" }, [title, isToday ? h("span", { class: "hm-pill vt", text: "Today" }) : null]);
+      var body = h("div", { class: "hm-vwb2" }, [nameRow, r[4] ? h("span", { class: "hm-vwl", text: r[4] }) : null]);
+      days.appendChild(h("li", { class: past ? "past" : "" }, [h("div", { class: "hm-vwdt" }, [h("span", { class: "hm-vwdw", text: r[1] }), h("span", { class: "hm-vwdn", text: r[2] })]), body]));
+    });
+    var facts = h("div", { class: "hm-vwf" }, [
+      h("span", { class: "hm-vwfl", text: "Exam facts" }),
+      h("div", { class: "hm-vwfs" }, [["100", "questions"], ["70%", "to pass"], ["2", "attempts"]].map(function (x) { return h("div", { class: "hm-vwfc" }, [h("span", { class: "hm-vwfn tn", text: x[0] }), h("span", { class: "hm-vwfx", text: x[1] })]); })),
+      h("p", { text: "Pearson VUE test centre, HP 10bII+ only, no phone calculator apps." }),
+      h("p", {}, [h("b", { text: "Exam date: " }), "[BOOK THE DATE]"])
+    ]);
+    el.appendChild(h("div", { class: "hm-vwbody" }, [top, days, facts, h("p", { class: "hm-vwfoot", text: "Topic order is a guide; swap in my course's module names." })]));
+  }
   function bar(label, text, x, total) { return h("div", { class: "hm-bar" }, [h("div", { class: "hm-bl" }, [h("span", { text: label }), h("b", { class: "tn", text: text })]), h("div", { class: "hm-tr", "aria-hidden": "true" }, [h("i", { style: "width:" + fill(x, total) + "%" })])]); }
   function renderProg() {
     var el = els.prog; if (!S.stats || !S.goals) { el.hidden = true; return; }
@@ -365,7 +406,7 @@
     raf = 0;
     var M = TD.model(S.plan);
     renderTop(); renderHello(M); renderWarn(); renderGlance(M); renderNext(M); renderVac();
-    renderReach(); renderDay(M); renderMust(M); renderDeals(); renderBld(); renderProg();
+    renderReach(); renderDay(M); renderMust(M); renderDeals(); renderBld(); renderVwk(); renderProg();
   }
   function schedule() { if (!raf) raf = requestAnimationFrame(renderAll); }
 
@@ -432,11 +473,12 @@
     els.must = h("section", { class: "hm-card", id: "hmMust", "aria-label": "Must work on" }, [els.mustHead, els.mustList, els.addForm]);
     els.deals = h("section", { class: "hm-card", "aria-label": "Deals in motion" });
     els.bld = h("section", { class: "hm-card", "aria-label": "Builders", hidden: true });
+    els.vwk = h("section", { class: "hm-card hm-vwk", "aria-label": "Vacation week", hidden: true });
     els.prog = h("details", { class: "hm-prog" });
     els.toast = h("div", { class: "hm-toast", role: "status", hidden: true });
     var left = h("div", { class: "hm-col" }, [els.reach]), right = h("div", { class: "hm-col" }, [els.day, els.must]);
     els.cols.className = "hm-cols"; els.cols.appendChild(left); els.cols.appendChild(right);
-    [els.top, els.hello, els.alert, els.glance, els.next, els.vac, els.cols, els.deals, els.bld, els.prog].forEach(function (e) { app.appendChild(e); });
+    [els.top, els.hello, els.alert, els.glance, els.next, els.vac, els.cols, els.deals, els.bld, els.vwk, els.prog].forEach(function (e) { app.appendChild(e); });
     document.body.appendChild(els.toast);
   }
   function setTheme(t) {

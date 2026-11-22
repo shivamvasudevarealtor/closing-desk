@@ -10,6 +10,7 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 | PLN-003 | Today tab with Apple Calendar | Realtor OS / Board | P0 | Vacation week | Review |
 | PLN-004 | Home page, new look, one Today list | Realtor OS / Home | P0 | v2.0 | Review |
 | PLN-005 | Builders: directory, monthly ask, replies, deals, client PDF | Realtor OS / Builders | P0 | v2.1 | Review |
+| PLN-006 | Vacation week card on Home (commercial licence study plan) | Realtor OS / Home | P1 | Vacation week | Review |
 
 ## PLN-001: Vacation week plan workspace
 

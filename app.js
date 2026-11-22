@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "2.1.2";
+  var APP_VERSION = "2.1.3";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,9 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.1.3", date: "2026-11-22", title: "Home: Vacation week card", items: [
+      "Home has a Vacation week card for the commercial licence study plan: the days left, the three-step daily loop, the 8 study days with today marked, and the exam facts. The exam date shows [BOOK THE DATE] until you give it to me. The card goes away after Nov 29."
+    ] },
     { v: "2.1.2", date: "2026-11-19", title: "Builders: reads a price written without a $ sign", items: [
       "Found in the live test: a builder replied \"...possession jan 2027 70k in upgrades ... for 899,000\" and no deal was created. Now a price after words like for, at or priced at is read even without a $ sign (never a size, a phone number or a percentage), \"70k in upgrades\" becomes its own item ($70,000 in upgrades), and a plain \"we do have one\" is no longer counted as an unread line. Things the reply did not say (community, size, bedrooms) stay blank for you to fill in."
     ] },

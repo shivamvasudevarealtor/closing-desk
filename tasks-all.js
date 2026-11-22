@@ -5,7 +5,7 @@
    Saves: your task ticks and study-step ticks through TDAY, vacation-plan ticks through VW. Nothing else is stored here except which rows are open (this tab only). */
 window.TALL = (function () {
   "use strict";
-  var TD = window.TDAY, VW = window.VW;
+  var TD = window.TDAY, VW = window.VW, PD = window.PIL_DATA || null;
   var STUDY_END = "2026-11-29";
   /* Commercial licence study plan: [date, weekday, day number, title, one line, setup to-dos]. The wording is yours; the to-dos are the actions in your Sun 22 line. */
   var STUDY = [
@@ -20,10 +20,10 @@ window.TALL = (function () {
   ];
   var LOOP = ["Learn it", "Get quizzed by Claude", "Calculator reps"];
   var SRC = {
-    me: { label: "Mine", cls: "me" }, cl: { label: "Claude", cls: "cl" }, st: { label: "Study", cls: "st" },
+    me: { label: "Mine", cls: "me" }, cl: { label: "Claude", cls: "cl" }, pl: { label: "Pillar habits", cls: "pl" }, st: { label: "Study", cls: "st" },
     vw: { label: "Vacation week", cls: "vw" }, cal: { label: "Calendar", cls: "cal" }
   };
-  var ORDER = ["me", "cl", "st", "vw", "cal"];
+  var ORDER = ["me", "cl", "pl", "st", "vw", "cal"];
   var LIST_MAX = 9;
 
   /* ---------- small helpers ---------- */
@@ -61,15 +61,32 @@ window.TALL = (function () {
   function vdoc() { return VW && VW.get ? safe(VW.get, null) : null; }
   function cap(s) { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1); }
 
+  var M_pil = null;
+  /* today's habits per pillar. The licence habit depends on whether the course is approved. */
+  function pillarsModel(td, flags, licOk) {
+    if (!PD) return null;
+    var groups = [], total = 0, done = 0;
+    PD.pillars.forEach(function (p) {
+      var list = p.id === "lic" ? (licOk ? p.habits : p.habitsWait) : p.habits, hs = (list || []).map(function (t, i) {
+        var id = "pl-" + td + "-" + p.id + "-" + (i + 1); return { id: id, title: t, done: !!flags[id], kind: "pl", pillar: p.id };
+      }), d = hs.filter(function (x) { return x.done; }).length;
+      groups.push({ id: p.id, n: p.n, name: p.name, habits: hs, done: d, total: hs.length }); total += hs.length; done += d;
+    });
+    return { groups: groups, total: total, done: done };
+  }
   function model(ctx) {
     ctx = ctx || {};
-    var plan = ctx.plan || [], B = TD.model(plan), td = B.td, nm = B.nm, items = [], flags = TD.flags(), doc = vdoc(), now = { date: td, min: nm };
+    var flags = TD.flags(), licOk = !PD || !!flags["pl-lic-approved"], paused = 0; /* without the pillars file there is nothing to approve on, so nothing is paused */
+    /* Until the course is approved, Claude's study tasks wait (the Board still has them). */
+    var plan = (ctx.plan || []).filter(function (p) { if (!licOk && (p.tag === "STUDY" || p.role === "STUDY")) { paused++; return false; } return true; });
+    var B = TD.model(plan), td = B.td, nm = B.nm, items = [], doc = vdoc(), now = { date: td, min: nm };
 
     B.items.forEach(function (it) {
       if (it.src === "cal") {
         items.push({ key: "cal:" + it.id, src: "cal", title: it.title, full: it.title, done: false, allDay: !!it.allDay, min: it.allDay ? -1 : it.min, text: it.allDay ? "All day" : TD.range(it.start, it.end), loc: it.loc || "", now: !!it.now, past: !!it.past, subs: [] });
       } else if (it.src === "me") {
-        items.push({ key: "me:" + it.id, src: "me", id: it.id, title: it.title, full: it.title, done: !!it.done, late: !!it.carried, carried: it.carried || "", min: it.timed ? it.min : null, text: it.timed ? TD.fmt12(it.start) : "", past: !!it.past, subs: [], canRemove: true, ord: it.u || 0 });
+        var ms = (it.subs || []).map(function (x) { return { id: x.id, tid: it.id, title: x.title, done: !!x.done, kind: "ms" }; }), md = ms.filter(function (x) { return x.done; }).length;
+        items.push({ key: "me:" + it.id, src: "me", id: it.id, title: it.title, full: it.title, note: it.note || "", done: !!it.done, late: !!it.carried, carried: it.carried || "", min: it.timed ? it.min : null, text: it.timed ? TD.fmt12(it.start) : "", past: !!it.past, subs: ms, prog: ms.length ? { done: md, total: ms.length } : null, canRemove: true, ord: it.u || 0 });
       } else {
         var p = plan[it.u] || {}, steps = (p.steps || []).map(function (x) { return { title: x.t, m: x.m, done: !!x.d, kind: "ro" }; }), sd = steps.filter(function (x) { return x.done; }).length;
         items.push({ key: "cl:" + it.id, src: "cl", title: it.title, full: p.full || it.title, desc: p.desc || "", state: it.state, mins: it.mins, done: !!it.done, subs: steps, prog: steps.length ? { done: sd, total: steps.length } : null, ord: it.u || 0 });
@@ -97,7 +114,7 @@ window.TALL = (function () {
     /* study day */
     var si = -1; STUDY.forEach(function (r, i) { if (r[0] === td) si = i; });
     var stItem = null;
-    if (si >= 0) {
+    if (si >= 0 && licOk) {
       var r = STUDY[si], list = (r[5] || []).concat(LOOP), ss = list.map(function (t, i) {
         var id = "vwk-" + td + "-" + (i + 1);
         return { id: id, title: t, done: !!flags[id], kind: "st", loop: i >= (r[5] || []).length };
@@ -106,13 +123,22 @@ window.TALL = (function () {
       items.push(stItem);
     }
 
-    /* order: happening now, timed, carried over, yours, Claude, study, vacation, past timed, done */
+    /* pillar habits: one row, grouped by pillar */
+    var plItem = null, pil = pillarsModel(td, flags, licOk);
+    if (pil && pil.total) {
+      var psubs = []; pil.groups.forEach(function (g) { psubs.push({ kind: "hd", title: g.n + " · " + g.name }); g.habits.forEach(function (x) { psubs.push(x); }); });
+      plItem = { key: "pl:" + td, src: "pl", title: "Pillar habits", full: "Pillar habits", note: "One small habit under each of your five pillars. Tick them here or on the Five pillars card.", done: pil.done === pil.total, subs: psubs, prog: { done: pil.done, total: pil.total }, ord: 0 };
+      items.push(plItem);
+    }
+    M_pil = pil;
+
+    /* order: happening now, timed, carried over, yours, Claude, pillar habits, study, vacation, past timed, done */
     function rank(it) {
       if (it.done) return 9;
       if (it.src === "cal") return it.past ? 8 : it.now ? 0 : 1;
       if (it.min != null) return it.past ? 8 : 1;
       if (it.late) return 2;
-      return { me: 3, cl: 4, st: 5, vw: 6 }[it.src] || 7;
+      return { me: 3, cl: 4, pl: 4.5, st: 5, vw: 6 }[it.src] || 7;
     }
     items.forEach(function (it, i) { it.rank = rank(it); it.idx = i; });
     items.sort(function (a, b) { return a.rank - b.rank || (a.min != null && b.min != null ? a.min - b.min : 0) || (a.carried && b.carried ? (a.carried < b.carried ? -1 : 1) : 0) || (a.ord || 0) - (b.ord || 0) || a.idx - b.idx; });
@@ -121,6 +147,7 @@ window.TALL = (function () {
     var tasks = items.filter(function (it) { return it.src !== "cal" && !it.family; });
     var M = { td: td, nm: nm, list: items, total: tasks.length, done: tasks.filter(function (it) { return it.done; }).length, open: tasks.filter(function (it) { return !it.done; }).length, later: B.later || [], connected: B.connected, calState: B.calState, base: B, earlier: earlier };
     M.events = items.filter(function (it) { return it.src === "cal"; }).length;
+    M.pil = M_pil; M.licOk = licOk; M.paused = paused;
 
     /* what to do next: happening now, the next timed thing, and the first thing still open */
     var nowIt = null, nextT = null, firstOpen = null;
@@ -143,18 +170,26 @@ window.TALL = (function () {
     function agg(src, cb) { var a = items.filter(function (it) { return it.src === src && !it.family; }); return cb ? cb(a) : a; }
     function sum(a, subs) { var d = 0, t = 0; a.forEach(function (it) { if (subs && it.prog) { d += it.prog.done; t += it.prog.total; } else { t += 1; if (it.done) d += 1; } }); return { done: d, total: t }; }
     M.lists = ORDER.map(function (src) {
-      var a = agg(src), r2 = src === "cal" ? { done: 0, total: M.events } : sum(a, src === "vw" || src === "st"), o = { src: src, label: SRC[src].label, done: r2.done, total: r2.total, sub: "", text: "" };
+      var a = agg(src), r2 = src === "cal" ? { done: 0, total: M.events } : sum(a, src === "vw" || src === "st" || src === "pl"), o = { src: src, label: SRC[src].label, done: r2.done, total: r2.total, sub: "", text: "" };
       if (src === "cal") { o.text = !M.connected ? "Not connected" : r2.total ? plural(r2.total, "event", "events") : "No events"; if (!M.connected) o.sub = "Connect Apple Calendar"; }
       else if (src === "vw") { o.text = !vwItem ? "No plan today" : vwItem.family ? "Family day" : r2.done + " of " + r2.total + " subtasks done"; if (vwItem && vwItem.family) o.sub = "Nothing scheduled"; if (earlier > 0) o.sub = plural(earlier, "subtask", "subtasks") + " not ticked on earlier days"; }
-      else if (src === "st") { o.text = !stItem ? "No study day today" : r2.done + " of " + r2.total + " subtasks done"; if (stItem) o.sub = "Commercial licence · day " + stItem.dayNo + " of " + stItem.dayOf; }
+      else if (src === "st") { if (!licOk) { o.text = "Paused"; o.sub = "Waiting for your course approval" + (paused ? " · " + plural(paused, "task", "tasks") + " on hold" : ""); } else { o.text = !stItem ? "No study day today" : r2.done + " of " + r2.total + " subtasks done"; if (stItem) o.sub = "Commercial licence · day " + stItem.dayNo + " of " + stItem.dayOf; } }
+      else if (src === "pl") { o.text = !pil || !pil.total ? "No habits today" : r2.done + " of " + r2.total + " habits done"; o.sub = "Five pillars"; }
       else o.text = r2.total ? r2.done + " of " + r2.total + " done" : "Nothing today";
       return o;
     });
     return M;
   }
 
+  /* the Stop test: one of three scores a day, saved as three flags (only one on) */
+  var STOPS = [["short", "Short"], ["close", "Close"], ["over", "Over"]];
+  function stopOn(flags, date) { for (var i = 0; i < STOPS.length; i++) if (flags["plstop-" + date + "-" + STOPS[i][0]]) return STOPS[i][0]; return ""; }
+  function daysBack(td, n) { var p = td.split("-").map(Number), out = []; for (var i = n - 1; i >= 0; i--) out.push(new Date(Date.UTC(p[0], p[1] - 1, p[2] - i, 12)).toISOString().slice(0, 10)); return out; }
+
+  var FOCUS_RE = /^(tl(Title|Date|Time|Wc)|tlSub-.+)$/, TEXT_RE = /^(tlTitle|tlWc|tlSub-.+)$/;
+
   /* ---------- view state ---------- */
-  var openMap = {}, filter = null, showAll = false, undo = null, undoTimer = null, F = { title: "", date: "", time: "" }, mounts = [], raf = 0;
+  var subDraft = {}, wcBudget = 0, wcText = "", openMap = {}, filter = null, showAll = false, undo = null, undoTimer = null, F = { title: "", date: "", time: "" }, mounts = [], raf = 0;
   try { openMap = JSON.parse(sessionStorage.getItem("cd.tl.open") || "{}") || {}; } catch (e) { openMap = {}; }
   function saveOpen() { try { sessionStorage.setItem("cd.tl.open", JSON.stringify(openMap)); } catch (e) {} }
 
@@ -168,7 +203,8 @@ window.TALL = (function () {
   function metaOf(it) {
     var bits = [];
     if (it.src === "cal") { bits.push(it.text); if (it.loc) bits.push(it.loc); }
-    else if (it.src === "me") { if (it.late) bits.push("From " + TD.dateLabel(it.carried, { weekday: "short", month: "short", day: "numeric" })); else if (it.text) bits.push(it.text); }
+    else if (it.src === "me") { if (it.late) bits.push("From " + TD.dateLabel(it.carried, { weekday: "short", month: "short", day: "numeric" })); else if (it.text) bits.push(it.text); if (it.prog) bits.push(it.prog.done + "/" + it.prog.total + " steps"); }
+    else if (it.src === "pl") { bits.push("Five pillars"); bits.push(it.prog.done + "/" + it.prog.total); }
     else if (it.src === "cl") { bits.push(it.state === "done" ? "Done" : it.state === "doing" ? "Doing now" : it.mins ? "About " + it.mins + " min" : "To do"); if (it.prog && it.prog.total > 1 && it.state !== "done") bits.push(plural(it.prog.total, "step", "steps")); }
     else if (it.src === "st") { bits.push("Commercial licence · day " + it.dayNo + " of " + it.dayOf); bits.push(it.prog.done + "/" + it.prog.total); }
     else if (it.src === "vw") {
@@ -178,14 +214,15 @@ window.TALL = (function () {
     }
     return bits.filter(Boolean);
   }
-  function subRow(s, it) {
+  function subRow(s, it, scope) {
+    if (s.kind === "hd") return h("li", { class: "tl-s hd" }, [h("span", { class: "tl-sh", text: s.title })]);
     var li = h("li", { class: "tl-s " + s.kind + (s.done ? " done" : "") + (s.past ? " past" : "") + (s.now ? " now" : "") });
     if (s.kind === "ro") {
       li.appendChild(h("span", { class: "tl-sd" + (s.done ? " ok" : ""), "aria-hidden": "true", html: s.done ? SVG.check : "" }));
       li.appendChild(h("span", { class: "tl-sb" }, [h("span", { class: "tl-sn", text: s.title }), s.m ? h("span", { class: "tl-sm", text: s.m + " min" }) : null]));
       return li;
     }
-    var id = "sk-" + s.id, cb = h("input", { type: "checkbox", id: id, "data-sk": s.kind, "data-id": s.id, "data-title": s.title, "aria-label": s.title + (s.time ? ", " + s.time : "") });
+    var id = "sk-" + (scope ? scope + "-" : "") + s.id, cb = h("input", { type: "checkbox", id: id, "data-sk": s.kind, "data-id": s.id, "data-tid": s.tid || null, "data-title": s.title, "aria-label": s.title + (s.time ? ", " + s.time : "") });
     cb.checked = !!s.done;
     li.appendChild(h("span", { class: "tl-ck sm" }, [cb, h("span", { class: "tl-box", "aria-hidden": "true", html: SVG.check })]));
     li.appendChild(h("label", { class: "tl-sb", "for": id }, [
@@ -198,6 +235,13 @@ window.TALL = (function () {
     var d = h("div", { class: "tl-x", id: "tlx-" + it.key.replace(/[^a-z0-9]/gi, "-") }), kids = [];
     if (it.src === "me") {
       /* the title above is shown in full once the row is open, so the text is not repeated here */
+      if (it.note) d.appendChild(h("p", { class: "tl-full", text: it.note }));
+      if (it.subs.length) { var us = h("ul", { class: "tl-subs" }); it.subs.forEach(function (x) { us.appendChild(subRow(x, it)); }); d.appendChild(us); }
+      var sub1 = h("input", { id: "tlSub-" + it.id, class: "tl-in sm", type: "text", maxlength: "200", autocomplete: "off", enterkeyhint: "done", placeholder: "Add a step", "aria-label": "Add a step to " + it.title });
+      sub1.value = subDraft[it.id] || "";
+      d.appendChild(h("form", { class: "tl-subadd", "data-tl-subform": it.id, novalidate: true }, [sub1,
+        h("button", { type: "submit", class: "tl-addb sm", "aria-label": "Add step" }, [ic("plus")])
+      ]));
       d.appendChild(h("div", { class: "tl-acts" }, [h("button", { type: "button", class: "tl-btn ghost", "data-tl-rm": it.id, "data-title": it.full }, [ic("x"), "Remove"])]));
       return d;
     }
@@ -211,6 +255,7 @@ window.TALL = (function () {
     }
     if (it.note) d.appendChild(h("p", { class: "tl-full", text: it.note }));
     var ul = h("ul", { class: "tl-subs" }); it.subs.forEach(function (s) { ul.appendChild(subRow(s, it)); }); d.appendChild(ul);
+    if (it.src === "pl") { d.appendChild(h("div", { class: "tl-acts" }, [h("a", { class: "tl-btn ghost", href: (o && o.pillarsHref) || "#hmPillars" }, ["Open the five pillars", ic("go")])])); return d; }
     d.appendChild(h("div", { class: "tl-acts" }, [it.src === "vw" ? h("a", { class: "tl-btn ghost", href: "vacation.html#today" }, ["Open the vacation plan", ic("go")]) : h("a", { class: "tl-btn ghost", href: (o && o.studyHref) || "#hmVwk" }, ["See the 8-day study plan", ic("go")])]));
     return d;
   }
@@ -238,6 +283,16 @@ window.TALL = (function () {
     if (open) li.appendChild(detail(it, o));
     return li;
   }
+
+  /* ---------- Communication practice: word check ---------- */
+  function wcCount(t) { t = String(t || "").trim(); return t ? t.split(/\s+/).length : 0; }
+  function wcBud() { return wcBudget || (PD && PD.budgets && PD.budgets[0] ? PD.budgets[0][1] : 40); }
+  function wcMsg() {
+    var n = wcCount(wcText), b = wcBud();
+    if (!n) return "Paste a message you sent and you get a count against the budget.";
+    return n <= b ? n + " of " + b + " words. Within budget." : n + " of " + b + " words. Over by " + (n - b) + ". Cut the last sentence first.";
+  }
+  function wcOut() { var o = document.getElementById("tlWcOut"); if (o) { o.textContent = wcMsg(); o.className = "tl-wco" + (wcCount(wcText) > wcBud() ? " over" : wcCount(wcText) ? " ok" : ""); } }
 
   /* ---------- the Today card ---------- */
   function timeText(v) { return TD.mins(v) != null ? TD.fmt12(v) : ""; }
@@ -300,6 +355,76 @@ window.TALL = (function () {
     root.appendChild(composer(M));
   }
 
+  /* ---------- the Five pillars card ---------- */
+  function pillarPanel(p, g, M, flags) {
+    var d = h("div", { class: "tl-px", id: "tlp-" + p.id });
+    d.appendChild(h("p", { class: "tl-full", text: p.why }));
+    d.appendChild(h("h4", { class: "tl-ph", text: "This week" }));
+    var wk = h("ul", { class: "tl-wk" }); p.week.forEach(function (t) { wk.appendChild(h("li", { text: t })); }); d.appendChild(wk);
+    if (g.habits.length) { d.appendChild(h("h4", { class: "tl-ph", text: "Today's habits" })); var hu = h("ul", { class: "tl-subs" }); g.habits.forEach(function (x) { hu.appendChild(subRow(x, null, "p")); }); d.appendChild(hu); }
+    if (p.id === "lic") {
+      var ap = !!flags["pl-lic-approved"];
+      d.appendChild(h("div", { class: "tl-box2" }, [
+        h("p", { text: ap ? "Approved. The 8-day study plan and Claude's study tasks are back on your list." : "On hold until the course is approved. The study plan and Claude's study tasks are paused, not deleted." }),
+        h("div", { class: "tl-acts" }, [h("button", { type: "button", class: "tl-btn" + (ap ? " ghost" : ""), "data-tl-lic": ap ? "0" : "1" }, [ap ? "Undo: not approved yet" : "I'm approved"])])
+      ]));
+    }
+    if (p.id === "pro") {
+      var yr = PD.year, tot = yr.deals * yr.avg;
+      d.appendChild(h("div", { class: "tl-box2" }, [
+        h("p", {}, [h("b", { text: "Your yearly target: " }), yr.deals + " closed deals × $" + yr.avg.toLocaleString("en-CA") + " average = $" + tot.toLocaleString("en-CA") + " commission."]),
+        h("p", { class: "tl-fine", text: "To set the weekly counts I need two numbers from you: how many conversations it takes to book an appointment, and how many appointments it takes to close a deal. I won't guess them." })
+      ]));
+    }
+    if (p.id === "com") {
+      var box = h("div", { class: "tl-box2" });
+      box.appendChild(h("h4", { class: "tl-ph", text: "The three rules" }));
+      var rl = h("ol", { class: "tl-rules" }); PD.rules.forEach(function (r) { rl.appendChild(h("li", {}, [h("b", { text: r[0] + ". " }), r[1]])); }); box.appendChild(rl);
+      box.appendChild(h("h4", { class: "tl-ph", text: "Ways to end it" }));
+      var cl = h("ul", { class: "tl-closers" }); PD.closers.forEach(function (t) { cl.appendChild(h("li", { text: "\u201c" + t + "\u201d" })); }); box.appendChild(cl);
+      box.appendChild(h("h4", { class: "tl-ph", text: "Stop test: did you stop in time today?" }));
+      var cur = stopOn(flags, M.td), row = h("div", { class: "tl-stop", role: "group", "aria-label": "Stop test" });
+      STOPS.forEach(function (x) { row.appendChild(h("button", { type: "button", class: "tl-sbtn " + x[0] + (cur === x[0] ? " on" : ""), "data-tl-stop": x[0], "aria-pressed": cur === x[0] ? "true" : "false", text: x[1] })); });
+      box.appendChild(row);
+      var dots = h("div", { class: "tl-dots", role: "img", "aria-label": "Stop test, last 7 days" });
+      daysBack(M.td, 7).forEach(function (dt) { var v = stopOn(flags, dt); dots.appendChild(h("span", { class: "tl-dot " + (v || "none") }, [h("i"), h("span", { text: TD.dateLabel(dt, { weekday: "narrow" }) })])); });
+      box.appendChild(dots);
+      box.appendChild(h("p", { class: "tl-fine", text: "Short: you answered and stopped. Close: you added a bit more. Over: you kept going." }));
+      box.appendChild(h("h4", { class: "tl-ph", text: "Word check" }));
+      var bud = h("div", { class: "tl-bud", role: "group", "aria-label": "Word budget" });
+      PD.budgets.forEach(function (b2) { bud.appendChild(h("button", { type: "button", class: "tl-chip2" + (wcBud() === b2[1] ? " on" : ""), "data-tl-wcb": String(b2[1]), "aria-pressed": wcBud() === b2[1] ? "true" : "false", text: b2[0] + " " + b2[1] })); });
+      box.appendChild(bud);
+      var ta = h("textarea", { id: "tlWc", class: "tl-in tl-wc", rows: "4", placeholder: "Paste a message you sent", "aria-label": "Message to count" }); ta.value = wcText; box.appendChild(ta);
+      box.appendChild(h("p", { id: "tlWcOut", class: "tl-wco" + (wcCount(wcText) > wcBud() ? " over" : wcCount(wcText) ? " ok" : ""), text: wcMsg() }));
+      box.appendChild(h("p", { class: "tl-fine", text: "These budgets are starting points. 75 words is about 30 seconds spoken." }));
+      d.appendChild(box);
+    }
+    return d;
+  }
+  function drawPillars(root, M, o) {
+    root.textContent = "";
+    var P = M.pil; if (!PD || !P) return;
+    var flags = TD.flags(), td = M.td;
+    root.appendChild(h("div", { class: "tl-h" }, [h("h2", {}, [h("span", { class: "tl-hi", html: SVG.flag }), "Five pillars", h("span", { class: "tl-cn tn" + (P.done ? "" : " zero"), text: P.done + "/" + P.total })])]));
+    root.appendChild(h("p", { class: "tl-lnote", text: "Your goals for next year. Today's habits are also in your Today list." }));
+    var ul = h("ul", { class: "tl-pl" });
+    PD.pillars.forEach(function (p) {
+      var g = P.groups.filter(function (x) { return x.id === p.id; })[0] || { habits: [], done: 0, total: 0 }, key = "pil:" + p.id, open = !!openMap[key], wait = p.id === "lic" && !M.licOk;
+      var status = wait ? "Waiting for course approval" : p.id === "lic" ? "Approved" : g.done + " of " + g.total + " habits today";
+      if (p.id === "com") { var sv = stopOn(flags, td); if (sv) status += " · Stop test: " + STOPS.filter(function (x) { return x[0] === sv; })[0][1]; }
+      var li = h("li", { class: "tl-pi" + (open ? " open" : "") + (wait ? " wait" : ""), "data-key": key });
+      li.appendChild(h("button", { type: "button", class: "tl-pb", "data-tl-pil": p.id, "aria-expanded": open ? "true" : "false", "aria-controls": "tlp-" + p.id }, [
+        h("span", { class: "tl-pn", "aria-hidden": "true", text: String(p.n) }),
+        h("span", { class: "tl-pt" }, [h("span", { class: "tl-pname", text: p.name }), h("span", { class: "tl-pst", text: status })]),
+        wait ? h("span", { class: "tl-pw", text: "On hold" }) : ring(g),
+        h("span", { class: "tl-chev", html: SVG.go, "aria-hidden": "true" })
+      ]));
+      if (open) li.appendChild(pillarPanel(p, g, M, flags));
+      ul.appendChild(li);
+    });
+    root.appendChild(ul);
+  }
+
   /* ---------- the Task lists card (the split by source) ---------- */
   function drawLists(root, M, o) {
     root.textContent = "";
@@ -322,17 +447,21 @@ window.TALL = (function () {
   /* ---------- drawing and repainting ---------- */
   function draw(el, kind, ctxFn, opts) {
     el.setAttribute("data-tlmount", kind);
-    var found = false; mounts.forEach(function (m) { if (m.el === el) { m.kind = kind; m.ctxFn = ctxFn; m.opts = opts || {}; found = true; } });
+    var found = false; mounts.forEach(function (m) { if (m.el === el) { m.kind = kind; m.ctxFn = ctxFn; m.opts = opts || {}; m.sig = null; found = true; } });
     if (!found) mounts.push({ el: el, kind: kind, ctxFn: ctxFn, opts: opts || {} });
     paintOne(mounts.filter(function (m) { return m.el === el; })[0]);
   }
   function paintOne(m) {
     if (!m || !m.el) return;
-    var a = document.activeElement, fid = a && a.id && /^tl(Title|Date|Time)$/.test(a.id) ? a.id : null, ss = null, se = null;
-    if (fid === "tlTitle") { ss = a.selectionStart; se = a.selectionEnd; }
+    var a = document.activeElement, fid = a && a.id && FOCUS_RE.test(a.id) && m.el.contains(a) ? a.id : null, ss = null, se = null;
+    if (fid && TEXT_RE.test(fid)) { try { ss = a.selectionStart; se = a.selectionEnd; } catch (e) {} }
     var M = model(m.ctxFn ? m.ctxFn() : {});
-    if (m.kind === "lists") drawLists(m.el, M, m.opts); else drawToday(m.el, M, m.opts);
-    if (fid && m.kind !== "lists") { var n = document.getElementById(fid); if (n && fid === "tlTitle") { n.focus(); try { n.setSelectionRange(ss, se); } catch (e) {} } }
+    /* Nothing changed since the last paint (a save finishing, a clock tick): leave the page alone, so a tap that is in flight is not lost. */
+    var sig; try { sig = JSON.stringify([M, TD.flags(), openMap, filter, showAll, F, undo && undo.id, wcBudget], function (k, v) { return k === "status" ? undefined : v; }); } catch (e) { sig = null; } /* the save status is not drawn here */
+    if (sig && m.sig === sig && m.el.firstChild) return;
+    m.sig = sig;
+    if (m.kind === "lists") drawLists(m.el, M, m.opts); else if (m.kind === "pillars") drawPillars(m.el, M, m.opts); else drawToday(m.el, M, m.opts);
+    if (fid && TEXT_RE.test(fid)) { var n = document.getElementById(fid); if (n) { n.focus(); try { n.setSelectionRange(ss, se); } catch (e) {} } }
   }
   function repaint() {
     if (raf) return;
@@ -342,11 +471,19 @@ window.TALL = (function () {
   /* ---------- events ---------- */
   document.addEventListener("click", function (e) {
     var t = e.target; if (!t || !t.closest) return;
-    var b = t.closest("[data-tl-open],[data-tl-rm],[data-tl-undo],[data-tl-filter],[data-tl-all],[data-tl-step],[data-tl-notime],label.tl-chip");
+    var b = t.closest("[data-tl-open],[data-tl-pil],[data-tl-stop],[data-tl-lic],[data-tl-wcb],[data-tl-rm],[data-tl-undo],[data-tl-filter],[data-tl-all],[data-tl-step],[data-tl-notime],label.tl-chip");
     if (!b) return;
     if (b.matches("label.tl-chip")) { var inp = b.querySelector("input"); if (inp && inp.showPicker && e.target === inp) { try { inp.showPicker(); } catch (x) {} } return; }
     if (!b.closest("[data-tlmount]")) return;
     if (b.hasAttribute("data-tl-open")) { var k = b.getAttribute("data-tl-open"); if (openMap[k]) delete openMap[k]; else openMap[k] = 1; saveOpen(); repaint(); return; }
+    if (b.hasAttribute("data-tl-pil")) { var pk = "pil:" + b.getAttribute("data-tl-pil"); if (openMap[pk]) delete openMap[pk]; else openMap[pk] = 1; saveOpen(); repaint(); return; }
+    if (b.hasAttribute("data-tl-stop")) {
+      var sv = b.getAttribute("data-tl-stop"), tdy = TD.todayStr(), fl = TD.flags(), cur = stopOn(fl, tdy);
+      STOPS.forEach(function (x) { var on = x[0] === sv && cur !== sv, id2 = "plstop-" + tdy + "-" + x[0]; if (on || fl[id2]) TD.flag(id2, on, "Stop test: " + x[1], "pl"); });
+      repaint(); return;
+    }
+    if (b.hasAttribute("data-tl-lic")) { TD.flag("pl-lic-approved", b.getAttribute("data-tl-lic") === "1", "Commercial licence course approved", "pl"); repaint(); return; }
+    if (b.hasAttribute("data-tl-wcb")) { wcBudget = +b.getAttribute("data-tl-wcb") || 0; repaint(); return; }
     if (b.hasAttribute("data-tl-rm")) {
       var id = b.getAttribute("data-tl-rm"), title = b.getAttribute("data-title") || "task"; TD.remove(id);
       undo = { id: id, title: title }; clearTimeout(undoTimer); undoTimer = setTimeout(function () { undo = null; repaint(); }, 8000); repaint(); return;
@@ -367,14 +504,22 @@ window.TALL = (function () {
     if (t.matches("input[data-sk]")) {
       var kind = t.getAttribute("data-sk"), id = t.getAttribute("data-id");
       if (kind === "vw" && VW) VW.toggle(id, t.checked); else if (kind === "st") TD.flag(id, t.checked, t.getAttribute("data-title"));
+      else if (kind === "pl") TD.flag(id, t.checked, t.getAttribute("data-title"), "pl"); else if (kind === "ms") TD.toggleSub(t.getAttribute("data-tid"), id, t.checked);
       repaint(); return;
     }
     if (t.id === "tlDate") { var td = TD.todayStr(); F.date = t.value && t.value > td ? t.value : ""; repaint(); return; }
     if (t.id === "tlTime") { F.time = TD.mins(t.value) != null ? t.value : ""; repaint(); }
   });
-  document.addEventListener("input", function (e) { var t = e.target; if (t && t.id === "tlTitle") F.title = t.value; });
+  document.addEventListener("input", function (e) { var t = e.target; if (!t) return; if (t.id === "tlTitle") F.title = t.value; else if (t.id === "tlWc") { wcText = t.value; wcOut(); } else if (t.id.indexOf("tlSub-") === 0) subDraft[t.id.slice(6)] = t.value; });
   document.addEventListener("submit", function (e) {
-    var f = e.target; if (!f || !f.hasAttribute || !f.hasAttribute("data-tl-form")) return;
+    var f = e.target; if (!f || !f.hasAttribute) return;
+    if (f.hasAttribute("data-tl-subform")) {
+      e.preventDefault();
+      var tid = f.getAttribute("data-tl-subform"), inp = document.getElementById("tlSub-" + tid), sv2 = inp ? inp.value : "";
+      if (!sv2.trim()) { if (inp) inp.focus(); return; }
+      TD.addSub(tid, sv2); delete subDraft[tid]; repaint(); setTimeout(function () { var n1 = document.getElementById("tlSub-" + tid); if (n1) n1.focus(); }, 30); return;
+    }
+    if (!f.hasAttribute("data-tl-form")) return;
     e.preventDefault();
     var v = (document.getElementById("tlTitle") || {}).value || ""; if (!v.trim()) { var n0 = document.getElementById("tlTitle"); if (n0) n0.focus(); return; }
     TD.add(v, F.time, F.date); F.title = ""; F.time = ""; F.date = ""; repaint();
@@ -383,9 +528,9 @@ window.TALL = (function () {
 
   /* A page that wipes and rebuilds its whole view calls this first and the returned function last, so typing in the add box is not interrupted. */
   function grabFocus() {
-    var a = document.activeElement, id = a && a.id && /^tl(Title|Date|Time)$/.test(a.id) ? a.id : null; if (!id) return null;
-    var ss = null, se = null; if (id === "tlTitle") { ss = a.selectionStart; se = a.selectionEnd; }
-    return function () { var n = document.getElementById(id); if (n && id === "tlTitle") { n.focus(); try { n.setSelectionRange(ss, se); } catch (e) {} } };
+    var a = document.activeElement, id = a && a.id && FOCUS_RE.test(a.id) ? a.id : null; if (!id) return null;
+    var ss = null, se = null; try { ss = a.selectionStart; se = a.selectionEnd; } catch (e) {}
+    return function () { var n = document.getElementById(id); if (n && TEXT_RE.test(id)) { n.focus(); try { n.setSelectionRange(ss, se); } catch (e) {} } };
   }
 
   var started = false;
@@ -393,7 +538,7 @@ window.TALL = (function () {
      The Board page keeps that channel for its own document, so there the vacation plan is loaded once and not followed live. */
   function start(o) {
     if (started) return; started = true;
-    if (TD && TD.on) TD.on(repaint);
+    if (TD && TD.on) TD.on(function (k) { if (k !== "status") repaint(); });
     if (VW && VW.open) { try { VW.onChange(repaint); VW.open({ quiet: !(o && o.live) }); } catch (e) {} }
     setInterval(function () { if (document.visibilityState === "visible") repaint(); }, 60000);
   }

@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "2.2.0";
+  var APP_VERSION = "2.3.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,14 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.3.0", date: "2026-11-22", title: "Your five pillars, on the dashboard", items: [
+      "New Five pillars card on Home: Commercial licence, Prospecting set-up, Communication, Improve this app, Body and mind. Tap one to see its plan for the week and today's habits.",
+      "Today has one new row, Pillar habits, with a few small habits under each pillar. Tick them there or on the card. They are saved with your day and never count as your own tasks.",
+      "Commercial licence shows Waiting for course approval. Until you tap I'm approved, the study day and Claude's study tasks are paused (not deleted) and the vacation card says On hold.",
+      "Communication practice: three rules (answer first, one reason then stop, end on a next step), five ways to end a conversation, a Stop test you score each day (Short, Close or Over) with a 7-day strip, and a Word check that counts a message against a budget.",
+      "Your own tasks can now have steps. Open a task, type a step, press Enter. Steps tick off on their own and the row shows how many are done.",
+      "Prospecting shows your yearly target (20 deals at $15,000 = $300,000). The weekly counts wait for your two conversion numbers. They are not guessed."
+    ] },
     { v: "2.2.0", date: "2026-11-22", title: "One Today list: every task in one place", items: [
       "Home and Tasks > Today now show ONE list. Your tasks, Claude's tasks, today's study day, today's vacation day and your calendar events are all in it, so the count at the top always matches what you see. The old \"My day\", \"Must work on\" and vacation strip are gone.",
       "Tap any row to open it. A study or vacation day opens to its subtasks with times and tick boxes. A Claude task opens to its description and steps. Your own tasks open to the full text and a Remove button. Long notes show two lines until you open them.",

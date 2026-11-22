@@ -173,3 +173,67 @@
   .tl-ls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tl-ls > li:nth-child(even) { border-left: 1px solid var(--line); }
 }
+
+/* ---------- Pillar habits row, steps under your tasks, the Five pillars card ---------- */
+.tl-tag.pl { background: var(--accent-soft); color: var(--accent); }
+.tl-li.pl { background: var(--accent-soft); color: var(--accent); }
+.tl-s.hd { min-height: 36px; background: var(--surface); }
+.tl-sh { padding: 10px 14px 4px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.tl-s.hd:not(:first-child) { border-top: 1px solid var(--line2); }
+
+/* add a step to your own task */
+.tl-subadd { display: flex; gap: 8px; align-items: center; }
+.tl-in.sm { min-height: 44px; font-size: 15px; flex: 1; min-width: 0; }
+.tl-addb.sm { margin-left: 0; width: 44px; min-width: 44px; padding: 0; justify-content: center; flex: none; }
+
+/* the Five pillars card */
+.tl-pl > li { border-top: 1px solid var(--line); }
+.tl-pl > li:first-child { border-top: 0; }
+.tl-pb { width: 100%; min-height: 68px; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto 24px; align-items: center; gap: 12px; padding: 12px 8px 12px 16px; border: 0; background: none; text-align: left; cursor: pointer; }
+.tl-pb:hover { background: color-mix(in srgb, var(--surface2) 55%, transparent); }
+.tl-pn { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-family: var(--disp); font-weight: 700; font-size: 16px; }
+.tl-pt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tl-pname { font-size: 16px; font-weight: 700; line-height: 1.25; }
+.tl-pst { font-size: 13px; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
+.tl-pw { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: var(--surface2); color: var(--muted); border: 1px solid var(--line2); white-space: nowrap; }
+.tl-pb .tl-chev { grid-column: 4; grid-row: auto; width: 24px; height: 24px; }
+.tl-pi.open .tl-chev svg { transform: rotate(90deg); }
+.tl-pi.wait .tl-pn { background: var(--surface2); color: var(--muted); }
+.tl-px { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; animation: tlin .18s ease-out; }
+.tl-ph { margin: 6px 0 0; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.tl-wk { display: flex; flex-direction: column; gap: 6px; }
+.tl-wk li { position: relative; padding-left: 18px; font-size: 15px; line-height: 1.45; }
+.tl-wk li::before { content: ""; position: absolute; left: 3px; top: .6em; width: 6px; height: 6px; border-radius: 99px; background: var(--accent); }
+.tl-box2 { border: 1px solid var(--line); background: var(--surface2); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.tl-box2 p { margin: 0; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.tl-fine { font-size: 13px !important; color: var(--muted); }
+.tl-btn[data-tl-lic]:not(.ghost) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* Communication practice */
+.tl-rules { display: flex; flex-direction: column; gap: 8px; }
+.tl-rules li { font-size: 15px; line-height: 1.45; }
+.tl-closers { display: flex; flex-direction: column; gap: 6px; }
+.tl-closers li { font-size: 15px; line-height: 1.4; padding: 8px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.tl-stop { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tl-sbtn { min-height: 48px; border-radius: 13px; border: 1.5px solid var(--line2); background: var(--surface); font-size: 15px; font-weight: 700; cursor: pointer; }
+.tl-sbtn:active { transform: scale(.97); }
+.tl-sbtn.short.on { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.tl-sbtn.close.on { background: var(--warm-bg); border-color: var(--warm); color: var(--warm); }
+.tl-sbtn.over.on { background: var(--hot-bg); border-color: var(--hot); color: var(--hot); }
+.tl-dots { display: flex; gap: 6px; justify-content: space-between; }
+.tl-dot { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; font-size: 11px; font-weight: 700; color: var(--muted); }
+.tl-dot i { width: 18px; height: 18px; border-radius: 99px; border: 2px solid var(--line2); background: transparent; }
+.tl-dot.short i { background: var(--ok); border-color: var(--ok); }
+.tl-dot.close i { background: var(--warm); border-color: var(--warm); }
+.tl-dot.over i { background: var(--hot); border-color: var(--hot); }
+.tl-bud { display: flex; flex-wrap: wrap; gap: 8px; }
+.tl-chip2 { min-height: 44px; padding: 0 14px; border-radius: 99px; border: 1.5px solid var(--line2); background: var(--surface); font-size: 14px; font-weight: 700; cursor: pointer; }
+.tl-chip2.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.tl-wc { min-height: 96px; padding: 12px 14px; line-height: 1.45; resize: vertical; font-family: var(--font); }
+.tl-wco { font-size: 15px !important; font-weight: 600; color: var(--muted); }
+.tl-wco.ok { color: var(--ok); }
+.tl-wco.over { color: var(--hot); }
+.tl-pi a:focus-visible, .tl-pi button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tl-sbtn:focus-visible, .tl-chip2:focus-visible { outline-offset: 2px !important; }
+@media (max-width: 380px) { .tl-px { padding-left: 14px; padding-right: 14px; } .tl-pb { padding-left: 12px; gap: 10px; } }
+@media (prefers-reduced-motion: reduce) { .tl-px { animation: none !important; } }

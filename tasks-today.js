@@ -54,7 +54,7 @@
   function same(a, b) { return JSON.stringify(norm(a)) === JSON.stringify(norm(b)); }
   function prune(d) { /* tombstones and finished tasks older than 45 days */
     var cut = Date.now() - 45 * 86400000;
-    Object.keys(d.tasks).forEach(function (k) { var t = d.tasks[k]; if ((t.del || t.done) && (t.u || 0) < cut) delete d.tasks[k]; });
+    Object.keys(d.tasks).forEach(function (k) { var t = d.tasks[k]; if ((t.del || t.done) && (t.u || 0) < cut && k !== "pl-lic-approved") delete d.tasks[k]; /* the licence flag must outlive the 45 days */ });
     return d;
   }
   function setStatus(s) { if (status !== s) { status = s; emit("status"); } }
@@ -93,12 +93,28 @@
     changed(); return id;
   }
   /* Ticks for the subtasks that have no home of their own (the study-day steps). Kept in the same document, marked k:"st", never shown as a task of yours. */
-  function flag(id, val, title) {
+  function flag(id, val, title, kind) {
     load(); var t = doc.tasks[id];
-    if (!t) t = doc.tasks[id] = { id: id, title: String(title || id).slice(0, 200), date: todayStr(), time: "", done: false, doneAt: null, del: false, u: 0, k: "st" };
+    if (!t) t = doc.tasks[id] = { id: id, title: String(title || id).slice(0, 200), date: todayStr(), time: "", done: false, doneAt: null, del: false, u: 0, k: kind || "st" };
     t.done = !!val; t.doneAt = t.done ? new Date().toISOString() : null; t.u = Date.now(); changed();
   }
   function flags() { var d = load(), out = {}; Object.keys(d.tasks).forEach(function (k) { var t = d.tasks[k]; if (t && t.k && !t.del) out[k] = !!t.done; }); return out; }
+  /* Steps under one of your own tasks. They live on the task itself, so they merge and sync with it. */
+  function sid() { return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+  function addSub(id, title) {
+    title = String(title || "").trim().slice(0, 200); if (!title) return null;
+    load(); var t = doc.tasks[id]; if (!t || t.del || t.k) return null;
+    t.subs = Array.isArray(t.subs) ? t.subs : []; if (t.subs.length >= 40) return null;
+    var s = { id: sid(), title: title, done: false }; t.subs.push(s); t.u = Date.now(); changed(); return s.id;
+  }
+  function toggleSub(id, sub, val) {
+    load(); var t = doc.tasks[id]; if (!t || !Array.isArray(t.subs)) return;
+    t.subs.forEach(function (s) { if (s.id === sub) s.done = !!val; }); t.u = Date.now(); changed();
+  }
+  function removeSub(id, sub) {
+    load(); var t = doc.tasks[id]; if (!t || !Array.isArray(t.subs)) return;
+    t.subs = t.subs.filter(function (s) { return s.id !== sub; }); t.u = Date.now(); changed();
+  }
   function toggle(id, val) { load(); var t = doc.tasks[id]; if (!t) return; t.done = !!val; t.doneAt = t.done ? new Date().toISOString() : null; t.u = Date.now(); changed(); }
   function removeTask(id) { load(); var t = doc.tasks[id]; if (!t) return; t.del = true; t.u = Date.now(); changed(); }
   function restoreTask(id) { load(); var t = doc.tasks[id]; if (!t) return; t.del = false; t.u = Date.now(); changed(); }
@@ -149,8 +165,8 @@
       var s = ev.allDay ? -1 : (mins(ev.start) || 0), e = ev.end ? mins(ev.end) : null;
       items.push({ src: "cal", id: String(ev.id || ev.title + s), title: ev.title, allDay: !!ev.allDay, start: ev.start || "", end: ev.end || "", loc: ev.location || "", min: s, endMin: e, done: false });
     });
-    todays.forEach(function (t) { items.push({ src: "me", id: t.id, title: t.title, start: t.time || "", end: "", min: t.time ? mins(t.time) : null, endMin: null, done: !!t.done, carried: "", u: t.u || 0 }); });
-    carried.forEach(function (t) { items.push({ src: "me", id: t.id, title: t.title, min: null, done: !!t.done, carried: t.date, u: t.u || 0 }); });
+    todays.forEach(function (t) { items.push({ src: "me", id: t.id, title: t.title, start: t.time || "", end: "", min: t.time ? mins(t.time) : null, endMin: null, done: !!t.done, carried: "", u: t.u || 0, subs: t.subs || [], note: t.note || "" }); });
+    carried.forEach(function (t) { items.push({ src: "me", id: t.id, title: t.title, min: null, done: !!t.done, carried: t.date, u: t.u || 0, subs: t.subs || [], note: t.note || "" }); });
     (plan || []).forEach(function (p, i) { items.push({ src: "cl", id: "pl" + i, title: p.title, min: null, done: p.state === "done", state: p.state, mins: p.mins || null, u: i }); });
     var next = null;
     items.forEach(function (it) {
@@ -281,7 +297,7 @@
     if (T) {
       /* One list for the day (tasks-all.js): the same card as on Home. The split by source is the card under it. */
       var ctxFn = function () { return { plan: opts.plan || [] }; }, todayEl = h("section", { class: "tl-card", id: "tlToday" }), listsEl = h("section", { class: "tl-card", id: "tlLists" });
-      T.draw(todayEl, "today", ctxFn, { bare: true, title: "Today", studyHref: "home.html#hmVwk", calHref: "#tdCal" });
+      T.draw(todayEl, "today", ctxFn, { bare: true, title: "Today", studyHref: "home.html#hmVwk", pillarsHref: "home.html#hmPillars", calHref: "#tdCal" });
       T.draw(listsEl, "lists", ctxFn, {});
       kids.push(todayEl, listsEl);
     } else {
@@ -360,7 +376,7 @@
     start: function () { load(); open(); refreshCal(); },
     model: function (plan) { return model(plan || []); },
     on: function (fn) { listeners.push(fn); },
-    toggle: toggle, add: addTask, remove: removeTask, restore: restoreTask, flag: flag, flags: flags, refresh: refreshCal, fmt12: fmt12, range: range, dateLabel: dateLabel, mins: mins,
+    toggle: toggle, add: addTask, addSub: addSub, toggleSub: toggleSub, removeSub: removeSub, remove: removeTask, restore: restoreTask, flag: flag, flags: flags, refresh: refreshCal, fmt12: fmt12, range: range, dateLabel: dateLabel, mins: mins,
     paint: paint, todayStr: todayStr, nowMin: nowMin, connected: function () { load(); return !!(doc.cal && doc.cal.url); }, calState: function () { return { state: cal.state, msg: cal.msg, at: cal.at, busy: !!cal.busy }; },
     _state: function () { return { doc: load(), cal: cal, status: status }; }
   };

@@ -12,6 +12,7 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 | PLN-005 | Builders: directory, monthly ask, replies, deals, client PDF | Realtor OS / Builders | P0 | v2.1 | Review |
 | PLN-006 | Vacation week card on Home (commercial licence study plan) | Realtor OS / Home | P1 | Vacation week | Review |
 | PLN-007 | One Today list: every task at a glance, tap to expand, split by source at the bottom | Realtor OS / Home, Tasks | P0 | v2.2 | Review |
+| PLN-008 | Five pillars: a Home card, daily habits in Today, Communication practice, steps under tasks, licence waiting | Realtor OS / Home, Tasks | P0 | v2.3 | Review |
 
 ## PLN-001: Vacation week plan workspace
 
@@ -140,3 +141,28 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 - Older suites rewritten for the new list: `t16` (71), `t17` (49), `t18` (61), `t21_vwk` (22).
 
 **Not verified:** the live GitHub Pages site after deploy; a real iPhone or Galaxy Tab. Reopen the app once to pick up the new offline cache (`realtor-os-v22`).
+
+## PLN-008: Five pillars on the dashboard
+
+**Why:** Shivam's goals for next year are five pillars: (1) the commercial licence, (2) a proper prospecting set-up, (3) communication (he talks too much, does not know when to end a conversation), (4) an ongoing project of improving this app, (5) physical and mental health. The dashboard should show them, with work for this week, until the licence course is approved.
+
+**Where:** Home (`home.html`, Five pillars card `#hmPillars`) and Tasks > Today (`tasks.html#today`). Code: `pillars-data.js` (new: the pillars, week plans, habits, rules, closing lines, word budgets), `tasks-all.js` and `tasks-all.css` (the Pillar habits row, the Five pillars card, steps under your tasks), `tasks-today.js` (`flag(id, val, title, kind)`, `addSub`, `toggleSub`, `removeSub`), `day-core.js` and `tasks.js` (plan items carry `tag` and `role`), `home.js`, `home.css`.
+
+**Acceptance criteria**
+1. Home has a Five pillars card: five rows in order, each opening to its why, this week's work and today's habits. The licence row says Waiting for course approval and On hold.
+2. Today has one Pillar habits row (after Claude's tasks), grouped by pillar. Habit ticks are saved in the `today` document as entries with `k:"pl"`. They never count as your tasks and the same habit shows on the row and the card with one state.
+3. Until "I'm approved" is tapped, the study day and Claude's study tasks (plan tag STUDY) are paused, not deleted. The Study list says Paused with why, and the vacation card says On hold. Approving brings them back. The approval flag is never cleaned up by the 45-day rule. Undo works.
+4. Communication: three rules, five ways to end a conversation, a Stop test (Short, Close, Over; one score a day; a 7-day strip) and a Word check (Text 40, Email 90, Voice note 75, counted live, typing never interrupted).
+5. Your own tasks take steps: type, Enter. Steps tick on their own, show as n/m on the row, and sync with the task (newest edit wins). A half-typed step survives a redraw.
+6. Prospecting shows the yearly target (20 deals x $15,000 = $300,000) and asks for the two conversion numbers. Weekly counts are not guessed.
+7. A paint that would change nothing (a save finishing) is skipped, so a tap in flight is not lost.
+8. No new table or key. Nothing guessed: builder-run stops are labelled to confirm on site.
+
+**Open:** the two conversion numbers (conversations per appointment, appointments per deal); the approval date so the study dates can be reset; whether a Take supplements reminder exists.
+
+**Verification evidence** (browser runs against a copy of the database; his real day, vacation and Board documents were loaded)
+- `t23_pillars`: 61 checks. Five pillars card, licence On hold and approved (including the 45-day clean-up), paused study day and study tasks, Pillar habits row and ticks (saved as `k:"pl"`, not counted as tasks, one state on row and card), Stop test, Word check (typing not interrupted), steps under your tasks (Enter, drafts survive a redraw), a 10-stop builder-run task, next-day reset, filter, Tasks page, 360 px / laptop / light theme, 44 px buttons, the pillars file missing.
+- Older suites updated for the new row and the licence state: `t17` (49), `t21_vwk` (22), `t22_tasks` (55). The rest of the 19 suites pass unchanged.
+- Found and fixed while testing: a save finishing redrew the card and wiped a half-typed step; a redraw that changes nothing is now skipped.
+
+**Not verified:** the live GitHub Pages site after deploy; a real iPhone or Galaxy Tab. Reopen the app once to pick up the new offline cache (`realtor-os-v23`).

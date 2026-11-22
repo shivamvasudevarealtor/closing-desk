@@ -113,6 +113,7 @@
       var r;
       if (f.src === "me") r = { mode: "task", eye: f.late ? "Still open from " + fdate(f.carried) : "On your list", title: f.title, meta: "Your task", cta: "done", id: f.id };
       else if (f.src === "cl") r = { mode: "task", eye: f.state === "doing" ? "You are on this" : "Do this next", title: f.title, meta: "From Claude" + (f.mins ? " · about " + f.mins + " min" : ""), cta: S.rows.length && /warmest|call or whatsapp/i.test(f.full || f.title) ? "list" : "board" };
+      else if (f.src === "pl") r = { mode: "task", eye: "Your five pillars", title: "Pillar habits", meta: f.prog.done + " of " + f.prog.total + " done today", cta: "pillars" };
       else if (f.src === "st") r = { mode: "task", eye: "Do this next", title: f.title, meta: "Commercial licence · day " + f.dayNo + " of " + f.dayOf, cta: "today" };
       else r = { mode: "task", eye: "Today's plan", title: f.title, meta: "Vacation week · " + f.prog.done + " of " + f.prog.total + " done", cta: "vac" };
       r.then = then; return r;
@@ -189,6 +190,9 @@
     } else if (x.cta === "vac") {
       cta.appendChild(h("a", { class: "hm-btn pri", href: "vacation.html#today" }, ["Open the plan", ico("go")]));
       cta.appendChild(h("a", { class: "hm-btn ghost", href: "#hmToday" }, ["See all tasks"]));
+    } else if (x.cta === "pillars") {
+      cta.appendChild(h("a", { class: "hm-btn pri", href: "#hmPillars" }, ["Open the five pillars", ico("go")]));
+      cta.appendChild(h("a", { class: "hm-btn ghost", href: "#hmToday" }, ["See all tasks"]));
     } else if (x.cta === "today") {
       cta.appendChild(h("a", { class: "hm-btn pri", href: "#hmToday" }, ["See today's list", ico("go")]));
     } else {
@@ -258,6 +262,7 @@
   function ctx() { return { plan: S.plan }; }
   function renderToday() { TALL.draw(els.today, "today", ctx, { title: "Today", link: "tasks.html#today", linkText: "Open Tasks", studyHref: "#hmVwk", calHref: "tasks.html#today" }); }
   function renderLists() { TALL.draw(els.lists, "lists", ctx, {}); }
+  function renderPillars() { TALL.draw(els.pillars, "pillars", ctx, {}); }
   function renderDeals() {
     var el = els.deals; el.textContent = "";
     el.appendChild(cardHead("deal", "home", "Deals in motion", null, false, "index.html#pipeline", "Open Pipeline"));
@@ -298,11 +303,12 @@
     el.hidden = false; el.textContent = "";
     var left = VWK.filter(function (r) { return r[0] >= td; }).length;
     var head = cardHead("vw", "cal", "Vacation week", null, false);
-    head.appendChild(h("span", { class: "hm-cn vp", text: "Proposed plan" }));
+    var licOk = !window.PIL_DATA || !!(TD.flags && TD.flags()["pl-lic-approved"]);
+    head.appendChild(h("span", { class: "hm-cn vp", text: licOk ? "Proposed plan" : "On hold" }));
     el.appendChild(head);
     var top = h("div", { class: "hm-vwtop" }, [
       h("h3", { class: "hm-vwt", text: "Commercial licence: " + left + " study day" + (left === 1 ? "" : "s") + " left" }),
-      h("p", { class: "hm-vws", text: "Sun Nov 22 to Sun Nov 29, then the exam in December." }),
+      h("p", { class: "hm-vws", text: licOk ? "Sun Nov 22 to Sun Nov 29, then the exam in December." : "On hold until your course is approved. Tap \u201cI'm approved\u201d on the Five pillars card when it arrives." }),
       h("ul", { class: "hm-vwc", "aria-label": "Daily loop" }, ["1 Learn it", "2 Get quizzed by Claude", "3 Calculator reps"].map(function (t) { return h("li", { text: t }); }))
     ]);
     var days = h("ol", { class: "hm-vwd", "aria-label": "Study days" });
@@ -339,7 +345,7 @@
     raf = 0;
     var M = TALL.model(ctx());
     renderTop(); renderHello(M); renderWarn(); renderGlance(M); renderNext(M);
-    renderToday(); renderReach(); renderDeals(); renderBld(); renderLists(); renderVwk(); renderProg();
+    renderToday(); renderReach(); renderPillars(); renderDeals(); renderBld(); renderLists(); renderVwk(); renderProg();
   }
   function schedule() { if (!raf) raf = requestAnimationFrame(renderAll); }
 
@@ -396,6 +402,7 @@
     els.next.setAttribute("aria-label", "Next up");
     els.reach = h("section", { class: "hm-card", id: "hmReach", "aria-label": "Reach out" });
     els.today = h("section", { class: "tl-card", id: "hmToday", "aria-label": "Today" });
+    els.pillars = h("section", { class: "tl-card", id: "hmPillars", "aria-label": "Five pillars" });
     els.lists = h("section", { class: "tl-card", id: "hmLists", "aria-label": "Task lists" });
     els.deals = h("section", { class: "hm-card", "aria-label": "Deals in motion" });
     els.bld = h("section", { class: "hm-card", "aria-label": "Builders", hidden: true });
@@ -405,7 +412,7 @@
     /* Tasks come first on a phone; on a laptop the people to reach sit on the left and the day on the right. */
     var tasks = h("div", { class: "hm-col tasks" }, [els.today]), people = h("div", { class: "hm-col people" }, [els.reach]);
     els.cols.className = "hm-cols"; els.cols.appendChild(tasks); els.cols.appendChild(people);
-    [els.top, els.hello, els.alert, els.glance, els.next, els.cols, els.deals, els.bld, els.lists, els.vwk, els.prog].forEach(function (e) { app.appendChild(e); });
+    [els.top, els.hello, els.alert, els.glance, els.next, els.cols, els.pillars, els.deals, els.bld, els.lists, els.vwk, els.prog].forEach(function (e) { app.appendChild(e); });
     document.body.appendChild(els.toast);
   }
   function setTheme(t) {

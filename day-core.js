@@ -37,7 +37,7 @@ window.CDDay = (function () {
       var st = oc[i];
       if (st === "missed") return;
       var TI = window.TASK_INFO || {};
-      out.push({ title: head(t.title), state: st === "done" ? "done" : (dk && keyOf(t) === dk ? "doing" : "todo"), mins: t.mins || null,
+      out.push({ title: head(t.title), state: st === "done" ? "done" : (dk && keyOf(t) === dk ? "doing" : "todo"), mins: t.mins || null, role: t.role || "", tag: t.tag || "",
         full: t.title, desc: (TI[t.title] && TI[t.title].desc) || "", steps: stepsOf(doc, t, people) });
     });
     return out;

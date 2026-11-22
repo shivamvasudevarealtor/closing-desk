@@ -387,7 +387,7 @@
     arr.forEach(function(t,i){
       var st=oc[i];
       if(st==='missed') return;
-      var ti=tinfo(t.title);out.push({title:ti.head,state:st==='done'?'done':(dk&&keyOf(t)===dk?'doing':'todo'),mins:t.mins||null,full:t.title,desc:ti.desc&&ti.desc!==ti.head?ti.desc:'',steps:getSteps(t).map(function(x){return {t:x.t,m:x.m||0,d:x.d?1:0};})});
+      var ti=tinfo(t.title);out.push({title:ti.head,state:st==='done'?'done':(dk&&keyOf(t)===dk?'doing':'todo'),mins:t.mins||null,role:t.role||'',tag:t.tag||'',full:t.title,desc:ti.desc&&ti.desc!==ti.head?ti.desc:'',steps:getSteps(t).map(function(x){return {t:x.t,m:x.m||0,d:x.d?1:0};})});
     });
     return out;
   }

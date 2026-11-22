@@ -167,7 +167,8 @@
     }).then(function () { pendingPut = false; setStatus("saved"); emit("change"); }, function () { setStatus("offline"); });
   }
   /* Called once per page: shows the saved copy at once, then merges with Supabase and seeds if anything is missing. */
-  function open() {
+  /* o.quiet: load and merge, but do not take the page's one live channel (the Board page keeps that for its own document). */
+  function open(o) {
     load(); emit("change");
     if (!Store || !Store.configured || !Store.configured()) { setStatus("offline"); return Promise.resolve(doc); }
     return Store.getOsDoc(DOC_ID).then(function (remote) {
@@ -176,7 +177,7 @@
       return need ? Store.putOsDoc(DOC_ID, doc).then(function () { return seeded.added; }) : 0;
     }).then(function (added) {
       setStatus("saved"); emit("change");
-      if (!subscribed) {
+      if (!subscribed && !(o && o.quiet)) {
         subscribed = true;
         try { Store.subscribeOsDoc(DOC_ID, function (data) { doc = seed(merge(doc, data)).doc; writeLocal(); emit("change"); }, function () {}); } catch (e) {}
       }

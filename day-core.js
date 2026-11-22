@@ -11,8 +11,16 @@ window.CDDay = (function () {
   }
   function keyOf(t) { return t.oid || t.id; }
 
+  /* Each task also carries what the one-list view opens up: its full sentence, a plain-words description and its small steps
+     (the saved ones from the Board, or the same ones the Board would make). people: the due people with a phone, for reach tasks. */
+  function stepsOf(doc, t, people) {
+    var e = doc && doc.steps && doc.steps[keyOf(t)];
+    if (e && e.s && e.s.length) return e.s.map(function (x) { return { t: x.t, m: x.m || 0, d: x.d ? 1 : 0 }; });
+    try { return window.ROSSTEPS ? window.ROSSTEPS.forTask(t, people || []).map(function (x) { return { t: x.t, m: x.m || 0, d: 0 }; }) : []; } catch (err) { return []; }
+  }
+
   /* doc: the "main" document (or null). td: today as YYYY-MM-DD in Edmonton. */
-  function plan(doc, td) {
+  function plan(doc, td, people) {
     var R = window.ROS;
     if (!R || td < R.START || td > R.END) return [];
     var outcomes = (doc && doc.outcomes && typeof doc.outcomes === "object") ? doc.outcomes : {};
@@ -28,7 +36,9 @@ window.CDDay = (function () {
     arr.forEach(function (t, i) {
       var st = oc[i];
       if (st === "missed") return;
-      out.push({ title: head(t.title), state: st === "done" ? "done" : (dk && keyOf(t) === dk ? "doing" : "todo"), mins: t.mins || null });
+      var TI = window.TASK_INFO || {};
+      out.push({ title: head(t.title), state: st === "done" ? "done" : (dk && keyOf(t) === dk ? "doing" : "todo"), mins: t.mins || null,
+        full: t.title, desc: (TI[t.title] && TI[t.title].desc) || "", steps: stepsOf(doc, t, people) });
     });
     return out;
   }

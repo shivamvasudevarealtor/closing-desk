@@ -4,7 +4,7 @@
 (function () {
   "use strict";
   var Store = window.CDStore, CRM = window.CRM, TD = window.TDAY, Stats = window.CDStats, DAY = window.CDDay;
-  var OWNER = "Shivam", TZ = "America/Edmonton", CACHE = "cd.home1", SHOW_REACH = 5, SHOW_DAY = 6, SHOW_MUST = 5;
+  var OWNER = "Shivam", TZ = "America/Edmonton", CACHE = "cd.home1", SHOW_REACH = 5;
   var app = document.getElementById("app");
 
   /* ---------- helpers ---------- */
@@ -53,7 +53,7 @@
   function fill(x, total) { var p = pct(x, Math.max(total, 1)); return x > 0 && p < 2 ? 2 : p; }
 
   /* ---------- state ---------- */
-  var S = { contacts: null, rows: [], dueN: 0, deals: null, stats: null, goals: null, posts: [], main: null, plan: [], vw: null,
+  var S = { contacts: null, rows: [], dueN: 0, deals: null, stats: null, goals: null, posts: [], main: null, plan: [],
     live: false, status: "load", at: null, openId: null, busy: false, undo: null, saved: false, loadedAt: 0 };
   var els = {}, toastTimer = null, raf = 0;
 
@@ -67,8 +67,11 @@
     function deals(type) { return (st.deals || []).filter(function (d) { return d && d.type === type && String(d.date || "").slice(0, 4) === String(year); }).length; }
     S.goals = { year: year, lg: st.listingsGoal == null ? 20 : Math.max(0, Number(st.listingsGoal) || 0), bg: st.buyersGoal == null ? 30 : Math.max(0, Number(st.buyersGoal) || 0), l: deals("listing"), b: deals("buyer") };
   }
+  /* People due with a phone, in the same order as Clients: the Board uses them to name the steps of a reach task. */
+  function fphone(p) { var m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ""); return m ? "(" + m[1] + ") " + m[2] + "-" + m[3] : (p || ""); }
+  function duePeople() { return (S.rows || []).filter(function (c) { return c.phone; }).slice(0, 25).map(function (c) { return { id: c.id, name: who(c), phone: fphone(c.phone) }; }); }
   function derivePlan() {
-    S.plan = DAY.plan(S.main, edmToday());
+    S.plan = DAY.plan(S.main, edmToday(), duePeople());
     var list = S.main && Array.isArray(S.main.content) ? S.main.content : [];
     var td = edmToday();
     S.posts = list.filter(function (p) { return p && p.date && p.date >= td; }).sort(function (a, b) { return (a.date + (a.time || "99")) < (b.date + (b.time || "99")) ? -1 : 1; }).slice(0, 3)
@@ -95,19 +98,24 @@
 
   /* ---------- the next thing ---------- */
   function who(c) { return CRM.nm(c); }
+  function hhmm(m) { return ("0" + Math.floor(m / 60)).slice(-2) + ":" + ("0" + (m % 60)).slice(-2); }
+  /* The hero says what to do now: what is happening, else what starts within the hour, else the first thing still open (with "Then ..." for the next timed thing). */
   function pickNext(M) {
-    var it = null, i;
-    for (i = 0; i < M.items.length; i++) if (M.items[i].now) { it = M.items[i]; break; }
-    if (it) return { mode: "now", eye: "Happening now", title: it.title, meta: [TD.range(it.start, it.end), it.loc].filter(Boolean).join(" · "), cta: "tasks" };
-    if (M.next) {
-      it = M.next; var d = it.min - M.nm;
-      var when = d <= 0 ? "Starting now" : d < 60 ? "Next up · in " + d + " min" : "Next up · " + TD.fmt12(it.start);
-      return { mode: "next", eye: when, title: it.title, meta: it.src === "cal" ? [TD.range(it.start, it.end), it.loc].filter(Boolean).join(" · ") : "Your task · " + TD.fmt12(it.start), cta: it.src === "me" ? "done" : "tasks", id: it.id };
+    var n = M.now, t = M.nextTimed, f = M.firstOpen, then = null;
+    if (n) return { mode: "now", eye: "Happening now", title: n.title, meta: [n.text, n.loc].filter(Boolean).join(" · ") + (n.src === "vw" ? " · Vacation plan" : ""), cta: n.src === "vw" ? "vac" : "tasks" };
+    function timed(x) {
+      var d = x.min - M.nm, when = d <= 0 ? "Starting now" : d < 60 ? "Next up · in " + d + " min" : "Next up · " + TD.fmt12(hhmm(x.min));
+      return { mode: "next", eye: when, title: x.title, meta: x.src === "me" ? "Your task · " + x.text : x.src === "vw" ? x.text + " · Vacation plan" : x.text, cta: x.src === "me" ? "done" : x.src === "vw" ? "vac" : "tasks", id: x.id };
     }
-    var open = M.todo.filter(function (x) { return !x.done; })[0];
-    if (open) {
-      var eye = open.carried ? "Still open from " + fdate(open.carried) : open.src === "cl" ? (open.state === "doing" ? "You are on this" : "Do this next") : "On your list";
-      return { mode: "task", eye: eye, title: open.title, meta: open.src === "cl" ? "From Claude" + (open.mins ? " · about " + open.mins + " min" : "") : "Your task", cta: open.src === "cl" ? (S.rows.length && /warmest|call or whatsapp/i.test(open.title) ? "list" : "board") : "done", id: open.id };
+    if (t && (t.min - M.nm <= 60 || !f)) return timed(t);
+    if (f) {
+      if (t) then = "Then " + TD.fmt12(hhmm(t.min)) + " · " + t.title;
+      var r;
+      if (f.src === "me") r = { mode: "task", eye: f.late ? "Still open from " + fdate(f.carried) : "On your list", title: f.title, meta: "Your task", cta: "done", id: f.id };
+      else if (f.src === "cl") r = { mode: "task", eye: f.state === "doing" ? "You are on this" : "Do this next", title: f.title, meta: "From Claude" + (f.mins ? " · about " + f.mins + " min" : ""), cta: S.rows.length && /warmest|call or whatsapp/i.test(f.full || f.title) ? "list" : "board" };
+      else if (f.src === "st") r = { mode: "task", eye: "Do this next", title: f.title, meta: "Commercial licence · day " + f.dayNo + " of " + f.dayOf, cta: "today" };
+      else r = { mode: "task", eye: "Today's plan", title: f.title, meta: "Vacation week · " + f.prog.done + " of " + f.prog.total + " done", cta: "vac" };
+      r.then = then; return r;
     }
     if (S.rows.length) {
       var c = S.rows[0];
@@ -145,12 +153,12 @@
   }
   function renderGlance(M) {
     els.glance.textContent = "";
-    var calEmpty = !M.connected, evN = M.counts.cal;
+    var calEmpty = !M.connected, evN = M.events;
     var t1 = h("a", { class: "hm-g cal" + (calEmpty ? " empty" : ""), href: "tasks.html#today" }, [
       h("span", { class: "hm-gi", html: IC.cal }), h("span", { class: "hm-gn tn", text: calEmpty ? "–" : String(evN) }), h("span", { class: "hm-gl", text: calEmpty ? "Connect calendar" : (evN === 1 ? "event today" : "events today") })
     ]);
-    var t2 = h("a", { class: "hm-g todo", href: "tasks.html#today" }, [
-      h("span", { class: "hm-gi", html: IC.check }), h("span", { class: "hm-gn tn" }, [String(M.done), h("small", { text: "/" + M.total })]), h("span", { class: "hm-gl", text: M.total ? "tasks done" : "no tasks yet" })
+    var t2 = h("a", { class: "hm-g todo", href: "#hmToday" }, [
+      h("span", { class: "hm-gi", html: IC.check }), h("span", { class: "hm-gn tn" }, [String(M.done), h("small", { text: "/" + M.total })]), h("span", { class: "hm-gl", text: M.total ? "tasks done" : "no tasks today" })
     ]);
     var t3 = h("a", { class: "hm-g reach", href: "#hmReach" }, [
       h("span", { class: "hm-gi", html: IC.people }), h("span", { class: "hm-gn tn", text: n(S.dueN) }), h("span", { class: "hm-gl", text: S.dueN === 1 ? "person to reach" : "people to reach" })
@@ -164,6 +172,7 @@
     els.next.appendChild(h("span", { class: "hm-eye" }, [h("i"), x.eye]));
     els.next.appendChild(h("p", { class: "hm-nt", text: x.title }));
     if (x.meta) els.next.appendChild(h("p", { class: "hm-nm", text: x.meta }));
+    if (x.then) els.next.appendChild(h("p", { class: "hm-nm then", text: x.then }));
     var cta = h("div", { class: "hm-cta" });
     if (x.cta === "call") {
       if (x.c.phone) cta.appendChild(h("a", { class: "hm-btn pri", href: CRM.telUrl(x.c), "data-act": "call", "data-id": x.c.id }, [ico("phone"), "Call"]));
@@ -171,31 +180,22 @@
       if (!x.c.phone) cta.appendChild(h("a", { class: "hm-btn pri", href: "#hmReach" }, ["See who is due"]));
     } else if (x.cta === "done") {
       cta.appendChild(h("button", { class: "hm-btn pri", type: "button", "data-done": x.id }, [ico("check"), "Mark done"]));
-      cta.appendChild(h("a", { class: "hm-btn ghost", href: "tasks.html#today" }, ["Open Tasks"]));
+      cta.appendChild(h("a", { class: "hm-btn ghost", href: "#hmToday" }, ["See all tasks"]));
     } else if (x.cta === "list") {
       cta.appendChild(h("a", { class: "hm-btn pri", href: "#hmReach" }, ["See who to call", ico("go")]));
     } else if (x.cta === "board") {
       cta.appendChild(h("a", { class: "hm-btn pri", href: "tasks.html#board" }, ["Open on the Board", ico("go")]));
+      cta.appendChild(h("a", { class: "hm-btn ghost", href: "#hmToday" }, ["See all tasks"]));
+    } else if (x.cta === "vac") {
+      cta.appendChild(h("a", { class: "hm-btn pri", href: "vacation.html#today" }, ["Open the plan", ico("go")]));
+      cta.appendChild(h("a", { class: "hm-btn ghost", href: "#hmToday" }, ["See all tasks"]));
+    } else if (x.cta === "today") {
+      cta.appendChild(h("a", { class: "hm-btn pri", href: "#hmToday" }, ["See today's list", ico("go")]));
     } else {
       cta.appendChild(h("a", { class: "hm-btn " + (x.mode === "clear" ? "ghost" : "pri"), href: "tasks.html#today" }, [x.mode === "clear" ? "Plan something" : "Open today", ico("go")]));
     }
     els.next.appendChild(cta);
   }
-  function renderVac() {
-    els.vac.textContent = "";
-    if (!window.VW || !S.vw) { els.vac.hidden = true; return; }
-    var V = window.VW, sm;
-    try { sm = V.todaySummary(S.vw, V.tzNow()); } catch (e) { els.vac.hidden = true; return; }
-    if (!sm || sm.kind === "none") { els.vac.hidden = true; return; }
-    els.vac.hidden = false; els.vac.href = "vacation.html#today";
-    els.vac.appendChild(h("span", { class: "hm-vk", text: "Vacation week · today" }));
-    if (sm.kind === "family") { els.vac.appendChild(h("span", { class: "hm-vt", text: "Family day, nothing scheduled" })); return; }
-    els.vac.appendChild(h("span", { class: "hm-vt", text: sm.title }));
-    els.vac.appendChild(h("span", { class: "hm-vn tn", text: sm.done + " of " + sm.total }));
-    els.vac.appendChild(h("span", { class: "hm-vb", "aria-hidden": "true" }, [h("i", { style: "width:" + fill(sm.done, sm.total) + "%" })]));
-    if (sm.next) els.vac.appendChild(h("p", { class: "hm-vx" }, [h("b", { text: "Next · " }), V.fmtRange(sm.next) + " · " + sm.next.title]));
-  }
-
   function cardHead(cls, icon, title, count, hot, href, linkText) {
     var head = h("div", { class: "hm-ch" }, [h("h2", {}, [h("span", { class: "hm-ci " + cls, html: IC[icon] }), title])]);
     if (count != null) head.firstChild.appendChild(h("span", { class: "hm-cn tn" + (hot ? " hot" : ""), text: String(count) }));
@@ -254,67 +254,10 @@
     }
   }
 
-  function dayRow(it) {
-    var parts = TD.fmt12(it.start).split(" ");
-    var cls = "hm-t " + it.src + (it.now ? " now" : "") + (it.past ? " past" : "") + (it.done ? " done" : "");
-    var li = h("li", { class: cls });
-    li.appendChild(h("div", { class: "hm-tt tn" }, [h("b", { text: parts[0] }), h("span", { text: parts[1] || "" })]));
-    var body = h("div", { class: "hm-tb" }, [h("span", { class: "hm-tn" }, [it.title, it.now ? h("span", { class: "hm-pill", text: "Now" }) : null]), (it.src === "cal" && (it.end || it.loc)) ? h("span", { class: "hm-tm", text: [it.end ? "until " + TD.fmt12(it.end) : "", it.loc].filter(Boolean).join(" · ") }) : (it.src === "me" ? h("span", { class: "hm-tm", text: "Your task" }) : null)]);
-    li.appendChild(body);
-    if (it.src === "me") {
-      var id = "dk-" + it.id, cb = h("input", { type: "checkbox", id: id, "data-tk": it.id, "aria-label": it.title }); cb.checked = !!it.done;
-      li.style.gridTemplateColumns = "58px minmax(0,1fr) 40px";
-      li.appendChild(h("span", { class: "hm-mc" }, [cb, h("span", { class: "hm-box", html: IC.check })]));
-    }
-    return li;
-  }
-  function renderDay(M) {
-    var el = els.day; el.textContent = "";
-    var timed = M.sched.filter(function (it) { return !it.allDay; }), allday = M.sched.filter(function (it) { return it.allDay; });
-    el.appendChild(cardHead("day", "cal", "My day", timed.length + allday.length || null, false, "tasks.html#today", "Open Tasks"));
-    if (allday.length) el.appendChild(h("div", { class: "hm-allday" }, allday.map(function (a) { return h("span", { class: "hm-chip", text: a.title + " · all day" }); })));
-    if (!timed.length) {
-      var kids = [];
-      if (!M.connected) kids.push(h("p", {}, [h("b", { text: "Bring in your calendar." }), " Events from Apple Calendar show here, next to your tasks."]), h("a", { class: "hm-btn pri", href: "tasks.html#today" }, ["Connect Apple Calendar", ico("go")]));
-      else kids.push(h("p", {}, [h("b", { text: "Nothing scheduled today." }), M.calState === "err" ? " Could not refresh your calendar just now." : ""]));
-      el.appendChild(h("div", { class: "hm-empty" }, kids));
-      return;
-    }
-    var ul = h("ul", { class: "hm-list" });
-    timed.slice(0, SHOW_DAY).forEach(function (it) { ul.appendChild(dayRow(it)); });
-    el.appendChild(ul);
-    if (timed.length > SHOW_DAY) { var f = h("a", { class: "hm-foot", href: "tasks.html#today" }, [h("span", { text: (timed.length - SHOW_DAY) + " more today" })]); f.appendChild(ico("go")); f.lastChild.innerHTML = IC.go; el.appendChild(f); }
-  }
-
-  function mustRow(it) {
-    if (it.src === "cl") {
-      var a = h("a", { class: "hm-m ai" + (it.done ? " done" : ""), href: "tasks.html#board" });
-      a.appendChild(h("span", { class: "hm-mc " + (it.done ? "ok" : "ai"), html: it.done ? IC.check : IC.spark }));
-      a.appendChild(h("span", { class: "hm-mb" }, [h("span", { class: "hm-mt", text: it.title }), h("span", { class: "hm-mm" }, [h("span", { class: "hm-tag ai", text: "Claude" }), it.done ? "Done" : it.state === "doing" ? "Doing now" : (it.mins ? "About " + it.mins + " min" : "To do")])]));
-      a.appendChild(h("span", { class: "hm-go", html: IC.go }));
-      return h("li", {}, [a]);
-    }
-    var id = "mk-" + it.id, cb = h("input", { type: "checkbox", id: id, "data-tk": it.id, "aria-label": it.title }); cb.checked = !!it.done;
-    var li = h("li", { class: "hm-m me" + (it.done ? " done" : "") });
-    li.appendChild(h("span", { class: "hm-mc" }, [cb, h("span", { class: "hm-box", html: IC.check })]));
-    li.appendChild(h("label", { class: "hm-mb", "for": id }, [h("span", { class: "hm-mt", text: it.title }), h("span", { class: "hm-mm" }, [it.carried ? h("span", { class: "hm-tag late", text: "From " + fdate(it.carried) }) : h("span", { class: "hm-tag me", text: "Mine" })])]));
-    return li;
-  }
-  function renderMust(M) {
-    var el = els.mustList; el.textContent = "";
-    var open = M.todo.filter(function (x) { return !x.done; }), done = M.todo.filter(function (x) { return x.done; });
-    var list = open.concat(done);
-    els.mustHead.textContent = "";
-    els.mustHead.appendChild(cardHead("must", "flag", "Must work on", open.length || null, M.todo.some(function (x) { return x.carried && !x.done; }), "tasks.html#today", "Open Tasks"));
-    if (!list.length) {
-      el.appendChild(h("div", { class: "hm-empty" }, [h("p", {}, [h("b", { text: "Nothing on your list." }), " Add what must happen today, below."])]));
-      return;
-    }
-    var ul = h("ul", { class: "hm-list" });
-    list.slice(0, SHOW_MUST).forEach(function (it) { ul.appendChild(mustRow(it)); });
-    el.appendChild(ul);
-    if (list.length > SHOW_MUST) { var f = h("a", { class: "hm-foot", href: "tasks.html#today" }, [h("span", { text: (list.length - SHOW_MUST) + " more in Tasks" })]); f.appendChild(ico("go")); f.lastChild.innerHTML = IC.go; el.appendChild(f); }
-  }
+  /* The one list: everything for today in one card, rows that open to show their subtasks. The split by source is the "Task lists" card near the bottom. */
+  function ctx() { return { plan: S.plan }; }
+  function renderToday() { TALL.draw(els.today, "today", ctx, { title: "Today", link: "tasks.html#today", linkText: "Open Tasks", studyHref: "#hmVwk", calHref: "tasks.html#today" }); }
+  function renderLists() { TALL.draw(els.lists, "lists", ctx, {}); }
   function renderDeals() {
     var el = els.deals; el.textContent = "";
     el.appendChild(cardHead("deal", "home", "Deals in motion", null, false, "index.html#pipeline", "Open Pipeline"));
@@ -348,17 +291,7 @@
     el.appendChild(g);
   }
   /* Vacation week: the commercial licence study plan. Dates are fixed, so "Today" and the days left follow the clock; the card goes away after Nov 29. */
-  var VWK_END = "2026-11-29";
-  var VWK = [
-    ["2026-11-22", "Sun", "22", "Set up and find your gaps", "Book exam slot, order the HP 10bII+, take a prep exam cold."],
-    ["2026-11-23", "Mon", "23", "Markets and property types", ""],
-    ["2026-11-24", "Tue", "24", "Investment analysis", "The maths day, all on the HP 10bII+."],
-    ["2026-11-25", "Wed", "25", "Leasing principles", ""],
-    ["2026-11-26", "Thu", "26", "Rules, ethics and common errors", ""],
-    ["2026-11-27", "Fri", "27", "Fix weak spots, first practice exam", ""],
-    ["2026-11-28", "Sat", "28", "Full timed mock", "100 questions, 70% to pass. Review every miss."],
-    ["2026-11-29", "Sun", "29", "Light review, then rest", "Confirm ID, calculator, test centre."]
-  ];
+  var VWK_END = TALL.STUDY_END, VWK = TALL.STUDY;
   function renderVwk() {
     var el = els.vwk, td = edmToday();
     if (td > VWK_END) { el.hidden = true; el.textContent = ""; return; }
@@ -404,9 +337,9 @@
 
   function renderAll() {
     raf = 0;
-    var M = TD.model(S.plan);
-    renderTop(); renderHello(M); renderWarn(); renderGlance(M); renderNext(M); renderVac();
-    renderReach(); renderDay(M); renderMust(M); renderDeals(); renderBld(); renderVwk(); renderProg();
+    var M = TALL.model(ctx());
+    renderTop(); renderHello(M); renderWarn(); renderGlance(M); renderNext(M);
+    renderToday(); renderReach(); renderDeals(); renderBld(); renderLists(); renderVwk(); renderProg();
   }
   function schedule() { if (!raf) raf = requestAnimationFrame(renderAll); }
 
@@ -440,7 +373,6 @@
 
   /* ---------- data ---------- */
   function spin(on) { S.busy = on; var b = document.getElementById("hmRefresh"); if (b) b.classList.toggle("spin", on); }
-  function vwLoad() { if (!window.VW || !window.VW.peek) return; try { window.VW.peek(function (doc) { S.vw = doc; schedule(); }); } catch (e) {} }
   function load() {
     if (S.busy || !Store) return;
     spin(true);
@@ -453,32 +385,27 @@
       if (r[1].ok) S.main = r[1].d || null;
       if (r[2] && r[2].ok && r[2].d && r[2].d.v === 1) { S.bld = r[2].d; try { localStorage.setItem("cd.bld.sum", JSON.stringify(r[2].d)); } catch (e) {} }
       S.live = true; S.status = "ok"; S.saved = false; S.at = Date.now(); S.loadedAt = Date.now();
-      derive(); derivePlan(); saveCache(); spin(false); renderAll(); vwLoad();
+      derive(); derivePlan(); saveCache(); spin(false); renderAll();
     }, function () { S.status = "err"; spin(false); renderAll(); });
   }
 
   /* ---------- page ---------- */
   function build() {
-    ["top:header", "hello:section", "alert:div", "glance:section", "next:section", "vac:a", "cols:div"].forEach(function (d) { var p = d.split(":"); els[p[0]] = h(p[1], { class: "hm-" + p[0] }); });
+    ["top:header", "hello:section", "alert:div", "glance:section", "next:section", "cols:div"].forEach(function (d) { var p = d.split(":"); els[p[0]] = h(p[1], { class: "hm-" + p[0] }); });
     els.top.className = "hm-top"; els.glance.className = "hm-glance"; els.glance.setAttribute("aria-label", "Your day at a glance");
-    els.next.setAttribute("aria-label", "Next up"); els.vac.className = "hm-vac"; els.vac.hidden = true;
+    els.next.setAttribute("aria-label", "Next up");
     els.reach = h("section", { class: "hm-card", id: "hmReach", "aria-label": "Reach out" });
-    els.day = h("section", { class: "hm-card", id: "hmDay", "aria-label": "My day" });
-    els.mustHead = h("div"); els.mustList = h("div");
-    els.addForm = h("form", { class: "hm-add", novalidate: true }, [
-      h("label", { class: "sr", "for": "hmAdd", text: "Add a task for today" }),
-      h("input", { id: "hmAdd", type: "text", maxlength: "200", autocomplete: "off", placeholder: "Add a task for today" }),
-      h("button", { class: "hm-btn pri", type: "submit", "aria-label": "Add task" }, [ico("plus"), "Add"])
-    ]);
-    els.must = h("section", { class: "hm-card", id: "hmMust", "aria-label": "Must work on" }, [els.mustHead, els.mustList, els.addForm]);
+    els.today = h("section", { class: "tl-card", id: "hmToday", "aria-label": "Today" });
+    els.lists = h("section", { class: "tl-card", id: "hmLists", "aria-label": "Task lists" });
     els.deals = h("section", { class: "hm-card", "aria-label": "Deals in motion" });
     els.bld = h("section", { class: "hm-card", "aria-label": "Builders", hidden: true });
-    els.vwk = h("section", { class: "hm-card hm-vwk", "aria-label": "Vacation week", hidden: true });
+    els.vwk = h("section", { class: "hm-card hm-vwk", id: "hmVwk", "aria-label": "Vacation week", hidden: true });
     els.prog = h("details", { class: "hm-prog" });
     els.toast = h("div", { class: "hm-toast", role: "status", hidden: true });
-    var left = h("div", { class: "hm-col" }, [els.reach]), right = h("div", { class: "hm-col" }, [els.day, els.must]);
-    els.cols.className = "hm-cols"; els.cols.appendChild(left); els.cols.appendChild(right);
-    [els.top, els.hello, els.alert, els.glance, els.next, els.vac, els.cols, els.deals, els.bld, els.vwk, els.prog].forEach(function (e) { app.appendChild(e); });
+    /* Tasks come first on a phone; on a laptop the people to reach sit on the left and the day on the right. */
+    var tasks = h("div", { class: "hm-col tasks" }, [els.today]), people = h("div", { class: "hm-col people" }, [els.reach]);
+    els.cols.className = "hm-cols"; els.cols.appendChild(tasks); els.cols.appendChild(people);
+    [els.top, els.hello, els.alert, els.glance, els.next, els.cols, els.deals, els.bld, els.lists, els.vwk, els.prog].forEach(function (e) { app.appendChild(e); });
     document.body.appendChild(els.toast);
   }
   function setTheme(t) {
@@ -497,17 +424,11 @@
     if ((b = t.closest("[data-out]"))) { logOutcome(b.getAttribute("data-id"), b.getAttribute("data-out")); return; }
     if ((b = t.closest("[data-done]"))) { TD.toggle(b.getAttribute("data-done"), true); return; }
     if ((b = t.closest("[data-act]"))) { var id = b.getAttribute("data-id"); if (S.openId !== id) { S.openId = id; setTimeout(schedule, 0); } return; }
-    if ((b = t.closest("a.hm-g.reach, a[href=\"#hmReach\"]"))) { e.preventDefault(); var r = document.getElementById("hmReach"); if (r && r.scrollIntoView) r.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    if ((b = t.closest("a[href^=\"#hm\"]")) && b.closest(".hm")) { var tgt = document.getElementById(b.getAttribute("href").slice(1)); if (tgt) { e.preventDefault(); if (tgt.scrollIntoView) tgt.scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
     var row = t.closest(".hm-p");
     if (row && !t.closest(".hm-pa") && !t.closest(".hm-out")) { var id2 = row.getAttribute("data-id"); S.openId = S.openId === id2 ? null : id2; renderReach(); return; }
   });
-  /* Task ticks (input[data-tk]) are handled by tasks-today.js for the whole document, so Home does not listen for them. */
-  document.addEventListener("submit", function (e) {
-    var f = e.target; if (!f || f !== els.addForm) return;
-    e.preventDefault();
-    var inp = document.getElementById("hmAdd"), v = inp.value.trim(); if (!v) { inp.focus(); return; }
-    inp.value = ""; TD.add(v, ""); inp.focus();
-  });
+  /* Task ticks, adding a task and opening rows are handled by tasks-today.js and tasks-all.js for the whole document, so Home does not listen for them. */
 
   /* ---------- start ---------- */
   function toLogin() { try { window.location.replace("index.html"); } catch (e) {} }
@@ -518,7 +439,7 @@
   if (!Store || !Store.configured()) { toLogin(); return; }
   Store.getSession().then(function (sess) {
     if (!sess) { toLogin(); return; }
-    TD.on(schedule); TD.start();
+    TD.on(schedule); TD.start(); TALL.start({ live: true });
     load();
     setInterval(function () { if (document.visibilityState === "visible") { if (Date.now() - S.loadedAt > 60000) load(); else schedule(); } }, 60000);
     document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { if (Date.now() - S.loadedAt > 30000) load(); schedule(); } });

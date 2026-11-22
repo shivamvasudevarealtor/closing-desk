@@ -84,14 +84,24 @@
   }
 
   function uid() { return "T" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-  function addTask(title, time) {
+  /* date is optional (YYYY-MM-DD, today by default). A task dated later shows under "Coming up" until its day. */
+  function addTask(title, time, date) {
     title = String(title || "").trim().slice(0, 200); if (!title) return null;
-    load(); var id = uid();
-    doc.tasks[id] = { id: id, title: title, date: todayStr(), time: mins(time) != null ? time : "", done: false, doneAt: null, del: false, u: Date.now() };
+    load(); var id = uid(), td = todayStr();
+    date = /^\d{4}-\d{2}-\d{2}$/.test(String(date || "")) && date >= td ? date : td;
+    doc.tasks[id] = { id: id, title: title, date: date, time: mins(time) != null ? time : "", done: false, doneAt: null, del: false, u: Date.now() };
     changed(); return id;
   }
+  /* Ticks for the subtasks that have no home of their own (the study-day steps). Kept in the same document, marked k:"st", never shown as a task of yours. */
+  function flag(id, val, title) {
+    load(); var t = doc.tasks[id];
+    if (!t) t = doc.tasks[id] = { id: id, title: String(title || id).slice(0, 200), date: todayStr(), time: "", done: false, doneAt: null, del: false, u: 0, k: "st" };
+    t.done = !!val; t.doneAt = t.done ? new Date().toISOString() : null; t.u = Date.now(); changed();
+  }
+  function flags() { var d = load(), out = {}; Object.keys(d.tasks).forEach(function (k) { var t = d.tasks[k]; if (t && t.k && !t.del) out[k] = !!t.done; }); return out; }
   function toggle(id, val) { load(); var t = doc.tasks[id]; if (!t) return; t.done = !!val; t.doneAt = t.done ? new Date().toISOString() : null; t.u = Date.now(); changed(); }
   function removeTask(id) { load(); var t = doc.tasks[id]; if (!t) return; t.del = true; t.u = Date.now(); changed(); }
+  function restoreTask(id) { load(); var t = doc.tasks[id]; if (!t) return; t.del = false; t.u = Date.now(); changed(); }
   function setUrl(u) { load(); doc.cal = { url: u, u: Date.now() }; changed(); }
 
   /* ---------- calendar ---------- */
@@ -127,9 +137,12 @@
   var LBL = { cal: "Calendar", me: "Mine", cl: "Claude" };
   function model(plan) {
     var td = todayStr(), nm = nowMin(), d = load();
-    var own = Object.keys(d.tasks).map(function (k) { return d.tasks[k]; }).filter(function (t) { return t && !t.del && t.title; });
+    var own = Object.keys(d.tasks).map(function (k) { return d.tasks[k]; }).filter(function (t) { return t && !t.del && t.title && !t.k; });
     var todays = own.filter(function (t) { return t.date === td; });
-    var carried = own.filter(function (t) { return t.date < td && !t.done; });
+    function doneDay(t) { if (!t.done || !t.doneAt) return ""; var dt = new Date(t.doneAt); if (isNaN(dt.getTime())) return ""; var q = parts(dt, { year: "numeric", month: "2-digit", day: "2-digit" }); return q.year + "-" + q.month + "-" + q.day; }
+    var carried = own.filter(function (t) { return t.date < td && (!t.done || doneDay(t) === td); });
+    var later = own.filter(function (t) { return t.date > td && !t.done; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time || "99") < (b.time || "99") ? -1 : 1; })
+      .map(function (t) { return { id: t.id, title: t.title, date: t.date, time: t.time || "" }; });
     var events = cal.date === td ? cal.events : [];
     var items = [];
     events.forEach(function (ev) {
@@ -137,7 +150,7 @@
       items.push({ src: "cal", id: String(ev.id || ev.title + s), title: ev.title, allDay: !!ev.allDay, start: ev.start || "", end: ev.end || "", loc: ev.location || "", min: s, endMin: e, done: false });
     });
     todays.forEach(function (t) { items.push({ src: "me", id: t.id, title: t.title, start: t.time || "", end: "", min: t.time ? mins(t.time) : null, endMin: null, done: !!t.done, carried: "", u: t.u || 0 }); });
-    carried.forEach(function (t) { items.push({ src: "me", id: t.id, title: t.title, min: null, done: false, carried: t.date, u: t.u || 0 }); });
+    carried.forEach(function (t) { items.push({ src: "me", id: t.id, title: t.title, min: null, done: !!t.done, carried: t.date, u: t.u || 0 }); });
     (plan || []).forEach(function (p, i) { items.push({ src: "cl", id: "pl" + i, title: p.title, min: null, done: p.state === "done", state: p.state, mins: p.mins || null, u: i }); });
     var next = null;
     items.forEach(function (it) {
@@ -157,7 +170,7 @@
     var c = { all: items.length, cal: 0, me: 0, cl: 0 };
     items.forEach(function (it) { c[it.src]++; });
     var tasks = items.filter(function (it) { return it.src !== "cal"; });
-    return { td: td, nm: nm, items: items, sched: sched, todo: todo, next: next, counts: c, total: tasks.length, done: tasks.filter(function (it) { return it.done; }).length,
+    return { td: td, nm: nm, items: items, sched: sched, todo: todo, next: next, counts: c, later: later, total: tasks.length, done: tasks.filter(function (it) { return it.done; }).length,
       connected: !!(d.cal && d.cal.url), calState: cal.state, calMsg: cal.msg, calAt: cal.at, status: status };
   }
 
@@ -260,29 +273,36 @@
 
   function paint() {
     if (!root || !root.isConnected) { root = document.querySelector("[data-tday]"); if (!root) return; }
-    var M = model(opts.plan || []);
-    var sched = M.sched.filter(function (it) { return flt === "all" || it.src === flt; });
-    var todo = M.todo.filter(function (it) { return flt === "all" || it.src === flt; });
-    var emptyS = flt === "cal" ? (M.connected ? "No events today." : "Your calendar is not connected yet.") : flt === "cl" ? "Nothing timed from Claude." : flt === "me" ? "No timed tasks. Give a task a time and it lands here." : (M.connected ? "Nothing scheduled today." : "Nothing scheduled. Add a time to a task, or connect your calendar.");
-    var emptyT = flt === "cl" ? "Nothing from Claude today." : flt === "cal" ? "Calendar events are under Scheduled." : flt === "me" ? "No tasks yet. Add one above." : "Nothing to do yet. Add a task above.";
-    var kids = [];
-    if (flt === "all" && opts.vwEl) kids.push(opts.vwEl);
-    if (flt === "cal" || sched.length || (flt === "all" && M.connected)) kids.push(group("Scheduled", sched.length, sched, emptyS));
-    if (flt !== "cal") kids.push(group("To do", todo.length, todo, emptyT));
+    var M = model(opts.plan || []), T = window.TALL;
+    var restore = T && T.grabFocus ? T.grabFocus() : null;
+    var focusId = document.activeElement && document.activeElement.id, selS = null, selE = null;
+    if (!T && focusId === "tdTitle") { selS = document.activeElement.selectionStart; selE = document.activeElement.selectionEnd; }
+    var U = T ? T.model({ plan: opts.plan || [] }) : null, kids = [];
+    if (T) {
+      /* One list for the day (tasks-all.js): the same card as on Home. The split by source is the card under it. */
+      var ctxFn = function () { return { plan: opts.plan || [] }; }, todayEl = h("section", { class: "tl-card", id: "tlToday" }), listsEl = h("section", { class: "tl-card", id: "tlLists" });
+      T.draw(todayEl, "today", ctxFn, { bare: true, title: "Today", studyHref: "home.html#hmVwk", calHref: "#tdCal" });
+      T.draw(listsEl, "lists", ctxFn, {});
+      kids.push(todayEl, listsEl);
+    } else {
+      var sched = M.sched.filter(function (it) { return flt === "all" || it.src === flt; });
+      var todo = M.todo.filter(function (it) { return flt === "all" || it.src === flt; });
+      kids.push(group("Scheduled", sched.length, sched, "Nothing scheduled today."), group("To do", todo.length, todo, "Nothing to do yet."));
+    }
     var main = h("div", { class: "tdmain" }, kids);
-    var side = h("div", { class: "tdside" }, [calCard(M)]);
+    var side = h("div", { class: "tdside", id: "tdCal" }, [calCard(M)]);
     var head = h("header", { class: "tdhead" }, [
       h("div", { class: "tdht" }, [h("h1", { text: "Today" }), h("p", { class: "sub", text: dateLabel(M.td, { weekday: "long", month: "long", day: "numeric" }) })]),
-      ring(M.done, M.total)
+      ring(U ? U.done : M.done, U ? U.total : M.total)
     ]);
-    var focusId = document.activeElement && document.activeElement.id, selS = null, selE = null;
-    if (focusId === "tdTitle") { selS = document.activeElement.selectionStart; selE = document.activeElement.selectionEnd; }
     root.textContent = "";
-    root.appendChild(head); root.appendChild(seg(M)); root.appendChild(addForm());
+    root.appendChild(head);
+    if (!T) { root.appendChild(seg(M)); root.appendChild(addForm()); }
     root.appendChild(h("div", { class: "tdbody" + (M.connected ? " conn" : "") }, [main, side]));
     var st = M.status === "offline" ? (pending ? "Not saved to the cloud yet. Kept on this device." : "Offline. Showing the copy on this device.") : M.status === "saving" ? "Saving…" : "";
     if (st) root.appendChild(h("p", { class: "tdfine tdst", role: "status", text: st }));
-    if (focusId === "tdTitle") { var n = document.getElementById("tdTitle"); if (n) { n.focus(); try { n.setSelectionRange(selS, selE); } catch (e) {} } }
+    if (!T && focusId === "tdTitle") { var n = document.getElementById("tdTitle"); if (n) { n.focus(); try { n.setSelectionRange(selS, selE); } catch (e) {} } }
+    if (restore) restore();
     if (opts.afterPaint) opts.afterPaint();
   }
 
@@ -323,6 +343,7 @@
     }
   });
   listeners.push(function () { paint(); });
+  if (window.VW && window.VW.onChange) window.VW.onChange(function () { if (root && root.isConnected) paint(); });
   setInterval(function () { if (document.visibilityState === "visible" && root && root.isConnected) { paint(); if (Date.now() - calAt > 300000) refreshCal(); } }, 60000);
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { open(); refreshCal(); paint(); } });
 
@@ -331,7 +352,7 @@
     view: function (o) {
       opts = { plan: (o && o.plan) || [], openBoard: (o && o.openBoard) || null, vwEl: (o && o.vwEl) || null, afterPaint: (o && o.afterPaint) || null };
       root = h("section", { class: "tdy", "data-tday": "1" });
-      load(); open();
+      load(); open(); if (window.TALL && window.TALL.start) window.TALL.start();
       setTimeout(function () { if (root && root.isConnected) { paint(); refreshCal(); } }, 0);
       return root;
     },
@@ -339,8 +360,8 @@
     start: function () { load(); open(); refreshCal(); },
     model: function (plan) { return model(plan || []); },
     on: function (fn) { listeners.push(fn); },
-    toggle: toggle, add: addTask, refresh: refreshCal, fmt12: fmt12, range: range, dateLabel: dateLabel,
-    paint: paint, todayStr: todayStr,
+    toggle: toggle, add: addTask, remove: removeTask, restore: restoreTask, flag: flag, flags: flags, refresh: refreshCal, fmt12: fmt12, range: range, dateLabel: dateLabel, mins: mins,
+    paint: paint, todayStr: todayStr, nowMin: nowMin, connected: function () { load(); return !!(doc.cal && doc.cal.url); }, calState: function () { return { state: cal.state, msg: cal.msg, at: cal.at, busy: !!cal.busy }; },
     _state: function () { return { doc: load(), cal: cal, status: status }; }
   };
 })();

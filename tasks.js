@@ -387,7 +387,7 @@
     arr.forEach(function(t,i){
       var st=oc[i];
       if(st==='missed') return;
-      out.push({title:tinfo(t.title).head,state:st==='done'?'done':(dk&&keyOf(t)===dk?'doing':'todo')});
+      var ti=tinfo(t.title);out.push({title:ti.head,state:st==='done'?'done':(dk&&keyOf(t)===dk?'doing':'todo'),mins:t.mins||null,full:t.title,desc:ti.desc&&ti.desc!==ti.head?ti.desc:'',steps:getSteps(t).map(function(x){return {t:x.t,m:x.m||0,d:x.d?1:0};})});
     });
     return out;
   }
@@ -465,7 +465,7 @@
       h('div',{class:'ring',html:ring(count)})
     ])));
     wrap.appendChild(tabIn('today',vwCard()));
-    wrap.appendChild(tabIn('day',window.TDAY?window.TDAY.view({plan:dayPlan(),openBoard:function(){setTab('today');render();},vwEl:vwCard(),afterPaint:vwPaint}):h('div')));
+    wrap.appendChild(tabIn('day',window.TDAY?window.TDAY.view({plan:dayPlan(),openBoard:function(){setTab('today');render();},afterPaint:vwPaint}):h('div')));
     vwPaint();
     wrap.appendChild(tabIn('plan',tabHead('Plan','Next 10 days and the full calendar')));
     wrap.appendChild(tabIn('ideas',tabHead('Ideas','Content to make and post')));

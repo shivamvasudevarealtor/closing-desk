@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "2.1.3";
+  var APP_VERSION = "2.2.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -155,6 +155,13 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.2.0", date: "2026-11-22", title: "One Today list: every task in one place", items: [
+      "Home and Tasks > Today now show ONE list. Your tasks, Claude's tasks, today's study day, today's vacation day and your calendar events are all in it, so the count at the top always matches what you see. The old \"My day\", \"Must work on\" and vacation strip are gone.",
+      "Tap any row to open it. A study or vacation day opens to its subtasks with times and tick boxes. A Claude task opens to its description and steps. Your own tasks open to the full text and a Remove button. Long notes show two lines until you open them.",
+      "The split by source (Mine, Claude, Study, Vacation week, Calendar) is a Task lists card near the bottom of Home and on the Tasks tab. Tap a source to filter the list, tap it again to clear.",
+      "Add box: it now has an outline, a date (today by default) and a time you step up or down 15 minutes at a time. A task for a later date shows under Coming up and joins that day's list. An old task you tick today stays in the list as done.",
+      "Next up now says what comes after it, and a long carried-over note is cut to three lines there."
+    ] },
     { v: "2.1.3", date: "2026-11-22", title: "Home: Vacation week card", items: [
       "Home has a Vacation week card for the commercial licence study plan: the days left, the three-step daily loop, the 8 study days with today marked, and the exam facts. The exam date shows [BOOK THE DATE] until you give it to me. The card goes away after Nov 29."
     ] },

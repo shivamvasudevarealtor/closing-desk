@@ -11,6 +11,7 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 | PLN-004 | Home page, new look, one Today list | Realtor OS / Home | P0 | v2.0 | Review |
 | PLN-005 | Builders: directory, monthly ask, replies, deals, client PDF | Realtor OS / Builders | P0 | v2.1 | Review |
 | PLN-006 | Vacation week card on Home (commercial licence study plan) | Realtor OS / Home | P1 | Vacation week | Review |
+| PLN-007 | One Today list: every task at a glance, tap to expand, split by source at the bottom | Realtor OS / Home, Tasks | P0 | v2.2 | Review |
 
 ## PLN-001: Vacation week plan workspace
 
@@ -117,3 +118,25 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 - Older suites updated for the 6th bottom-bar button: `t12` to `t18`.
 
 **Not verified:** a real Gmail send or read; a real mailbox check; real DNS lookups (mocked); Claude reading with a real key (function not deployed); the live database write path; a real iPhone or tablet. Google must be set to allow `gmail.readonly` (README).
+
+## PLN-007: One Today list: every task at a glance, tap to expand, split by source at the bottom
+
+**Why:** The task screens disagreed with each other. One place said "no tasks", another said "1 task" and showed a very long carried-over note at full length, and the vacation and study days were not in "My day" at all. Shivam wants everything at a glance, each row able to open to its subtasks, with the split by source kept as a card at the bottom.
+
+**Where:** Home (`home.html`) and Tasks > Today (`tasks.html#today`). Code: `tasks-all.js` and `tasks-all.css` (new: the one list and the Task lists card), `tasks-today.js` (own tasks, calendar, add and remove), `day-core.js` and `tasks.js` (Claude's tasks now carry description and steps), `home.js`, `home.css`. Supersedes the Home order and the filter chips in PLN-004 (criteria 1 and 4).
+
+**Acceptance criteria**
+1. One list holds every task for today: yours, Claude's, today's study day, today's vacation day, and calendar events. The count on the top tile, the list header, the Tasks ring and the Task lists card all agree. Events are shown but not counted as tasks.
+2. Order: happening now, timed, carried over, yours, Claude, study, vacation, past, done. A ticked task sinks to the bottom and stays counted as done for today, including an older task ticked today.
+3. Every row opens: study and vacation days to their subtasks (with times, ticks saved), Claude tasks to description, steps and a link to the Board, your tasks to their full text and Remove with Undo. Closed rows show at most two lines.
+4. Task lists card at the bottom of Home and on the Tasks tab: Mine, Claude, Study, Vacation week, Calendar, each with its count. Tapping one filters the list and says so; tapping it again, or Show all, clears it.
+5. Add box has an outline, a date (today by default, a later date goes under Coming up) and a 15-minute time stepper with a clear button. An empty title is not added.
+6. Next up names what comes after it and never shows more than three lines of a long note.
+7. Study ticks are saved in the day document and never counted as yours. Vacation ticks are saved in the vacation plan.
+8. No new table, key or server change. No horizontal scroll from 360 px to 1920 px; dark and light; no console errors.
+
+**Verification evidence** (browser runs against a copy of the database; his real day and vacation documents were loaded for the main run)
+- `t22_tasks`: 55 checks, Home on his real data (six or seven rows in order, counts agree, long note clipped, vacation and study ticks saved and kept after reload, Claude row details, tick, remove and undo, filter, add with date and time stepper, calendar events, family day, empty day, after the vacation week, 360 / 390 / 800 / 1440 widths, both themes) and the Tasks tab parity.
+- Older suites rewritten for the new list: `t16` (71), `t17` (49), `t18` (61), `t21_vwk` (22).
+
+**Not verified:** the live GitHub Pages site after deploy; a real iPhone or Galaxy Tab. Reopen the app once to pick up the new offline cache (`realtor-os-v22`).

@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "2.3.0";
+  var APP_VERSION = "2.4.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -98,7 +98,15 @@
   function byPriority(a, b) { return rank(a) - rank(b) || (a.next || "").localeCompare(b.next || ""); }
   function all() { return Array.from(S.contacts.values()); }
   function dueList() { var t = today(); return all().filter(function (c) { return c.stage !== "Dead" && c.next && c.next <= t; }).sort(byPriority); }
+  /* Leads: people added as a lead who are still open (not parked, closed or dead). New ones first, then the newest. */
+  var LEAD_OUT = ["Nurture", "Past client", "Dead", "Closed", "Under contract"];
+  function isLead(c) { return c.rel === "Lead" && LEAD_OUT.indexOf(c.stage || "New") < 0; }
+  function leadList() { return all().filter(isLead).sort(function (a, b) { return (b.stage === "New" || !b.stage ? 1 : 0) - (a.stage === "New" || !a.stage ? 1 : 0) || (b.added || "").localeCompare(a.added || "") || byPriority(a, b); }); }
+  function capw(s) { s = String(s || ""); return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
+  function kindLabel(c) { return c.kind ? capw(c.kind) : "No type"; }
   function pill(t) { return t ? '<span class="pill ' + esc(t) + '">' + esc(t[0].toUpperCase() + t.slice(1)) + "</span>" : ""; }
+  /* The short form for slim rows: 4d late, Today, or the date. */
+  function dueShort(c) { if (!c.next) return "No date"; var d = diff(c.next, today()); if (d > 0) return '<span class="late">' + d + "d late</span>"; if (d === 0) return "Today"; return esc(fdate(c.next)); }
   function dueText(c) { if (!c.next) return "No date"; var d = diff(c.next, today()); if (d > 0) return '<span class="late">' + d + (d === 1 ? " day" : " days") + " overdue</span>"; if (d === 0) return "Due today"; return "Due " + fdate(c.next); }
 
   /* ---------- feedback ---------- */
@@ -155,6 +163,13 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.4.0", date: "2026-11-22", title: "Clients: Leads on top, a slimmer Due list", items: [
+      "New Leads section at the top of Clients. It shows people who are leads and still being worked: the newest and untouched ones first, with a New tag. It shows 5 and has Show all.",
+      "Due today is now a slim list under Leads. Each row is the name, the type of lead (Buyer, Seller, Investor or No type), the status, and how late it is (4d late). Many more fit on the screen.",
+      "Tap any row and a small window opens. Call, WhatsApp or Email, log Talked / Messaged / No answer / Later, add a note, add a missing phone or email, pick Buyer / Seller / Investor if it has no type, or open the full profile.",
+      "The birthdays and moments card moved below the Due list.",
+      "Nothing about who is due changed. Home and the number on the Clients button count the same people as before."
+    ] },
     { v: "2.3.0", date: "2026-11-22", title: "Your five pillars, on the dashboard", items: [
       "New Five pillars card on Home: Commercial licence, Prospecting set-up, Communication, Improve this app, Body and mind. Tap one to see its plan for the week and today's habits.",
       "Today has one new row, Pillar habits, with a few small habits under each pillar. Tick them there or on the card. They are saved with your day and never count as your own tasks.",
@@ -356,7 +371,7 @@
     else if (S.tab === "pipeline") renderPipeline();
     else if (S.tab === "email") { if (window.CDMailUI) window.CDMailUI.render(); }
     else renderMore();
-    if (S.sheetId === "__match") renderMatchResults(); else if (S.sheetId === "__pick") renderPickResults(); else if (S.sheetId && S.sheetId.slice(0, 2) !== "__") refreshSheetParts();
+    if (S.sheetId === "__act") refreshAct(); else if (S.sheetId === "__match") renderMatchResults(); else if (S.sheetId === "__pick") renderPickResults(); else if (S.sheetId && S.sheetId.slice(0, 2) !== "__") refreshSheetParts();
   }
 
   /* ---------- empty / restore ---------- */
@@ -635,9 +650,24 @@
     if (!out) out = '<span class="note">No phone or email yet</span>';
     return out;
   }
-  function dueCard(c) {
-    return '<article class="card due"><button class="due-head" type="button" data-open="' + esc(c.id) + '">' + avatar(c) + '<span class="dh-txt"><span class="nm">' + esc(nm(c)) + '</span><span class="ln">' + pill(c.temp) + "<span>" + esc(stageLabel(c)) + "</span><span>" + dueText(c) + "</span>" + (c.kind ? "<span>" + esc(c.kind) + "</span>" : "") + "</span></span></button>" +
-      '<div class="reach">' + reachRow(c) + '</div><div class="outcomes"><button type="button" data-act="talked" data-id="' + esc(c.id) + '">Talked</button><button type="button" data-act="messaged" data-id="' + esc(c.id) + '">Messaged</button><button type="button" data-act="noanswer" data-id="' + esc(c.id) + '">No answer</button><button type="button" data-act="later" data-id="' + esc(c.id) + '">Later</button></div></article>';
+  /* One slim row: the name, then the type and the status. Tap it and the action modal opens. */
+  var CHEV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  function crow(c, kind) {
+    var isDue = kind === "due", t = today();
+    var right = isDue ? dueShort(c) : (!c.stage || c.stage === "New" ? '<span class="newtag">New</span>' : (c.next && c.next <= t ? dueShort(c) : ""));
+    return (isDue ? '<article class="due crow">' : '<div class="lead crow">') +
+      '<button class="crow-b" type="button" data-act="act" data-id="' + esc(c.id) + '" aria-haspopup="dialog">' + avatar(c) +
+      '<span class="ct"><span class="nm">' + esc(nm(c)) + '</span><span class="ln"><span>' + esc(kindLabel(c)) + '</span><span class="sep" aria-hidden="true">&middot;</span><span>' + esc(stageLabel(c)) + "</span></span></span>" +
+      '<span class="cr">' + right + '</span><span class="cv">' + CHEV + "</span></button>" + (isDue ? "</article>" : "</div>");
+  }
+  function leadsSection() {
+    var l = leadList(), cap = 5, shown = S.showAllLeads ? l : l.slice(0, cap);
+    var h = '<section class="csec" id="leadsSec" aria-label="Leads"><div class="sec"><h2>Leads</h2><span class="meta num">' + l.length + " open</span></div>";
+    if (!l.length) h += '<div class="card empty slim"><p>No open leads right now. Tap + New lead to add one.</p></div>';
+    else h += '<div class="clist">' + shown.map(function (c) { return crow(c, "lead"); }).join("") + "</div>";
+    if (l.length > cap) h += '<p class="more cfoot"><button type="button" data-act="leadsall">' + (S.showAllLeads ? "Show fewer" : "Show all " + l.length + " leads") + "</button></p>";
+    h += "</section>";
+    return h;
   }
   /* Clients has two views: who is due today, and everyone. */
   function clientsSeg(cur) {
@@ -647,15 +677,16 @@
     var due = dueList(), cap = S.settings.dailyCap || 15, shown = S.showAllDue ? due : due.slice(0, cap), h = clientsSeg("today");
     /* tdgrid: one column on a phone; the list and a numbers panel side by side on a laptop or tablet */
     h += '<div class="tdgrid"><div class="tdmain">';
-    h += momentsCard();
+    h += leadsSection();
     if (due.length) {
-      h += '<div class="sec"><h2>Reach out today</h2><span class="meta num">' + shown.length + " of " + due.length + " due</span></div><div class=\"stack\">" + shown.map(dueCard).join("") + "</div>";
+      h += '<section class="csec" id="dueSec" aria-label="Due"><div class="sec"><h2>Due today</h2><span class="meta num">' + shown.length + " of " + due.length + " due</span></div><div class=\"clist\">" + shown.map(function (c) { return crow(c, "due"); }).join("") + "</div></section>";
       if (due.length > shown.length) h += '<p class="more"><button type="button" data-act="showall">Show all ' + due.length + " due</button> (your daily list is capped at " + cap + ")</p>";
     } else {
       var up = all().filter(function (c) { return c.stage !== "Dead" && c.next; }).sort(function (a, b) { return a.next.localeCompare(b.next) || byPriority(a, b); }).slice(0, 8);
       h += '<div class="card empty"><h2>Nothing due today</h2><p>Your next follow-ups are below. They appear here on their date.</p></div>';
       if (up.length) h += '<div class="sec"><h2>Coming up</h2><span class="meta">next ' + up.length + "</span></div><div>" + up.map(function (c) { return listRow(c, false); }).join("") + "</div>";
     }
+    h += momentsCard();
     /* Numbers go under the list (a side panel on a wide screen). The Board shows them first. */
     h += '</div><aside class="tdside">';
     h += '<div class="sec" style="margin-top:18px"><h2>Your numbers</h2><a class="lnk ghost" href="home.html">Open Home</a></div>';
@@ -944,7 +975,48 @@
     refreshSheetParts(); $("#veil").addEventListener("click", function (e) { if (e.target.id === "veil") closeSheet(); });
     $(".sheet").scrollTop = 0;
   }
-  function closeSheet() { S.sheetId = null; S.dealMode = false; S.confirmDelete = false; $("#sheetHost").innerHTML = ""; scheduleRender(); }
+  /* ---------- the action modal: tap a lead or a due row, then do the thing ---------- */
+  function openAct(id) {
+    var c = S.contacts.get(id); if (!c) return; S.sheetId = "__act"; S.actId = id;
+    $("#sheetHost").innerHTML = '<div class="veil" id="veil"><div class="sheet act" role="dialog" aria-modal="true" aria-labelledby="actName" tabindex="-1">' +
+      '<div class="act-top"><span id="actAv"></span><div class="dh"><h2 id="actName"></h2><p class="act-sub" id="actSub"></p></div><button class="btn" type="button" data-act="closesheet">Close</button></div>' +
+      '<div id="actReach" class="reach act-reach"></div><div id="actAdd"></div>' +
+      '<div class="sec-lbl">How did it go?</div><div class="outcomes act-out"><button type="button" data-act="talked" data-id="' + esc(id) + '">Talked</button><button type="button" data-act="messaged" data-id="' + esc(id) + '">Messaged</button><button type="button" data-act="noanswer" data-id="' + esc(id) + '">No answer</button><button type="button" data-act="later" data-id="' + esc(id) + '">Later</button></div>' +
+      '<div id="actType"></div>' +
+      '<div class="sec-lbl">Add a note</div><div class="act-add n"><input class="field" id="actNote" placeholder="What was said?" aria-label="Note"><button class="btn small" type="button" data-act="actnote">Add</button></div>' +
+      '<button class="btn act-prof" type="button" data-act="actprofile">Open full profile</button></div></div>';
+    refreshAct();
+    $("#veil").addEventListener("click", function (e) { if (e.target.id === "veil") closeSheet(); });
+    var sh = $(".sheet.act"); if (sh) sh.focus();
+  }
+  /* Updates only what can change (name, status, contact buttons); never the boxes you are typing in. */
+  function refreshAct() {
+    var c = S.contacts.get(S.actId); if (!c) { closeSheet(); return; }
+    if (!$("#actName")) return;
+    $("#actAv").innerHTML = avatar(c);
+    $("#actName").textContent = nm(c);
+    $("#actSub").innerHTML = esc(kindLabel(c)) + " &middot; " + esc(stageLabel(c)) + " &middot; " + dueText(c);
+    $("#actReach").innerHTML = (c.phone || c.email) ? reachRow(c) : "";
+    var need = (c.phone ? "" : "p") + (c.email ? "" : "e"), add = $("#actAdd");
+    if (add.dataset.need !== need) {
+      add.dataset.need = need;
+      add.innerHTML = need ? '<div class="sec-lbl">' + (need === "pe" ? "No phone or email yet" : "Add the missing one") + '</div><div class="act-add">' + (c.phone ? "" : '<input class="field" id="actPhone" inputmode="tel" placeholder="Phone" aria-label="Phone">') + (c.email ? "" : '<input class="field" id="actEmail" inputmode="email" placeholder="Email" aria-label="Email">') + '<button class="btn small" type="button" data-act="actcontact">Save</button></div>' : "";
+    }
+    var ty = $("#actType"), tn = c.kind ? "" : "1";
+    if (ty.dataset.need !== tn) {
+      ty.dataset.need = tn;
+      ty.innerHTML = tn ? '<div class="sec-lbl">Type</div><div class="chips" role="group" aria-label="Type of lead">' + KINDS.map(function (k) { return '<button class="chip" type="button" data-act="acttype" data-v="' + k + '" aria-pressed="false">' + capw(k) + "</button>"; }).join("") + '</div><p class="note" style="margin:6px 0 0">Pick one to put them on the pipeline.</p>' : "";
+    }
+  }
+  function saveActContact() {
+    var c = S.contacts.get(S.actId); if (!c) return;
+    var pi = $("#actPhone"), ei = $("#actEmail"), f = {}, tags = (c.tags || []).slice();
+    if (pi && pi.value.trim()) { var ph = normPhone(pi.value); if (ph.replace(/\D/g, "").length < 10) { toast("Check the phone number"); pi.focus(); return; } f.phone = ph; if (tags.indexOf("ch:phone") < 0) tags.push("ch:phone"); }
+    if (ei && ei.value.trim()) { var em = ei.value.trim().toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { toast("Check the email"); ei.focus(); return; } f.email = em; if (tags.indexOf("ch:email") < 0) tags.push("ch:email"); }
+    if (!f.phone && !f.email) { toast("Type a phone or an email"); var fx = pi || ei; if (fx) fx.focus(); return; }
+    f.tags = tags; save(c.id, f); toast("Saved");
+  }
+  function closeSheet() { S.sheetId = null; S.actId = null; S.dealMode = false; S.confirmDelete = false; $("#sheetHost").innerHTML = ""; scheduleRender(); }
   function refreshSheetParts() {
     var c = S.contacts.get(S.sheetId); if (!c || !$("#shStage")) return;
     var cap = function (s) { return s[0].toUpperCase() + s.slice(1); };
@@ -1057,8 +1129,14 @@
     else if (a === "gotab") setTab(el.dataset.v);
     else if (a === "copy") { var v2 = el.dataset.v; var done = function () { toast("Copied " + v2); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v2).then(done, function () { toast(v2); }); else toast(v2); }
     else if (a === "copymsg") { var mv = ($("#shMsg") || {}).value || ""; if (!mv.trim()) { toast("Nothing to copy"); return; } if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(mv).then(function () { toast("Message copied"); }, function () { toast("Select the text and copy it"); }); else toast("Select the text and copy it"); }
-    else if (a === "talked" || a === "messaged" || a === "noanswer") touch(id2, a);
-    else if (a === "later") { save(id2, { next: addDays(today(), 7) }); toast("Moved to next week"); }
+    else if (a === "talked" || a === "messaged" || a === "noanswer") { touch(id2, a); if (S.sheetId === "__act") closeSheet(); }
+    else if (a === "later") { save(id2, { next: addDays(today(), 7) }); toast("Moved to next week"); if (S.sheetId === "__act") closeSheet(); }
+    else if (a === "act") openAct(id2);
+    else if (a === "leadsall") { S.showAllLeads = !S.showAllLeads; render(); }
+    else if (a === "acttype") { var ac = S.contacts.get(S.actId); if (ac) save(ac.id, kindFields(ac, el.dataset.v)); }
+    else if (a === "actnote") { var ni = $("#actNote"); if (S.actId && ni && ni.value.trim()) { logNote(S.actId, ni.value, "Note"); ni.value = ""; toast("Note added"); } else if (ni) ni.focus(); }
+    else if (a === "actprofile") { var pid = S.actId; closeSheet(); if (pid) openSheet(pid); }
+    else if (a === "actcontact") saveActContact();
     else if (a === "showall") { S.showAllDue = true; render(); }
     else if (a === "pipemore") { S.pipeMore[el.dataset.stage] = (S.pipeMore[el.dataset.stage] || 25) + 25; render(); }
     else if (a === "clearf") { S.f = { q: "", prov: "", temp: "", stage: "", kind: "", source: "", tag: "", email: false, phone: false, consent: "", limit: 60 }; listsShellFor = ""; render(); }
@@ -1132,6 +1210,8 @@
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && S.sheetId) closeSheet();
+    if (e.key === "Enter" && e.target.id === "actNote") { e.preventDefault(); $('[data-act="actnote"]').click(); }
+    if (e.key === "Enter" && (e.target.id === "actPhone" || e.target.id === "actEmail")) { e.preventDefault(); $('[data-act="actcontact"]').click(); }
     if (e.key === "Enter" && e.target.id === "shTagIn") { e.preventDefault(); $('[data-act="addtag"]').click(); }
     if (e.key === "Enter" && e.target.id === "shLogIn") { e.preventDefault(); $('[data-act="addlog"]').click(); }
   });
@@ -1145,7 +1225,7 @@
   $("#themeBtn").addEventListener("click", function () { setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"); });
   setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
 
-  function setTab(t) { if (TABS.indexOf(t) < 0) t = "today"; S.tab = t; if (location.hash !== "#" + t) location.hash = t; listsShellFor = ""; S.showAllDue = false; window.scrollTo(0, 0); render(); }
+  function setTab(t) { if (TABS.indexOf(t) < 0) t = "today"; S.tab = t; if (location.hash !== "#" + t) location.hash = t; listsShellFor = ""; S.showAllDue = false; S.showAllLeads = false; window.scrollTo(0, 0); render(); }
   window.addEventListener("hashchange", function () { var t = location.hash.slice(1); if (TABS.indexOf(t) >= 0 && t !== S.tab) { S.tab = t; listsShellFor = ""; render(); } });
 
   /* ---------- sign-in ---------- */

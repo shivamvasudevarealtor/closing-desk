@@ -13,6 +13,7 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 | PLN-006 | Vacation week card on Home (commercial licence study plan) | Realtor OS / Home | P1 | Vacation week | Review |
 | PLN-007 | One Today list: every task at a glance, tap to expand, split by source at the bottom | Realtor OS / Home, Tasks | P0 | v2.2 | Review |
 | PLN-008 | Five pillars: a Home card, daily habits in Today, Communication practice, steps under tasks, licence waiting | Realtor OS / Home, Tasks | P0 | v2.3 | Review |
+| PLN-009 | Clients: a Leads section on top, a slim Due list (name, type, status), tap a row for an action modal | Realtor OS / Clients | P0 | v2.4 | Review |
 
 ## PLN-001: Vacation week plan workspace
 
@@ -166,3 +167,26 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 - Found and fixed while testing: a save finishing redrew the card and wiped a half-typed step; a redraw that changes nothing is now skipped.
 
 **Not verified:** the live GitHub Pages site after deploy; a real iPhone or Galaxy Tab. Reopen the app once to pick up the new offline cache (`realtor-os-v23`).
+
+## PLN-009: Clients: Leads on top, slim Due list, action modal
+
+**Why:** The Clients page was too big for the people due (each was a tall card with the phone line and four buttons). Shivam wants a Leads section first, then a concise Due section showing only name, type of lead and status, and a modal opened by tapping a row where he does what he wants.
+
+**Where:** Clients (`index.html#today`). Code: `app.js` (`isLead`, `leadList`, `crow`, `leadsSection`, `dueShort`, `openAct`, `refreshAct`, `saveActContact`, the click and keydown handlers), `app.css` (block "Clients: Leads and Due as slim rows, and the action modal"). `sw.js` cache `realtor-os-v24`.
+
+**Definition used (his to change):** a lead is a contact with relationship Lead whose stage is not Nurture, Past client, Dead, Closed or Under contract. New and newest first. A lead that is also due appears in both lists; the due list, its order and its count are unchanged, so Home's Reach card and the Clients badge still agree.
+
+**Acceptance criteria**
+1. Order on Clients: Leads, Due today, then Moments and Your numbers. On a laptop the numbers panel stays beside the list.
+2. Leads show 5, with Show all N leads and Show fewer. Each row: name, type (or No type), status, a New tag for untouched leads, or how late it is.
+3. Due rows are slim (about 58 px, was about 150), show name, type, status and when due, and have no inline buttons.
+4. Tapping a row opens a dialog named after the person. Escape, Close or tapping outside closes it. Focus moves into it.
+5. In the modal: Copy / Call / WhatsApp / Email when saved; Talked, Messaged, No answer, Later (log, move the next date, close); a note (Enter saves, history updated); a missing phone or email can be added (phone needs 10 digits, email must look like one, nothing is saved if either is wrong, contact tags added); Buyer / Seller / Investor chips only when no type; Open full profile.
+6. A half-typed note is not wiped by a save redrawing the modal.
+7. No sideways scroll at 360 / 390 / 768 / 1440, both themes, controls at least 44 px on the rows and 34 px in the modal.
+
+**Verification evidence** (browser runs against a copy of the database; the 811 real contacts were loaded)
+- `t24_clients`: 44 checks covering all of the above.
+- Older suites that assumed the tall cards were updated: `t14` (section order) and `t15` (tablet: one column, not two across). The other 17 suites pass unchanged (t12, t12b, t13, t16, t17, t18, t19a-h, t21_vwk, t22_tasks, t23_pillars).
+
+**Not verified:** the live GitHub Pages site after deploy; a real iPhone or Galaxy Tab. Reopen the app once to pick up the new offline cache (`realtor-os-v24`).

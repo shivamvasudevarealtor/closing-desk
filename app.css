@@ -394,3 +394,45 @@ button, a.lnk, .btn { transition: background-color .15s, border-color .15s, tran
 .empty h2 { font-size: 22px; }
 .tl { border-color: var(--line2); }
 @media (max-width:380px){.seg2 .s{padding:0 11px}}
+
+/* ---------- Clients: Leads and Due as slim rows, and the action modal ---------- */
+.csec { margin: 0 0 6px; }
+.csec .sec { margin: 14px 0 8px; }
+.clist { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.crow + .crow { border-top: 1px solid var(--line); }
+.crow-b { width: 100%; min-height: 58px; display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 14px; background: none; border: 0; text-align: left; color: inherit; cursor: pointer; }
+.crow-b:hover { background: var(--accent-soft); }
+.crow-b:active { background: var(--accent-soft); }
+.crow-b:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.crow .av { width: 36px; height: 36px; font-size: 13px; }
+.crow .ct { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.crow .nm { font-size: 16px; font-weight: 700; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.crow .ln { display: flex; gap: 6px; align-items: center; margin: 0; font-size: 13px; color: var(--muted); line-height: 1.3; white-space: nowrap; overflow: hidden; }
+.crow .ln span { overflow: hidden; text-overflow: ellipsis; }
+.crow .sep { opacity: .7; }
+.crow .cr { flex: none; font-size: 12.5px; color: var(--muted); white-space: nowrap; text-align: right; }
+.crow .cv { flex: none; color: var(--muted); display: grid; place-items: center; }
+.newtag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.cfoot { display: flex; gap: 14px; flex-wrap: wrap; margin: 6px 0 0; padding: 2px 2px; }
+.cfoot button { min-height: 36px; }
+.card.empty.slim { padding: 12px 14px; border-radius: 16px; }
+.card.empty.slim p { margin: 0; }
+@media (max-width: 380px) { .crow .cr { max-width: 74px; white-space: normal; line-height: 1.2; } }
+
+/* the action modal */
+.sheet.act { height: auto; max-height: 90%; border-radius: 22px 22px 0 0; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); outline: none; animation: actup .2s ease-out; }
+@media (min-width: 700px) { .sheet.act { max-width: 460px; border-radius: 22px; } }
+.act-top { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.act-top .dh { min-width: 0; flex: 1; }
+.act-top h2 { font-size: 20px; line-height: 1.2; overflow-wrap: anywhere; }
+.act-sub { margin: 3px 0 0; font-size: 14px; color: var(--muted); }
+.act-reach { padding: 0; margin: 4px 0 6px; }
+.act-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.act-add.n { grid-template-columns: minmax(0, 1fr) auto; }
+.act-add:has(input:only-of-type) { grid-template-columns: minmax(0, 1fr) auto; }
+.act-add .btn { min-height: 44px; }
+.act-out { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.act-prof { width: 100%; margin-top: 16px; }
+.sheet.act .chip { min-height: 44px; padding: 0 16px; font-size: 15px; }
+@keyframes actup { from { transform: translateY(14px); opacity: .6; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sheet.act { animation: none; } }

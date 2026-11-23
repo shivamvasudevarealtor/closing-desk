@@ -28,7 +28,7 @@ Repo > Settings > Pages > Source: **Deploy from a branch** > Branch: `main`, fol
 More > **Restore a backup** > choose your `closing-desk-backup-....json`. Goals and closed deals come back with it.
 
 ## Everyday use
-- Home shows who to reach out to. Tap a name, then Talked / Messaged / No answer / Later to log it and set the next date. Clients has Leads on top, then Due today as a slim list (name, type, status). Tap a row to open the action window.
+- Home order: Five pillars, Today (5 rows, Show more), then Reach out under it, then the rest. Reach out: tap a name, then Talked / Messaged / No answer / Later to log it and set the next date. Clients has Leads on top, then Due today as a slim list (name, type, status). Tap a row to open the action window.
 - Phone and laptop stay in sync live.
 - If the connection drops, you see your last saved copy. Changes don't save until it's back, and the app tells you.
 - More > **Download backup** after any big session. Keep that file somewhere private. It includes your notes.

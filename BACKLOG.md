@@ -14,6 +14,7 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 | PLN-007 | One Today list: every task at a glance, tap to expand, split by source at the bottom | Realtor OS / Home, Tasks | P0 | v2.2 | Review |
 | PLN-008 | Five pillars: a Home card, daily habits in Today, Communication practice, steps under tasks, licence waiting | Realtor OS / Home, Tasks | P0 | v2.3 | Review |
 | PLN-009 | Clients: a Leads section on top, a slim Due list (name, type, status), tap a row for an action modal | Realtor OS / Clients | P0 | v2.4 | Review |
+| PLN-010 | Home: Pillars first, a compact Today, Reach directly under Today, the rest after | Realtor OS / Home | P0 | v2.5 | Review |
 
 ## PLN-001: Vacation week plan workspace
 
@@ -190,3 +191,27 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 - Older suites that assumed the tall cards were updated: `t14` (section order) and `t15` (tablet: one column, not two across). The other 17 suites pass unchanged (t12, t12b, t13, t16, t17, t18, t19a-h, t21_vwk, t22_tasks, t23_pillars).
 
 **Not verified:** the live GitHub Pages site after deploy; a real iPhone or Galaxy Tab. Reopen the app once to pick up the new offline cache (`realtor-os-v24`).
+
+## PLN-010: Home order and a smaller Today
+
+**Why:** On the main dashboard the Today card was huge (769 px on a phone with 7 items, taller than the screen), Reach out came after it, and the Five pillars card was far down the page. Shivam wants the pillars on top, Today in place but smaller, Reach right under Today, and the rest after.
+
+**Where:** `home.js` (`build`, the options passed to the cards), `home.css` (laptop grid), `tasks-all.js` (`compact` and `max` options, the add box), `tasks-all.css` (block "Compact cards"). `sw.js` cache `realtor-os-v25`.
+
+**Acceptance criteria**
+1. Order on a phone and tablet: greeting, Five pillars, Today, Reach out, then the day tiles, Next up, Deals, Builders, Task lists, Vacation week, Progress.
+2. On a laptop: Pillars across the top (full width); Today on the left with Reach directly under it (same left edge and width); the day tiles, Next up and Deals in a column on the right; Task lists and the rest full width below.
+3. Today on Home shows 5 rows then "Show N more" and "Show less". Rows are about 57 px (were about 80), titles are one line. The card is about 480 px (was 769 px).
+4. The add-a-task box is one text line until tapped. After one tap its date, time and Add options stay open. Typing, the time buttons and Add all work.
+5. Five pillars is compact (five rows of about 57 px, the long note hidden) and each pillar still opens to its plan.
+6. The Tasks page Today and the Task lists card are unchanged (not compact, full add form).
+7. No sideways scroll at 360 / 390 / 820 / 1138 / 1440, both themes, rows at least 44 px.
+
+**Assumptions to confirm:** "the rest" means everything else goes after Reach out. The day tiles and Next up moved below Reach out (they were above Today before).
+
+**Verification evidence** (browser runs against a copy of the database; his real day, vacation and main documents were loaded)
+- `t25_home_order`: 32 checks covering the points above.
+- Found and fixed while testing: tapping the time buttons in the collapsed add box folded the options away (a redraw dropped the focus); the options now stay open once tapped.
+- Older suites updated for the new order and the 5-row cap: `t18` (layout), `t21_vwk`, `t22_tasks`, `t23_pillars`.
+
+**Not verified:** the live GitHub Pages site after deploy; a real iPhone or Galaxy Tab. Reopen the app once to pick up the new offline cache (`realtor-os-v25`).

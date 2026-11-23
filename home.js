@@ -260,9 +260,9 @@
 
   /* The one list: everything for today in one card, rows that open to show their subtasks. The split by source is the "Task lists" card near the bottom. */
   function ctx() { return { plan: S.plan }; }
-  function renderToday() { TALL.draw(els.today, "today", ctx, { title: "Today", link: "tasks.html#today", linkText: "Open Tasks", studyHref: "#hmVwk", calHref: "tasks.html#today" }); }
+  function renderToday() { TALL.draw(els.today, "today", ctx, { title: "Today", link: "tasks.html#today", linkText: "Open Tasks", studyHref: "#hmVwk", calHref: "tasks.html#today", compact: true, max: 5 }); }
   function renderLists() { TALL.draw(els.lists, "lists", ctx, {}); }
-  function renderPillars() { TALL.draw(els.pillars, "pillars", ctx, {}); }
+  function renderPillars() { TALL.draw(els.pillars, "pillars", ctx, { compact: true }); }
   function renderDeals() {
     var el = els.deals; el.textContent = "";
     el.appendChild(cardHead("deal", "home", "Deals in motion", null, false, "index.html#pipeline", "Open Pipeline"));
@@ -409,10 +409,11 @@
     els.vwk = h("section", { class: "hm-card hm-vwk", id: "hmVwk", "aria-label": "Vacation week", hidden: true });
     els.prog = h("details", { class: "hm-prog" });
     els.toast = h("div", { class: "hm-toast", role: "status", hidden: true });
-    /* Tasks come first on a phone; on a laptop the people to reach sit on the left and the day on the right. */
-    var tasks = h("div", { class: "hm-col tasks" }, [els.today]), people = h("div", { class: "hm-col people" }, [els.reach]);
-    els.cols.className = "hm-cols"; els.cols.appendChild(tasks); els.cols.appendChild(people);
-    [els.top, els.hello, els.alert, els.glance, els.next, els.cols, els.pillars, els.deals, els.bld, els.lists, els.vwk, els.prog].forEach(function (e) { app.appendChild(e); });
+    /* Order: Pillars first, then Today with Reach right under it, then everything else.
+       On a laptop that is two columns: Pillars across the top, Today and Reach on the left, the rest on the right. */
+    var main = h("div", { class: "hm-col hm-main" }, [els.today, els.reach]), side = h("div", { class: "hm-col hm-side" }, [els.glance, els.next, els.deals, els.bld]);
+    els.cols.className = "hm-cols"; els.cols.appendChild(main); els.cols.appendChild(side);
+    [els.top, els.hello, els.alert, els.pillars, els.cols, els.lists, els.vwk, els.prog].forEach(function (e) { app.appendChild(e); });
     document.body.appendChild(els.toast);
   }
   function setTheme(t) {

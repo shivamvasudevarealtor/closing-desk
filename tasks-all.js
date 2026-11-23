@@ -189,7 +189,7 @@ window.TALL = (function () {
   var FOCUS_RE = /^(tl(Title|Date|Time|Wc)|tlSub-.+)$/, TEXT_RE = /^(tlTitle|tlWc|tlSub-.+)$/;
 
   /* ---------- view state ---------- */
-  var subDraft = {}, wcBudget = 0, wcText = "", openMap = {}, filter = null, showAll = false, undo = null, undoTimer = null, F = { title: "", date: "", time: "" }, mounts = [], raf = 0;
+  var subDraft = {}, wcBudget = 0, wcText = "", openMap = {}, filter = null, showAll = false, undo = null, undoTimer = null, F = { title: "", date: "", time: "" }, addTouched = false, mounts = [], raf = 0;
   try { openMap = JSON.parse(sessionStorage.getItem("cd.tl.open") || "{}") || {}; } catch (e) { openMap = {}; }
   function saveOpen() { try { sessionStorage.setItem("cd.tl.open", JSON.stringify(openMap)); } catch (e) {} }
 
@@ -315,10 +315,11 @@ window.TALL = (function () {
       h("button", { type: "button", class: "tl-sb2", "data-tl-step": "1", "aria-label": "15 minutes later" }, [ic("plus")])
     ]);
     var kids = [title, h("div", { class: "tl-opts" }, [dateChip, step, F.time ? h("button", { type: "button", class: "tl-clr", "data-tl-notime": "1", "aria-label": "Clear the time" }, [ic("x")]) : null, h("button", { type: "submit", class: "tl-addb", "aria-label": "Add task" }, [ic("plus"), "Add"])])];
-    return h("form", { class: "tl-add", "data-tl-form": "1", novalidate: true }, kids);
+    return h("form", { class: "tl-add" + (addTouched || F.title || F.date || F.time ? " touched" : ""), "data-tl-form": "1", novalidate: true }, kids);
   }
   function drawToday(root, M, o) {
-    root.textContent = "";
+    root.textContent = ""; root.classList.toggle("compact", !!o.compact);
+    var mx = o.max || LIST_MAX;
     var shown = M.list.filter(function (it) { return !filter || it.src === filter; });
     var head = h("div", { class: "tl-h" }, [h("h2", {}, [h("span", { class: "tl-hi", html: SVG.flag }), o.title || "Today", h("span", { class: "tl-cn tn" + (M.open ? "" : " zero"), text: String(M.open) })])]);
     if (o.link) head.appendChild(h("a", { class: "tl-more", href: o.link }, [o.linkText || "Open Tasks", ic("go")]));
@@ -338,11 +339,11 @@ window.TALL = (function () {
       }
       root.appendChild(h("div", { class: "tl-empty" }, kids));
     } else {
-      var ul = h("ul", { class: "tl-list" }), cut = !showAll && shown.length > LIST_MAX ? LIST_MAX : shown.length;
+      var ul = h("ul", { class: "tl-list" }), cut = !showAll && shown.length > mx ? mx : shown.length;
       shown.slice(0, cut).forEach(function (it) { ul.appendChild(row(it, o)); });
       root.appendChild(ul);
       if (shown.length > cut) root.appendChild(h("button", { type: "button", class: "tl-foot", "data-tl-all": "1" }, [h("span", { text: "Show " + (shown.length - cut) + " more" }), ic("go")]));
-      else if (showAll && shown.length > LIST_MAX) root.appendChild(h("button", { type: "button", class: "tl-foot", "data-tl-all": "0" }, [h("span", { text: "Show less" }), ic("go")]));
+      else if (showAll && shown.length > mx) root.appendChild(h("button", { type: "button", class: "tl-foot", "data-tl-all": "0" }, [h("span", { text: "Show less" }), ic("go")]));
     }
     if (!filter && M.later.length) {
       var lt = h("div", { class: "tl-later" }, [h("h3", { text: "Coming up" })]), lu = h("ul", { class: "tl-lu" });
@@ -402,7 +403,7 @@ window.TALL = (function () {
     return d;
   }
   function drawPillars(root, M, o) {
-    root.textContent = "";
+    root.textContent = ""; root.classList.toggle("compact", !!o.compact);
     var P = M.pil; if (!PD || !P) return;
     var flags = TD.flags(), td = M.td;
     root.appendChild(h("div", { class: "tl-h" }, [h("h2", {}, [h("span", { class: "tl-hi", html: SVG.flag }), "Five pillars", h("span", { class: "tl-cn tn" + (P.done ? "" : " zero"), text: P.done + "/" + P.total })])]));
@@ -511,6 +512,8 @@ window.TALL = (function () {
     if (t.id === "tlTime") { F.time = TD.mins(t.value) != null ? t.value : ""; repaint(); }
   });
   document.addEventListener("input", function (e) { var t = e.target; if (!t) return; if (t.id === "tlTitle") F.title = t.value; else if (t.id === "tlWc") { wcText = t.value; wcOut(); } else if (t.id.indexOf("tlSub-") === 0) subDraft[t.id.slice(6)] = t.value; });
+  /* On a compact card the add box starts as one line. Once you tap it the options stay open (a redraw would otherwise drop the focus and fold them away). */
+  document.addEventListener("focusin", function (e) { var f = e.target && e.target.closest ? e.target.closest("form.tl-add") : null; if (f && !addTouched) { addTouched = true; f.classList.add("touched"); } });
   document.addEventListener("submit", function (e) {
     var f = e.target; if (!f || !f.hasAttribute) return;
     if (f.hasAttribute("data-tl-subform")) {

@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "2.4.0";
+  var APP_VERSION = "2.5.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -163,6 +163,13 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.5.0", date: "2026-11-23", title: "Home: Pillars first, a smaller Today", items: [
+      "Five pillars is now the first card on Home, right under the greeting, and slimmer.",
+      "Today is much shorter. It shows 5 rows with a Show more button, one-line titles, and the add-a-task box is one line until you tap it.",
+      "Reach out sits directly under Today. The day tiles, Next up, Deals and the rest come after.",
+      "On a laptop, Pillars runs across the top, Today and Reach are on the left, and the rest is on the right.",
+      "The Tasks page is unchanged and still shows the full list."
+    ] },
     { v: "2.4.0", date: "2026-11-22", title: "Clients: Leads on top, a slimmer Due list", items: [
       "New Leads section at the top of Clients. It shows people who are leads and still being worked: the newest and untouched ones first, with a New tag. It shows 5 and has Show all.",
       "Due today is now a slim list under Leads. Each row is the name, the type of lead (Buyer, Seller, Investor or No type), the status, and how late it is (4d late). Many more fit on the screen.",

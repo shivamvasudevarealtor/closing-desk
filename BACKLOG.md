@@ -15,6 +15,7 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 | PLN-008 | Five pillars: a Home card, daily habits in Today, Communication practice, steps under tasks, licence waiting | Realtor OS / Home, Tasks | P0 | v2.3 | Review |
 | PLN-009 | Clients: a Leads section on top, a slim Due list (name, type, status), tap a row for an action modal | Realtor OS / Clients | P0 | v2.4 | Review |
 | PLN-010 | Home: Pillars first, a compact Today, Reach directly under Today, the rest after | Realtor OS / Home | P0 | v2.5 | Review |
+| PLN-011 | Vacation week: study cut to one hour a day for Nov 25 to 29 | Realtor OS / Vacation week | P1 | v2.5.1 | Review |
 
 ## PLN-001: Vacation week plan workspace
 
@@ -215,3 +216,22 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 - Older suites updated for the new order and the 5-row cap: `t18` (layout), `t21_vwk`, `t22_tasks`, `t23_pillars`.
 
 **Not verified:** the live GitHub Pages site after deploy; a real iPhone or Galaxy Tab. Reopen the app once to pick up the new offline cache (`realtor-os-v25`).
+
+## PLN-011: Vacation week, one study hour a day
+
+**Why:** On Nov 24 Shivam said the commercial licence will take time, so for the rest of the vacation study should be one hour a day, with room for his other to-dos.
+
+**Where:** `vacation-data.js` (`weekday`, `weekend` and `weekdayLite`; the days Nov 25, 26, 28 and 29). `sw.js` cache `realtor-os-v26`.
+
+**Acceptance criteria**
+1. Wed Nov 25, Thu Nov 26, Sat Nov 28 and Sun Nov 29 each have one study slot, 8:30 to 9:30 AM ("Study, 1 hour"), and a To-dos block from 9:30 to 10:30 AM.
+2. No library trip, no afternoon study block, no thermos item. The afternoon on Wed and Thu is an open block (1:00 to 3:45 PM). Sat and Sun are family time from 12:30 PM.
+3. Fri Nov 27 (family day) and every day before Nov 25 are exactly as they were.
+4. Study left this week is 4 hours. The total is 113 subtasks (was 114); progress shows "of 112" with the family day not counted.
+5. Nothing was ticked on those days, so renumbered item ids lose no ticks (checked in the live document before the change).
+
+**Not changed:** the 8-day study plan (Study day tasks). It is still paused until you say you are approved, then it starts from that day.
+
+**Verification evidence:** `t26_vacation_lite` (36 checks: the data against the previous version, and the page on Wed 8:45 AM and Fri). `t16` totals updated from 114 to 113 and 113 to 112.
+
+**Not verified:** the live site after deploy. Reopen the app once to load cache `realtor-os-v26`.

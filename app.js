@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "2.5.0";
+  var APP_VERSION = "2.5.1";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -163,6 +163,12 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.5.1", date: "2026-11-24", title: "Vacation week: one study hour a day", items: [
+      "From Wed Nov 25, study is one hour (8:30 to 9:30 AM) on Wed, Thu, Sat and Sun. Fri Nov 27 stays your family day.",
+      "A To-dos block (9:30 to 10:30 AM) follows the study hour, for the tasks on your Today list.",
+      "The library trip and the afternoon study block are gone. The afternoon is an open block for to-dos and catch-up.",
+      "Days that have already passed are unchanged."
+    ] },
     { v: "2.5.0", date: "2026-11-23", title: "Home: Pillars first, a smaller Today", items: [
       "Five pillars is now the first card on Home, right under the greeting, and slimmer.",
       "Today is much shorter. It shows 5 rows with a Show more button, one-line titles, and the add-a-task box is one line until you tap it.",

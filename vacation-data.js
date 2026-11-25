@@ -9,7 +9,11 @@
   var SON = ["7:30-8:00 AM", "Time with your son", "family", ""];
   var BREAKFAST = ["8:00-8:20 AM", "Breakfast", "fuel", "3 eggs (or paneer bhurji), 1 roti or oats, 1 banana, chai or coffee (cup 1)."];
 
-  function weekend(extra, lastItems) {
+  /* Nov 24: Shivam said the licence will take time, so from Nov 25 study is one hour a day. "lite" days keep one study hour at 8:30 and a to-dos hour after it. */
+  var STUDY_1H = ["8:30-9:30 AM", "Study, 1 hour", "study", "New material at the desk, phone in another room."];
+  var TODOS = ["9:30-10:30 AM", "To-dos block", "admin", "Work through your to-dos on the Today list."];
+
+  function weekend(extra, lastItems, lite) {
     var list = [
       WAKE,
       ["6:45-7:10 AM", "At-home workout, 25 min", "body", "3 rounds: 15 pushups, 20 squats, 10 lunges per leg, 30-second plank. If late, do 10 min and keep going."],
@@ -18,10 +22,11 @@
       ["8:30-10:30 AM", "Study block", "study", "New material at the desk, phone in another room."],
       ["10:30 AM-12:30 PM", "Prospecting block", "prospecting", "Calls, texts, voice notes from the call list."]
     ].concat(lastItems || [["12:30 PM on", "Rest of the day is family time", "family", "No work."]]);
+    if (lite) { list[4] = STUDY_1H; list.splice(5, 0, TODOS); }
     return extra ? list.concat(extra) : list;
   }
 
-  function weekday(lunchText, extra) {
+  function weekday(lunchText, extra, lite) {
     var list = [
       WAKE,
       ["6:45-7:10 AM", "At-home workout, 25 min", "body", "3 rounds: 15 pushups, 20 squats, 10 lunges per leg, 30-second plank. If late, do 10 min and still start at 8:30."],
@@ -42,13 +47,29 @@
       ["9:45-10:00 PM", "Check tomorrow's list, close the laptop", "admin", ""],
       ["10:15-11:00 PM", "Phone on the charger outside the bedroom", "reset", "Wind down without screens, then lights out at 11."]
     ];
+    if (lite) list = weekdayLite(list);
     return extra ? list.concat(extra) : list;
+  }
+
+  /* One study hour, a to-dos hour after it, and no library trip: the afternoon becomes an open block. */
+  function weekdayLite(list) {
+    var out = [];
+    list.forEach(function (it) {
+      if (it[1] === "Study block 1") { out.push(["8:30-9:30 AM", "Study, 1 hour", "study", it[3]]); out.push(TODOS); }
+      else if (it[1] === "Fill the thermos and grab the packed bag" || it[1] === "Leave for Airdrie Public Library") { /* no library trip */ }
+      else if (it[1] === "Study block 2 at the library") out.push(["1:00-3:45 PM", "Open block: to-dos and catch-up", "admin", "Finish anything left from your to-dos. No study this afternoon."]);
+      else if (it[1] === "Plan tomorrow and pack the library bag") out.push(["5:15-5:30 PM", "Plan tomorrow", "admin", "Set tomorrow's call list and study topic."]);
+      else out.push(it);
+    });
+    return out;
   }
 
   var LUNCH_A = "Lunch A: dal, rice, sabzi, salad.";
   var LUNCH_B = "Lunch B: chole or chicken curry, roti, cucumber salad.";
   var WEEKEND_DETAILS = "One study block and one prospecting block, rest is family.";
   var WEEKDAY_DETAILS = "Full study and prospecting day.";
+  var LITE_WEEKDAY_DETAILS = "One study hour, a to-dos hour, and prospecting.";
+  var LITE_WEEKEND_DETAILS = "One study hour, a to-dos hour and one prospecting block, rest is family.";
 
   /* Titles for VW-04 to VW-09, VW-11 and VW-12 were not given in the plan text. They are plain labels taken from the template's own details. */
   var PARENTS = [
@@ -74,18 +95,15 @@
     ]) },
     { id: "VW-06", date: "2026-11-23", title: "Study and prospecting day", details: WEEKDAY_DETAILS, items: weekday(LUNCH_A) },
     { id: "VW-07", date: "2026-11-24", title: "Study and prospecting day", details: WEEKDAY_DETAILS, items: weekday(LUNCH_B) },
-    { id: "VW-08", date: "2026-11-25", title: "Study and prospecting day", details: WEEKDAY_DETAILS, items: weekday(LUNCH_A, [
+    { id: "VW-08", date: "2026-11-25", title: "Study and prospecting day", details: LITE_WEEKDAY_DETAILS, items: weekday(LUNCH_A, [
       ["6:00-7:00 PM", "Cook Thursday's lunch", "fuel", "Chole or chicken curry, roti, cucumber salad. Friday is a family day, so nothing else to cook."]
-    ]) },
-    { id: "VW-09", date: "2026-11-26", title: "Study and prospecting day", details: WEEKDAY_DETAILS, items: weekday(LUNCH_B) },
+    ], true) },
+    { id: "VW-09", date: "2026-11-26", title: "Study and prospecting day", details: LITE_WEEKDAY_DETAILS, items: weekday(LUNCH_B, null, true) },
     { id: "VW-10", date: "2026-11-27", family: true, title: "Father's birthday, family day off", details: "No study, no prospecting, no admin. Protected day.", items: [
       ["", "Go out with the family for your father's birthday", "family", "Nothing else is scheduled. Phone stays away from work."]
     ] },
-    { id: "VW-11", date: "2026-11-28", title: "Weekend day and optional library study", details: WEEKEND_DETAILS, items: weekend(null, [
-      ["1:15-3:45 PM", "Optional catch-up study block at the library", "study", "Makes up some of Friday. Drop it if the family plan fills the day. Check Saturday hours before leaving."],
-      ["4:00 PM on", "Rest of the day is family time", "family", "No work."]
-    ]) },
-    { id: "VW-12", date: "2026-11-29", title: "Weekend day", details: WEEKEND_DETAILS, items: weekend() }
+    { id: "VW-11", date: "2026-11-28", title: "Weekend day", details: LITE_WEEKEND_DETAILS, items: weekend(null, null, true) },
+    { id: "VW-12", date: "2026-11-29", title: "Weekend day", details: LITE_WEEKEND_DETAILS, items: weekend(null, null, true) }
   ];
 
   window.VWDATA = {

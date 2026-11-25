@@ -23,7 +23,7 @@
   var TABS = ["today", "pipeline", "lists", "email", "more"];
   var TITLES = { today: "Clients", pipeline: "Pipeline", lists: "Clients", email: "Email", more: "Settings" };
 
-  var APP_VERSION = "2.5.1";
+  var APP_VERSION = "2.6.0";
   var DEFAULT_SETTINGS = { listingsGoal: 20, buyersGoal: 30, dailyCap: 15, goalYear: 2027, deals: [], spend: [] };
   var Store = window.CDStore;
   var S = {
@@ -163,6 +163,12 @@
      The bell shows how many releases are newer than the last one opened on this device. */
   var NEWS_BASELINE = "1.1.1";
   var RELEASES = [
+    { v: "2.6.0", date: "2026-11-24", title: "Ideas: ways to prospect for investors and estate buyers", items: [
+      "Tasks, Ideas tab: a new Prospecting ideas card at the top, with 20 ways to find investors and estate buyers.",
+      "Pick Investors, Estate buyers or Both. Tap an idea to see how to do it.",
+      "Add to Today puts the idea on your Today list. Ask Claude writes the plan and the opening message.",
+      "Tick Planned, Tried, Reviewed as you go. Tried ideas move to the bottom. Your content ideas are unchanged."
+    ] },
     { v: "2.5.1", date: "2026-11-24", title: "Vacation week: one study hour a day", items: [
       "From Wed Nov 25, study is one hour (8:30 to 9:30 AM) on Wed, Thu, Sat and Sun. Fri Nov 27 stays your family day.",
       "A To-dos block (9:30 to 10:30 AM) follows the study hour, for the tasks on your Today list.",

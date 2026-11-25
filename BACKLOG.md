@@ -16,6 +16,7 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 | PLN-009 | Clients: a Leads section on top, a slim Due list (name, type, status), tap a row for an action modal | Realtor OS / Clients | P0 | v2.4 | Review |
 | PLN-010 | Home: Pillars first, a compact Today, Reach directly under Today, the rest after | Realtor OS / Home | P0 | v2.5 | Review |
 | PLN-011 | Vacation week: study cut to one hour a day for Nov 25 to 29 | Realtor OS / Vacation week | P1 | v2.5.1 | Review |
+| PLN-012 | Ideas tab: a Prospecting ideas card (20 ways to find investors and estate buyers) | Realtor OS / Tasks | P0 | v2.6 | Review |
 
 ## PLN-001: Vacation week plan workspace
 
@@ -235,3 +236,23 @@ Status moves to **Review** only after the checks below pass, and to **Done** onl
 **Verification evidence:** `t26_vacation_lite` (36 checks: the data against the previous version, and the page on Wed 8:45 AM and Fri). `t16` totals updated from 114 to 113 and 113 to 112.
 
 **Not verified:** the live site after deploy. Reopen the app once to load cache `realtor-os-v26`.
+
+## PLN-012: Ideas tab, Prospecting ideas
+
+**Why:** On Nov 24 Shivam said he has two clients and wants to prospect for investors and estate home buyers, and asked for the different ways to be added to the Ideas tab.
+
+**Where:** `tasks.js`, `tasks.css` (Ideas tab). Data: 20 entries with `kind: "way"` inside the existing `ideas` array of the `main` document (no new top-level key, so an older cached copy of the app cannot drop them; it would show them with a "Reel idea" label until it updates). `sw.js` cache `realtor-os-v27`.
+
+**Acceptance criteria**
+1. The Ideas tab shows a Prospecting ideas card first, then Content ideas. Header reads "Prospecting ideas · N to try".
+2. Chips Investors, Estate buyers, Both filter the list and show how many are not finished.
+3. Tapping an idea opens: how to do it, Add to Today, the three steps (Planned, Tried, Reviewed) and an Ask Claude button for the plan and opening message.
+4. Add to Today creates a task "Prospecting: <idea>" dated today and the button changes to "Added to Today".
+5. Ideas with all steps ticked move to the bottom. An idea can be removed.
+6. Existing content ideas (reel, carousel, post) behave as before. With no prospecting ideas, the tab looks as it did.
+7. The 20 ideas are general method advice: no statistics, no prices, no names, no superlatives. Anything that depends on a rule (consent, privacy, do-not-call, county data) says to check it.
+
+**Verification evidence:** `t27_ideas` (23 checks: content rules, order, chips and counts, steps, Add to Today, move to bottom, remove, 44 px targets, no errors, phone and laptop, no-ideas case). Full regression run before release.
+
+**Not verified:** the live site after deploy; a real iPhone or Galaxy Tab. Reopen the app once to load cache `realtor-os-v27`.
+

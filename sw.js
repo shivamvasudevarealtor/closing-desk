@@ -2,7 +2,7 @@
    - Same-site files: network first (so updates arrive as soon as you are online), saved copy when offline.
    - Google Fonts: saved copy first, refreshed in the background.
    - Supabase (your contacts) is never touched here, so no contact data is ever stored by this file. */
-var CACHE = "realtor-os-v26";
+var CACHE = "realtor-os-v27";
 var SHELL = ["./", "index.html", "builders.html", "builders.css", "builders-core.js", "builders-data.js", "builders-ui.js", "builders-views.js", "builders.js", "builders-pdf.js", "vendor/jspdf.umd.min.js", "home.html", "home.css", "home.js", "ros.css", "crm-core.js", "day-core.js", "tasks-info.js", "theme.js", "launch.js", "app.css", "nav.css", "wide.css", "vacation.html", "vacation.css", "vacation.js", "vacation-core.js", "vacation-data.js", "tasks.html", "tasks.css", "tasks-plan.js", "tasks-steps.js", "tasks.js", "tasks-today.js", "pillars-data.js", "tasks-all.js", "tasks-all.css", "dashboard.html", "dashboard.css", "osstats.js", "app.js", "email.js", "tell.js", "gmail.js", "unsub.html", "unsub.js", "supa.js", "config.js", "vendor/supabase.js", "manifest.webmanifest",
   "icons/app-192-v3.png", "icons/app-512-v3.png", "icons/app-maskable-512-v3.png", "icons/app-180-v3.png"];
 

@@ -12,7 +12,7 @@
   }
 
   /* ---------- state: outcomes and placements, saved locally and, when available, in the shared database ---------- */
-  var outcomes={},placements={},notes=[],draft='',analyzing={},sampleFn=null,dict=null,listening=false,dictBlocked=false,content=[],archOpen=false,ideas=[],later=[],laterKnown=false,flash='',doneOpen=false,openIdea=null,openTask=null,noClickUntil=0,composeOpen=false,nextOpen=false,nextRow=null,ideasAll=false,delArm=null,askDraft={},genning={},reAsk={};
+  var outcomes={},placements={},notes=[],draft='',analyzing={},sampleFn=null,dict=null,listening=false,dictBlocked=false,content=[],archOpen=false,ideas=[],later=[],laterKnown=false,flash='',doneOpen=false,openIdea=null,openTask=null,noClickUntil=0,composeOpen=false,nextOpen=false,nextRow=null,ideasAll=false,wayAud='investor',wayAdded={},delArm=null,askDraft={},genning={},reAsk={};
   var steps={},doing=null,pushes={},people=[],colSel='today',stepOpen=null,focusKey=null,kbLeft=null,upOpen=false,blNote='';
   var autoRead={s:'wait',code:''},ptrEl=null,ptrBusy=false,dbPull=null,osRef=null,cd=null,cdAt='',CD_URL='./',OS_DOC_URL='https://claude.ai/artifact/D9aSgJEv7WZWE8t2JUXfaw';
   var dbRef=null,synced=false,writing=false,dirty=false,failCount=0,retryT=null,lastSent='',savedT=null,saveMsg='',sentTs={},writeId=0,writeT=null;
@@ -468,7 +468,7 @@
     wrap.appendChild(tabIn('day',window.TDAY?window.TDAY.view({plan:dayPlan(),openBoard:function(){setTab('today');render();},afterPaint:vwPaint}):h('div')));
     vwPaint();
     wrap.appendChild(tabIn('plan',tabHead('Plan','Next 10 days and the full calendar')));
-    wrap.appendChild(tabIn('ideas',tabHead('Ideas','Content to make and post')));
+    wrap.appendChild(tabIn('ideas',tabHead('Ideas','Ways to prospect, and content to post')));
     wrap.appendChild(tabIn('notes',tabHead('Notes','Capture a thought')));
     if(viewing<=today){var cmp=composeBlock();cmp.classList.add('cmp');wrap.appendChild(tabIn('today notes',cmp));}
     var msg=null;
@@ -484,10 +484,11 @@
     wrap.appendChild(tabIn('today',boardSection()));
     var nxg=nextGroup();if(nxg) wrap.appendChild(tabIn('plan',nxg));
     wrap.appendChild(tabIn('plan',laterGroup()));
-    var ig=ideaGroup(),cg=contentGroup();
+    var wg=wayGroup(),ig=ideaGroup(),cg=contentGroup();
+    if(wg) wrap.appendChild(tabIn('ideas',wg));
     if(ig) wrap.appendChild(tabIn('ideas',ig));
     if(cg) wrap.appendChild(tabIn('ideas',cg));
-    if(!ig&&!cg) wrap.appendChild(tabIn('ideas',emptyCard('No ideas yet','Add one with the + line on Today or Notes and it will show up here.')));
+    if(!wg&&!ig&&!cg) wrap.appendChild(tabIn('ideas',emptyCard('No ideas yet','Add one with the + line on Today or Notes and it will show up here.')));
     if(viewing<=today){var ng=noteGroup();if(ng){ng.id='note-sec';wrap.appendChild(tabIn('notes',ng));} else wrap.appendChild(tabIn('notes',emptyCard('No notes yet','Tap “Add a note or idea” above. Claude reads new notes within the hour and files them.')));}
 
 
@@ -941,7 +942,8 @@
     reel:{tag:'REEL IDEA',steps:['Recorded','Edited','Posted'],word:'Reel'},
     carousel:{tag:'CAROUSEL IDEA',steps:['Written','Designed','Posted'],word:'carousel'},
     post:{tag:'POST IDEA',steps:['Written','Photo ready','Posted'],word:'post'},
-    story:{tag:'STORY IDEA',steps:['Recorded','Edited','Posted'],word:'Story'}
+    story:{tag:'STORY IDEA',steps:['Recorded','Edited','Posted'],word:'Story'},
+    way:{tag:'PROSPECTING',steps:['Planned','Tried','Reviewed'],word:'prospecting idea'}
   };
   var CODE={RI:'reel',CI:'carousel',PI:'post',SI:'story'};
   function splitIdeas(txt){
@@ -969,6 +971,7 @@
   function ideaDel(id){ideas=ideas.filter(function(i){return i.id!==id;});if(openIdea===id) openIdea=null;persist();render();}
   function requestText(it){
     var k=KINDS[it.kind]||KINDS.reel;
+    if(it.kind==='way') return 'Write the plan and opening message for my prospecting idea: "'+it.text+'"'+((it.ask&&it.ask.note)?' ('+it.ask.note+')':'')+'. Use my style rules and flag any details I still need to give you.';
     return 'Write the script for my '+k.tag.toLowerCase()+': "'+it.text+'"'+((it.ask&&it.ask.note)?' ('+it.ask.note+')':'')+'. Use my style rules and flag any details I still need to give you.';
   }
   function scriptPrompt(it){
@@ -977,6 +980,7 @@
       reel:'Write a POV walkthrough script for a single continuous take with no cuts: the spoken lines plus short on-screen text cues, about 30 to 45 seconds, with a hook in the first 2 seconds. Then an Instagram caption with a scroll-stopping first line, a closing line that asks viewers to DM one trigger word, and exactly 5 hashtags.',
       carousel:'Write an Instagram carousel: a cover slide with a scroll-stopping hook, then 6 to 8 slides (one idea each, a short headline and one or two lines), and a last slide that asks viewers to DM one trigger word. Then a caption with a hook line and exactly 5 hashtags.',
       post:'Write an Instagram post caption: a scroll-stopping first line, a short feeling-first body, a closing line that asks viewers to DM one trigger word, and exactly 5 hashtags. Add one line suggesting the image.',
+      way:'This is a way to find new clients, not a piece of content. Write a short plan Shivam can start this week: who exactly to contact or where to show up, a 2 to 3 line opening message or call opener in plain, warm words, one follow-up message for 3 days later, and one number to track so he knows if it works. Keep it to what one person can do alone in about an hour. Do not invent statistics, names of people or organisations, or prices: if you need one, put it in [square brackets].',
       story:'Write a 3 to 5 frame Instagram Story sequence: for each frame the on-screen text and what to show or say, one sticker idea (poll, question or quiz), and a last frame that asks viewers to DM one trigger word.'
     }[kind]||'';
     return 'You write social content for Shivam, a Realtor with The Modern Real Estate Group at Real Broker in Calgary, Alberta (also Airdrie, Cochrane and Chestermere). His audience is first-time buyers, investors, luxury and estate buyers, acreage buyers and custom-home clients.\n\n'+
@@ -1016,12 +1020,15 @@
   }
   function ideaBody(i,k){
     var kids=[];
+    var way=(i.kind==='way');
+    if(way&&i.how) kids.push(h('p',{class:'how',text:i.how}));
+    if(way) kids.push(h('button',{class:'pill wtoday'+(wayAdded[i.id]?' on':''),'data-act':'way-today','data-id':i.id,text:wayAdded[i.id]?'✓ Added to Today':'Add to Today'}));
     var steps=['rec','edit','post'];
     kids.push(h('div',{class:'chk'},steps.map(function(key,n){
       var on=!!i[key];
       return h('button',{class:'ck'+(on?' on':''),'data-act':'idea-tog','data-id':i.id,'data-k':key,role:'checkbox','aria-checked':on?'true':'false',text:k.steps[n]});
     })));
-    var sec=h('div',{class:'script'},[h('h4',{text:'Script'})]);
+    var sec=h('div',{class:'script'},[h('h4',{text:way?'Plan and message':'Script'})]);
     if(genning[i.id]){
       sec.appendChild(h('small',{class:'ai',text:'Claude is writing the script…'}));
     } else {
@@ -1037,7 +1044,7 @@
         var ta=h('textarea',{id:'ask-'+i.id,'data-askbox':'1','data-id':i.id,rows:'2',maxlength:'300',placeholder:'Optional: length, tone, language (English, Punjabi or both)','aria-label':'Notes for Claude about the script'});
         ta.value=askDraft[i.id]||'';
         sec.appendChild(ta);
-        sec.appendChild(h('button',{class:'pill','data-act':'idea-ask','data-id':i.id,text:i.script?'Ask Claude to rewrite it':'Ask Claude to write the script'}));
+        sec.appendChild(h('button',{class:'pill','data-act':'idea-ask','data-id':i.id,text:i.script?'Ask Claude to rewrite it':(way?'Ask Claude to write the plan and message':'Ask Claude to write the script')}));
         if(i.ask&&!i.script){
           sec.appendChild(h('small',{class:'rc',text:'✓ Asked Claude · '+stamp(i.ask.ts)}));
           sec.appendChild(h('small',{class:'ai',text:'Waiting. Claude writes it when you tell Claude in a chat, or in your daily check. The script shows up here.'}));
@@ -1060,10 +1067,27 @@
     if(open) li.appendChild(ideaBody(i,k));
     return li;
   }
-  function ideaGroup(){
-    if(!ideas.length) return null;
+  var WAY_AUD=[['investor','Investors'],['estate','Estate buyers'],['both','Both']];
+  function wayGroup(){
+    var all=ideas.filter(function(i){return i.kind==='way';});
+    if(!all.length) return null;
     var fin=function(i){return i.rec&&i.edit&&i.post;};
-    var todo=ideas.filter(function(i){return !fin(i);}),done=ideas.filter(fin);
+    var left=all.filter(function(i){return !fin(i);}).length;
+    var chips=h('div',{class:'wchips',role:'tablist','aria-label':'Who to prospect for'},WAY_AUD.map(function(a){
+      var n=all.filter(function(i){return (i.aud||'both')===a[0]&&!fin(i);}).length,on=wayAud===a[0];
+      return h('button',{class:'wchip'+(on?' on':''),role:'tab','aria-selected':on?'true':'false','data-act':'way-aud','data-v':a[0],text:a[1]+' · '+n});
+    }));
+    var mine=all.filter(function(i){return (i.aud||'both')===wayAud;}).sort(function(a,b){return (fin(a)?1:0)-(fin(b)?1:0);});
+    var ul=h('ul',{class:'nlist ideas ways'});
+    mine.forEach(function(i){ul.appendChild(ideaRow(i));});
+    var kids=[h('p',{class:'wintro',text:'Ways to find investors and estate buyers. Tap one to see how, add it to Today, or ask Claude for a plan and message.'}),chips,mine.length?ul:h('p',{text:'Nothing here yet.'})];
+    return grp('Prospecting ideas'+(left?' · '+left+' to try':''),h('div',{class:'card'},kids));
+  }
+  function ideaGroup(){
+    var list=ideas.filter(function(i){return i.kind!=='way';});
+    if(!list.length) return null;
+    var fin=function(i){return i.rec&&i.edit&&i.post;};
+    var todo=list.filter(function(i){return !fin(i);}),done=list.filter(fin);
     var kids=[];
     if(todo.length){
       var ul=h('ul',{class:'nlist ideas'});
@@ -1627,6 +1651,8 @@
       }
     }
     else if(act==='ideas-all'){ideasAll=!ideasAll;render();}
+    else if(act==='way-aud'){wayAud=bt.getAttribute('data-v')||'investor';render();}
+    else if(act==='way-today'){var wi=findIdea(bt.getAttribute('data-id'));if(wi&&window.TDAY&&TDAY.add){TDAY.add('Prospecting: '+wi.text,'',TDAY.todayStr());wayAdded[wi.id]=1;render();}}
     else if(act==='idea-done-toggle'){doneOpen=!doneOpen;render();}
     else if(act==='idea-open'){var oid=bt.getAttribute('data-id');openIdea=(openIdea===oid)?null:oid;render();}
     else if(act==='idea-ask'){askScript(bt.getAttribute('data-id'));}

@@ -644,3 +644,15 @@ label.tdb{cursor:pointer}
   .tdbody:not(.conn) .tdside{grid-column:1;grid-row:1}
   .tdbody:not(.conn) .tdmain{grid-column:2;grid-row:1}
 }
+
+/* Prospecting ideas card (Ideas tab) */
+.wintro{margin:0 0 10px;font-size:14px;line-height:1.4;color:var(--label2)}
+.wchips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 6px}
+.wchip{min-height:44px;padding:0 14px;border-radius:22px;border:1px solid var(--line,var(--sep));background:transparent;color:var(--label2);font:inherit;font-size:14px;font-weight:600}
+.wchip.on{background:var(--accent-soft,rgba(255,140,0,.14));color:var(--accent);border-color:var(--accent)}
+.wchip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.itag.way{color:var(--accent)}
+.ibody .how{margin:2px 0 10px;font-size:14.5px;line-height:1.45}
+.wtoday{min-height:44px;margin:0 0 10px}
+.wtoday.on{opacity:.75}
+

@@ -44,7 +44,7 @@ More > **Restore a backup** > choose your `closing-desk-backup-....json`. Goals 
 
 ## Board and navigation (v1.11)
 - **One bottom bar on every page:** Board, Clients, Pipeline, Email, More. Clients has two views: *Due today* and *Everyone* (the old Lists).
-- **Board** (`tasks.html`) is the home screen: Backlog | Today | Doing | Done. Plan, Ideas and Notes are the chips at the top. The numbers page is `dashboard.html` (Board > All numbers, or More).
+- **Board** (`tasks.html`) is the home screen: Backlog | Today | Doing | Done. Plan, Ideas and Notes are the chips at the top. Ideas opens with a **Prospecting ideas** card (20 ways to find investors and estate buyers, filter by audience, Add to Today, Ask Claude for the plan), then the content ideas. The numbers page is `dashboard.html` (Board > All numbers, or More).
 - Each card has small steps (about 2 minutes). Start opens one step at a time. Only one card can be Doing. Pushing the same task twice shrinks it to its first step.
 - Steps live in `tasks-steps.js`: hand-written for the vague tasks, otherwise taken from the task's own sentences. Reach tasks list the people due in Clients, using the contacts and phone numbers you saved. Nothing is invented.
 - Steps, Doing and push counts are saved in the same `os_docs` row (`main`) as the rest of Win the Day, so no new SQL is needed.
